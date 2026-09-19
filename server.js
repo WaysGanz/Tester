@@ -13,6 +13,9 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 1901;
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
+const path = require('path');
 /*
 halaman sigma email admin untuk reset pw
 wilzu ganteng @Wilzu22
@@ -32,12 +35,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // Ganti FileStore dengan ini untuk testing di Vercel
 app.use(session({
+  store: new FileStore({
+    path: '/app/data/sessions-store', // <-- Arahkan ke volume
+    retries: 1,
+    ttl: 7 * 24 * 60 * 60
+  }),
   secret: process.env.SESSION_SECRET || 'marketingcuan_secret_2025',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, secure: true, sameSite: 'none' }
 }));
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 function requireAuth(req, res, next) {
