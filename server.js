@@ -30,12 +30,12 @@ const transporter = nodemailer.createTransport({
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+// Ganti FileStore dengan ini untuk testing di Vercel
 app.use(session({
-  store: new FileStore({ path: './sessions-store', retries: 1, ttl: 7 * 24 * 60 * 60 }),
   secret: process.env.SESSION_SECRET || 'marketingcuan_secret_2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, secure: true, sameSite: 'none' }
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
