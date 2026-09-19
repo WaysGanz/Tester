@@ -1,9 +1,36 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const bcrypt = require('bcryptjs');
-
 const dbPath = path.join('/app/data', 'database.db');
 const db = new sqlite3.Database(dbPath);
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+const fs = require('fs');
+const bcrypt = require('bcryptjs');
+
+// ============================================
+// ✅ FIX: Bikin folder SEBELUM buka database
+// ============================================
+const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
+
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log('✅ DATA_DIR dibuat:', DATA_DIR);
+  } else {
+    console.log('✅ DATA_DIR sudah ada:', DATA_DIR);
+  }
+} catch (e) {
+  console.error('❌ Gagal bikin DATA_DIR:', e.message);
+}
+
+const dbPath = path.join(DATA_DIR, 'database.db');
+console.log('📁 Database path:', dbPath);
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('❌ Gagal buka database:', err.message);
+  } else {
+    console.log('✅ Database terbuka:', dbPath);
+  }
+});
 
 db.serialize(() => {
   // ===== TABEL USERS =====
