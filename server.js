@@ -7,7 +7,7 @@ const FileStore = require('session-file-store')(session);
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./database');
-const wa = require('./whatsapp-manager');
+const wa = require('./whatsapp_manager');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
