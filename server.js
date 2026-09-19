@@ -745,10 +745,16 @@ app.get('/reset-password', (req, res) => {
 app.use((req, res) => {
   res.redirect('/');
 });
-app.listen(PORT, "0.0.0.0", async () => {
-  console.log(` MarketingCuan running on http://localhost:${PORT}`);
+// ✅ GANTI JADI INI
+module.exports = app;
+
+// Supaya tetap bisa jalan lokal pakai `node server.js`
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(` MarketingCuan running on http://localhost:${PORT}`);
   console.log(`WhatsApp Broadcast Platform with Monetization`);
   console.log(`Rp600/chat | Min WD Rp10.000`);
   console.log(`Tampilan Fullwidth (ＴＥＸＴ　ＦＯＮＴ)`);
   console.log(` Login: admin@marketingcuan.com / admin123`);
 });
+}
