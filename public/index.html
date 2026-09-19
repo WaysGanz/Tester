@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketingCuan - Masuk</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-box">
+      <div class="login-brand">
+        <i class="fab fa-whatsapp"></i>
+        <span>Marketing<span class="highlight">Cuan</span></span>
+        <small>Platform Manajemen & Monetisasi Akun WA</small>
+      </div>
+      <form id="loginForm" class="login-form">
+        <div class="form-group">
+          <label><i class="fas fa-envelope"></i> Email</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="nama@domain.com">
+        </div>
+        <div class="form-group">
+          <label><i class="fas fa-lock"></i> Password</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="••••••••••">
+        </div>
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="humanCheck"> Aku manusia
+          </label>
+          <a href="/forgot-password" class="forgot-link">Lupa password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+          <i class="fas fa-sign-in-alt"></i> Masuk
+        </button>
+        <div class="register-link">
+          <a href="/register">+ Daftar Akun Baru</a>
+        </div>
+        <p class="terms">Dengan masuk, Anda menyetujui <a href="#">Ketentuan & Kebijakan Privasi</a>.</p>
+      </form>
+    </div>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const humanCheck = document.getElementById('humanCheck');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!humanCheck.checked) {
+        showToast('Centang "Aku manusia" untuk melanjutkan.', 'error');
+        return;
+      }
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+
+      if (!email || !password) {
+        showToast('Email dan password wajib diisi', 'error');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login gagal');
+
+        window.location.href = '/dashboard';
+      } catch (err) {
+        showToast(err.message, 'error');
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
+      }
+    });
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>

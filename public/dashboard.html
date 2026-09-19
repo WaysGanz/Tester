@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketingCuan - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="/fullwidth.js" defer></script>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fab fa-whatsapp"></i>
+        <span>Marketing<span class="highlight">Cuan</span></span>
+      </div>
+      <nav class="nav-menu">
+        <a href="/dashboard" class="nav-item active"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> Devices</a>
+        <a href="/broadcast" class="nav-item"><i class="fas fa-bullhorn"></i>Undangan</a>
+        <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> Wallet</a>
+        <a href="/admin" class="nav-item" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> Admin</a>
+        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="user-badge"><i class="fas fa-user"></i> <span id="userName">User</span></span>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <h1>Dashboard</h1>
+        <div class="header-actions">
+          <span class="clock" id="clock"></span>
+          <button class="btn-refresh" onclick="refreshAll()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+      </header>
+
+      <section class="dashboard-content">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="icon online"><i class="fas fa-wifi"></i></div>
+            <div class="number" id="statOnline">0</div>
+            <div class="label">ONLINE</div>
+          </div>
+          <div class="stat-card">
+            <div class="icon offline"><i class="fas fa-power-off"></i></div>
+            <div class="number" id="statOffline">0</div>
+            <div class="label">OFFLINE</div>
+          </div>
+          <div class="stat-card">
+            <div class="icon balance"><i class="fas fa-coins"></i></div>
+            <div class="number" id="statBalance">Rp0</div>
+            <div class="label">SALDO</div>
+          </div>
+          <div class="stat-card">
+            <div class="icon revenue"><i class="fas fa-chart-line"></i></div>
+            <div class="number" id="statRevenue">Rp0</div>
+            <div class="label">PENDAPATAN</div>
+          </div>
+          <div class="stat-card">
+            <div class="icon sent"><i class="fas fa-check-circle"></i></div>
+            <div class="number" id="statSent">0</div>
+            <div class="label">PESAN SUKSES</div>
+          </div>
+        </div>
+        <div class="alert-banner">
+          <i class="fas fa-exclamation-triangle"></i>
+          Dilarang menghapus pesan yang sudah terkirim. Pelanggaran akan berakibat pemblokiran akun.
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-calendar-day"></i> Aktivitas Terakhir <small>Update realtime</small></h3>
+          <div id="todayActivity" class="activity-list">
+            <p class="empty">Belum ada aktivitas hari ini</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="helpers.js"></script>
+  <script src="app.js"></script>
+  <script>
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('Gagal fetch stats');
+        const stats = await res.json();
+        document.getElementById('statOnline').textContent = stats.online || 0;
+        document.getElementById('statOffline').textContent = stats.offline || 0;
+        document.getElementById('statRevenue').textContent = 'Rp' + (stats.revenue || 0).toLocaleString();
+        document.getElementById('statSent').textContent = stats.total_sent || 0;
+      } catch (e) {
+        console.error('Error loading stats:', e);
+        document.getElementById('statOnline').textContent = '0';
+        document.getElementById('statOffline').textContent = '0';
+        document.getElementById('statRevenue').textContent = 'Rp0';
+        document.getElementById('statSent').textContent = '0';
+      }
+    }
+    async function loadBalance() {
+      try {
+        const res = await fetch('/api/wallet');
+        if (!res.ok) throw new Error('Gagal fetch wallet');
+        const data = await res.json();
+        document.getElementById('statBalance').textContent = 'Rp' + (data.balance || 0).toLocaleString();
+      } catch (e) {
+        console.error('Error loading balance:', e);
+        document.getElementById('statBalance').textContent = 'Rp0';
+      }
+    }
+    async function loadRecentActivity() {
+      try {
+        const res = await fetch('/api/broadcast/history');
+        if (!res.ok) throw new Error('Gagal fetch history');
+        const history = await res.json();
+        const container = document.getElementById('todayActivity');
+        if (history && history.length > 0) {
+          container.innerHTML = history.slice(0, 5).map(item => `
+            <div class="activity-item">
+              <span>${item.device_name || item.device_id}</span>
+              <span>${item.sent}/${item.recipients} terkirim</span>
+              <span class="meta">${new Date(item.created_at).toLocaleString('id-ID')}</span>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<p class="empty">Belum ada aktivitas hari ini</p>';
+        }
+      } catch (e) {
+        console.error('Error loading recent activity:', e);
+        document.getElementById('todayActivity').innerHTML = '<p class="empty">Gagal memuat aktivitas</p>';
+      }
+    }
+    async function refreshAll() {
+      await loadStats();
+      await loadBalance();
+      await loadRecentActivity();
+      showToast('✅ Data diperbarui', 'info');
+    }
+    function updateClock() {
+      document.getElementById('clock').textContent = new Date().toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+      loadBalance();
+      loadRecentActivity();
+      updateClock();
+      setInterval(updateClock, 1000);
+      setInterval(loadStats, 15000);
+      setInterval(loadBalance, 15000);
+      setInterval(loadRecentActivity, 15000);
+      fetch('/api/me')
+        .then(r => r.json())
+        .then(u => {
+          document.getElementById('userName').textContent = u.name || u.email;
+          if (u.role === 'admin') {
+            document.getElementById('adminLink').style.display = 'flex';
+          }
+        })
+        .catch(() => console.error('Gagal load user info'));
+    });
+  </script>
+</body>
+</html>

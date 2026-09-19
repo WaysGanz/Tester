@@ -1,0 +1,45 @@
+2026-08-07T01:13:24Z INF Starting tunnel tunnelID=edef8e8a-ff16-4e6b-84d9-cf77b7484702
+2026-08-07T01:13:24Z INF Version 2026.7.3 (Checksum 9d71c677db00134c1bd4144b7783486b654ad281b1ea62b4972098d19f770f17)
+2026-08-07T01:13:24Z INF GOOS: linux, GOVersion: go1.26.4, GoArch: amd64
+2026-08-07T01:13:24Z INF Settings: map[no-autoupdate:true token:*****]
+2026-08-07T01:13:24Z INF Environmental variables map[CF_TUNNEL_ENABLE:yes CF_TUNNEL_TOKEN:eyJhIjoiOTJhYTA0M2Y2NmMwZWJkNTRmYzgxNWNhMWIzZDg2ZDMiLCJ0IjoiZWRlZjhlOGEtZmYxNi00ZTZiLTg0ZDktY2Y3N2I3NDg0NzAyIiwicyI6IlpHVTRPVFpsTWpZdFlUYzBNQzAwWVRWaExXSmtNV0l0TVRJeVpHVTVZelJsTW1NMSJ9]
+2026-08-07T01:13:24Z INF Generated Connector ID: 71e3e035-df8e-4629-ac7f-9276969ecf09
+2026-08-07T01:13:24Z INF Initial protocol quic
+2026-08-07T01:13:24Z INF ICMP proxy will use 172.18.0.2 as source for IPv4
+2026-08-07T01:13:24Z INF ICMP proxy will use fdba:17c8:6c94::1 in zone eth0 as source for IPv6
+2026/08/07 01:13:24 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details.
+2026-08-07T01:13:24Z INF ICMP proxy will use 172.18.0.2 as source for IPv4
+2026-08-07T01:13:24Z INF ICMP proxy will use fdba:17c8:6c94::1 in zone eth0 as source for IPv6
+2026-08-07T01:13:24Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-08-07T01:13:24Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.200.193
+2026-08-07T01:13:24Z INF Registered tunnel connection connIndex=0 connection=a11c35cf-7e2d-45e9-979d-3ad4bfe7229b event=0 ip=198.41.200.193 location=yyz04 protocol=quic
+2026-08-07T01:13:24Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=1 event=0 ip=198.41.192.37
+2026-08-07T01:13:24Z INF Updated to new configuration config="{\"ingress\":[{\"hostname\":\"cumamarketing.online\",\"service\":\"http://localhost:1901\"},{\"service\":\"http_status:404\"}],\"warp-routing\":{\"enabled\":false}}" version=2
+2026-08-07T01:13:25Z INF Registered tunnel connection connIndex=1 connection=e4de2188-441c-4e02-9451-a3d60dc3e9bf event=0 ip=198.41.192.37 location=yul01 protocol=quic
+2026-08-07T01:13:25Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=2 event=0 ip=198.41.200.33
+2026-08-07T01:13:26Z INF Registered tunnel connection connIndex=2 connection=5b0c1ec6-d8e1-467d-aeb7-d06bb736e401 event=0 ip=198.41.200.33 location=yyz06 protocol=quic
+2026-08-07T01:13:26Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=3 event=0 ip=198.41.192.227
+2026-08-07T01:13:27Z INF Registered tunnel connection connIndex=3 connection=3e2615be-8749-4ad3-9902-7a6e6eb21d45 event=0 ip=198.41.192.227 location=yul01 protocol=quic
+2026-08-07T01:13:34Z INF +-----------------------------------------------------------------------------------------------+
+2026-08-07T01:13:34Z INF |                                    CONNECTIVITY PRE-CHECKS                                    |
+2026-08-07T01:13:34Z INF +-----------------------------------------------------------------------------------------------+
+2026-08-07T01:13:34Z INF |  COMPONENT         TARGET                     STATUS  DETAILS                                 |
+2026-08-07T01:13:34Z INF |  DNS Resolution    region1.v2.argotunnel.com  PASS    DNS Resolved successfully               |
+2026-08-07T01:13:34Z INF |  DNS Resolution    region2.v2.argotunnel.com  PASS    DNS Resolved successfully               |
+2026-08-07T01:13:34Z INF |  UDP Connectivity  region1.v2.argotunnel.com  PASS    QUIC connection successful              |
+2026-08-07T01:13:34Z INF |  UDP Connectivity  region2.v2.argotunnel.com  FAIL    QUIC connection failed                  |
+2026-08-07T01:13:34Z INF |  TCP Connectivity  region1.v2.argotunnel.com  PASS    HTTP/2 connection successful            |
+2026-08-07T01:13:34Z INF |  TCP Connectivity  region2.v2.argotunnel.com  PASS    HTTP/2 connection successful            |
+2026-08-07T01:13:34Z INF |  Cloudflare API    api.cloudflare.com:443     PASS    API is reachable                        |
+2026-08-07T01:13:34Z INF |  WARNING: Allow outbound QUIC traffic on port 7844 or use HTTP2.                              |
+2026-08-07T01:13:34Z INF |                                                                                               |
+2026-08-07T01:13:34Z INF |  SUMMARY: Environment ready with degraded transport. cloudflared will proceed using 'http2'.  |
+2026-08-07T01:13:34Z INF +-----------------------------------------------------------------------------------------------+
+2026-08-07T01:13:34Z INF precheck component="DNS Resolution" details="DNS Resolved successfully" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=region1.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="DNS Resolution" details="DNS Resolved successfully" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=region2.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=region1.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="UDP Connectivity" details="QUIC connection failed" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=fail target=region2.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=region1.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=region2.v2.argotunnel.com
+2026-08-07T01:13:34Z INF precheck component="Cloudflare API" details="API is reachable" run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 status=pass target=api.cloudflare.com:443
+2026-08-07T01:13:34Z INF precheck complete hard_fail=false run_id=84de9ff8-ea0a-4775-a6ea-6ded73e6ca49 suggested_protocol=http2

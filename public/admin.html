@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketingCuan - Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="/fullwidth.js" defer></script>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="logo"><i class="fab fa-whatsapp"></i><span>Marketing<span class="highlight">Cuan</span></span></div>
+      <nav class="nav-menu">
+        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> Devices</a>
+        <a href="/broadcast" class="nav-item"><i class="fas fa-bullhorn"></i> Broadcast</a>
+        <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> Wallet</a>
+        <a href="/admin" class="nav-item active"><i class="fas fa-cog"></i> Admin</a>
+        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+      <div class="sidebar-footer"><span class="user-badge"><i class="fas fa-user"></i> <span id="userName">Admin</span></span></div>
+    </aside>
+    <main class="main-content">
+      <header class="header">
+        <h1>Admin Panel</h1>
+        <div class="header-actions"><span class="clock" id="clock"></span></div>
+      </header>
+      <section class="admin-content" style="padding:24px 30px;overflow-y:auto;">
+        <div class="card" style="margin-bottom:24px;">
+          <h3><i class="fas fa-sliders-h"></i> Pengaturan Sistem</h3>
+          <form id="settingsForm">
+            <div class="form-group"><label>Teks Promosi (template broadcast)</label><textarea id="promoText" class="form-control" rows="4" placeholder="Teks promosi default..."></textarea></div>
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group"><label>Harga per Chat (Rp)</label><input type="number" id="pricePerChat" class="form-control" placeholder="600"></div>
+              <div class="form-group"><label>Minimal Withdraw (Rp)</label><input type="number" id="minWithdraw" class="form-control" placeholder="10000"></div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan Pengaturan</button>
+          </form>
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-light);">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-danger" onclick="resetAllProfit()"><i class="fas fa-trash-alt"></i> Reset Semua Profit</button>
+              <span style="font-size:13px;color:var(--text-secondary);">(Hapus semua profit di semua device)</span>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+              <select id="resetDeviceSelect" class="form-control" style="width:200px;display:inline-block;">
+                <option value="">-- Pilih Device --</option>
+              </select>
+              <button class="btn btn-warning" onclick="resetSelectedProfit()"><i class="fas fa-undo-alt"></i> Reset Profit Device Ini</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <h3><i class="fas fa-database"></i> Hapus Kontak Target Blast</h3>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+            <i class="fas fa-exclamation-triangle" style="color:#ff9800;"></i>
+            <strong>Peringatan:</strong> Menghapus kontak akan membersihkan semua nomor target blast dari database. 
+            <span style="color:var(--danger);">Tindakan ini tidak bisa dibatalkan!</span>
+          </p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn-danger" onclick="deleteAllContacts()"><i class="fas fa-trash-alt"></i> Hapus Semua Kontak</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select id="deleteDeviceSelect" class="form-control" style="width:200px;display:inline-block;">
+                <option value="">-- Pilih Device --</option>
+              </select>
+              <button class="btn btn-warning" onclick="deleteDeviceContacts()"><i class="fas fa-trash"></i> Hapus Kontak Device Ini</button>
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="btn btn-secondary" onclick="deleteMasterContacts()"><i class="fas fa-trash-alt"></i> Hapus Master Kontak</button>
+            <span style="font-size:13px;color:var(--text-secondary);margin-left:8px;">(Hapus daftar master kontak global)</span>
+          </div>
+          <div id="deleteResult" style="margin-top:12px;"></div>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <h3><i class="fas fa-upload"></i> Import Kontak Massal</h3>
+          <form id="importForm">
+            <div class="form-group">
+              <label>Pilih Device Tujuan</label>
+              <select id="importDevice" class="form-control">
+                <option value="">-- Pilih Device --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Masukkan Nomor (satu per baris, format internasional)</label>
+              <textarea id="importNumbers" class="form-control" rows="10" placeholder="628123456789&#10;628987654321&#10;628555555555&#10;12125551212&#10;447911123456"></textarea>
+              <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">
+                <i class="fas fa-info-circle"></i> 
+                Format: <strong>hanya angka</strong> (tanpa +, tanpa spasi, tanpa tanda hubung).<br>
+                Semua negara didukung: Indonesia (62), US (1), UK (44), Malaysia (60), dll.<br>
+                Minimal 5 digit, maksimal 15 digit.
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import Nomor</button>
+              <button type="button" class="btn btn-secondary" onclick="document.getElementById('importNumbers').value=''">Kosongkan</button>
+              <span id="importCount" style="font-size:14px;color:var(--text-secondary);margin-left:8px;">0 nomor</span>
+            </div>
+          </form>
+          <div id="importResult" style="margin-top:12px;"></div>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <h3><i class="fas fa-copy"></i> Salin Kontak ke Semua Device</h3>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+            Gunakan fitur ini untuk menyebarkan kontak dari satu device ke semua device lain (termasuk device user baru).
+          </p>
+          <div class="form-group">
+            <label>Device Sumber (yang sudah punya kontak)</label>
+            <select id="sourceDevice" class="form-control">
+              <option value="">-- Pilih Device Sumber --</option>
+            </select>
+          </div>
+          <button class="btn btn-warning" onclick="copyContactsToAll()" id="copyBtn">
+            <i class="fas fa-copy"></i> Salin ke Semua Device
+          </button>
+          <div id="copyResult" style="margin-top:12px;"></div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-clock"></i> Permintaan Withdraw Pending</h3>
+          <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan pending</p></div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="helpers.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // ini mah gini aja
+    
+    async function loadSettings() {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      document.getElementById('promoText').value = data.promo_text || '';
+      document.getElementById('pricePerChat').value = data.price_per_chat || 600;
+      document.getElementById('minWithdraw').value = data.min_withdraw || 10000;
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        promo_text: document.getElementById('promoText').value,
+        price_per_chat: parseInt(document.getElementById('pricePerChat').value) || 600,
+        min_withdraw: parseInt(document.getElementById('minWithdraw').value) || 10000
+      };
+      const res = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (res.ok) showToast('Pengaturan disimpan!', 'success');
+      else showToast('Gagal menyimpan', 'error');
+    });
+    async function loadPendingWithdrawals() {
+      const res = await fetch('/api/admin/withdraw/pending');
+      const data = await res.json();
+      const container = document.getElementById('pendingWithdrawList');
+      if (!data || data.length === 0) { container.innerHTML = '<p class="empty">Tidak ada permintaan pending</p>'; return; }
+      container.innerHTML = data.map(w => `
+        <div style="border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;">
+            <div><strong>${w.name || w.email}</strong><span style="color:var(--text-secondary);font-size:13px;margin-left:8px;">${w.method.toUpperCase()} - ${w.account_number}</span></div>
+            <div><span style="font-weight:700;color:#ff9800;">Rp${w.amount.toLocaleString()}</span></div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button class="btn btn-sm btn-success" onclick="approveWithdraw(${w.id})"><i class="fas fa-check"></i> Approve</button>
+            <button class="btn btn-sm btn-danger" onclick="rejectWithdraw(${w.id})"><i class="fas fa-times"></i> Reject</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function approveWithdraw(id) {
+  if (!confirm('Approve withdraw ini?')) return;
+  try {
+    const res = await fetch(`/api/admin/withdraw/${id}/approve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: '' }) // ✅ KIRIM BODY KOSONG
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('✅ Withdraw approved!', 'success');
+      loadPendingWithdrawals();
+    } else {
+      showToast('❌ Gagal: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('❌ Error: ' + e.message, 'error');
+  }
+}
+
+    async function rejectWithdraw(id) {
+      const reason = prompt('Alasan penolakan:');
+      if (reason === null) return;
+      try {
+        const res = await fetch(`/api/admin/withdraw/${id}/reject`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Withdraw ditolak', 'warning');
+          loadPendingWithdrawals();
+        } else {
+          showToast('❌ Gagal: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+    async function loadImportDevices() {
+      const res = await fetch('/api/devices');
+      const devices = await res.json();
+      const select = document.getElementById('importDevice');
+      select.innerHTML = '<option value="">-- Pilih Device --</option>';
+      devices.filter(d => d.real_status === 'connected').forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.name} (${d.phone || 'no phone'})`;
+        select.appendChild(opt);
+      });
+      const optAll = document.createElement('option');
+      optAll.value = 'all';
+      optAll.textContent = '🔹 Semua Device (master kontak)';
+      select.appendChild(optAll);
+    }
+
+    document.getElementById('importNumbers').addEventListener('input', function() {
+      const lines = this.value.split('\n').filter(line => line.trim() !== '');
+      document.getElementById('importCount').textContent = `${lines.length} nomor`;
+    });
+
+    document.getElementById('importForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const deviceId = document.getElementById('importDevice').value;
+      const rawNumbers = document.getElementById('importNumbers').value;
+      const resultDiv = document.getElementById('importResult');
+      
+      if (!deviceId) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">⚠️ Pilih device dulu!</div>`;
+        return;
+      }
+      
+      const numbers = rawNumbers.split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '' && /^[0-9]{5,15}$/.test(line));
+      
+      if (numbers.length === 0) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Tidak ada nomor valid! Minimal 5 digit, maksimal 15 digit.</div>`;
+        return;
+      }
+      
+      if (numbers.length > 10000) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Maksimal 10.000 nomor sekali import!</div>`;
+        return;
+      }
+      
+      if (!confirm(`Import ${numbers.length} nomor ke database?`)) return;
+      
+      const btn = document.querySelector('#importForm button[type="submit"]');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+      resultDiv.innerHTML = '';
+      
+      try {
+        const res = await fetch('/api/admin/import-contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId, numbers })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal import');
+        
+        resultDiv.innerHTML = `
+          <div class="alert alert-success">
+            ✅ Berhasil import <strong>${data.inserted}</strong> nomor!
+            ${data.skipped > 0 ? ` (${data.skipped} nomor sudah ada)` : ''}
+          </div>
+        `;
+        document.getElementById('importNumbers').value = '';
+        document.getElementById('importCount').textContent = '0 nomor';
+      } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Import Nomor';
+      }
+    });
+    async function loadSourceDevices() {
+      const res = await fetch('/api/devices');
+      const devices = await res.json();
+      const select = document.getElementById('sourceDevice');
+      select.innerHTML = '<option value="">-- Pilih Device Sumber --</option>';
+      const connected = devices.filter(d => d.real_status === 'connected');
+      for (const d of connected) {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.name} (${d.phone || 'no phone'})`;
+        select.appendChild(opt);
+      }
+    }
+
+    async function copyContactsToAll() {
+      const sourceId = document.getElementById('sourceDevice').value;
+      const resultDiv = document.getElementById('copyResult');
+      const btn = document.getElementById('copyBtn');
+
+      if (!sourceId) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">⚠️ Pilih device sumber terlebih dahulu!</div>`;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/devices/${sourceId}/contacts`);
+        if (!res.ok) throw new Error('Gagal mengambil kontak');
+        const contacts = await res.json();
+        if (!contacts || contacts.length === 0) {
+          resultDiv.innerHTML = `<div class="alert alert-warning">⚠️ Device sumber tidak memiliki kontak.</div>`;
+          return;
+        }
+
+        const numbers = contacts.map(c => c.phone).filter(p => p && p.length >= 5);
+        if (numbers.length === 0) {
+          resultDiv.innerHTML = `<div class="alert alert-warning">⚠️ Tidak ada nomor valid di kontak.</div>`;
+          return;
+        }
+
+        if (!confirm(`Salin ${numbers.length} kontak ke semua device?`)) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyalin...';
+        resultDiv.innerHTML = '';
+
+        const importRes = await fetch('/api/admin/import-contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: 'all', numbers })
+        });
+        const data = await importRes.json();
+        if (!importRes.ok) throw new Error(data.error || 'Gagal menyalin');
+
+        resultDiv.innerHTML = `
+          <div class="alert alert-success">
+            ✅ Berhasil menyalin <strong>${data.inserted}</strong> kontak ke semua device!
+            ${data.skipped > 0 ? ` (${data.skipped} sudah ada)` : ''}
+          </div>
+        `;
+        showToast('Kontak berhasil disalin ke semua device!', 'success');
+      } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-copy"></i> Salin ke Semua Device';
+      }
+    }
+    async function loadResetDevices() {
+      const res = await fetch('/api/devices');
+      const devices = await res.json();
+      const select = document.getElementById('resetDeviceSelect');
+      select.innerHTML = '<option value="">-- Pilih Device --</option>';
+      devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.name} (${d.phone || 'no phone'}) - Profit: ${d.profit || 0}`;
+        select.appendChild(opt);
+      });
+    }
+
+    async function resetAllProfit() {
+      if (!confirm('Yakin reset SEMUA profit device ke 0?')) return;
+      try {
+        const res = await fetch('/api/admin/reset-all-profit', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Semua profit device direset!', 'success');
+          loadResetDevices();
+        } else {
+          showToast('❌ Gagal reset: ' + data.error, 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+
+    async function resetSelectedProfit() {
+      const deviceId = document.getElementById('resetDeviceSelect').value;
+      if (!deviceId) {
+        showToast('Pilih device terlebih dahulu!', 'warning');
+        return;
+      }
+      if (!confirm(`Reset profit device ${deviceId} ke 0?`)) return;
+      try {
+        const res = await fetch(`/api/admin/reset-profit/${deviceId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Profit device direset!', 'success');
+          loadResetDevices();
+        } else {
+          showToast('❌ Gagal reset: ' + data.error, 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+    async function loadDeleteDevices() {
+      const res = await fetch('/api/devices');
+      const devices = await res.json();
+      const select = document.getElementById('deleteDeviceSelect');
+      select.innerHTML = '<option value="">-- Pilih Device --</option>';
+      devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${d.name} (${d.phone || 'no phone'})`;
+        select.appendChild(opt);
+      });
+    }
+    async function deleteAllContacts() {
+      if (!confirm('⚠️ Yakin hapus SEMUA kontak target blast dari semua device? Tindakan ini tidak bisa dibatalkan!')) return;
+      try {
+        const res = await fetch('/api/admin/delete-all-contacts', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Semua kontak berhasil dihapus!', 'success');
+          document.getElementById('deleteResult').innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+          loadDeleteDevices();
+        } else {
+          showToast('❌ Gagal hapus: ' + data.error, 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+    async function deleteDeviceContacts() {
+      const deviceId = document.getElementById('deleteDeviceSelect').value;
+      if (!deviceId) {
+        showToast('Pilih device terlebih dahulu!', 'warning');
+        return;
+      }
+      if (!confirm(`⚠️ Yakin hapus semua kontak dari device ${deviceId}? Tindakan ini tidak bisa dibatalkan!`)) return;
+      try {
+        const res = await fetch(`/api/admin/delete-contacts/${deviceId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`✅ Kontak device ${deviceId} berhasil dihapus!`, 'success');
+          document.getElementById('deleteResult').innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+          loadDeleteDevices();
+        } else {
+          showToast('❌ Gagal hapus: ' + data.error, 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+    async function deleteMasterContacts() {
+      if (!confirm('⚠️ Yakin hapus semua MASTER KONTAK? Ini tidak akan menghapus kontak di device, hanya master kontak global.')) return;
+      try {
+        const res = await fetch('/api/admin/delete-master-contacts', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('✅ Master kontak berhasil dihapus!', 'success');
+          document.getElementById('deleteResult').innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+        } else {
+          showToast('❌ Gagal hapus: ' + data.error, 'error');
+        }
+      } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      loadPendingWithdrawals();
+      loadImportDevices();
+      loadSourceDevices();
+      loadResetDevices();
+      loadDeleteDevices();
+      setInterval(loadPendingWithdrawals, 30000);
+      fetch('/api/me').then(r => r.json()).then(u => {
+        document.getElementById('userName').textContent = u.name || 'Admin';
+      });
+    });
+  </script>
+</body>
+</html>

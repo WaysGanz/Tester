@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketingCuan - Referral</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="/fullwidth.js" defer></script>
+</head>
+<body class="app-body">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="logo"><i class="fab fa-whatsapp"></i><span>Marketing<span class="highlight">Cuan</span></span></div>
+      <nav class="nav-menu">
+        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> Devices</a>
+        <a href="/broadcast" class="nav-item active"><i class="fas fa-gift"></i> Referral</a>
+        <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> Wallet</a>
+        <a href="/admin" class="nav-item" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> Admin</a>
+        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </nav>
+      <div class="sidebar-footer"><span class="user-badge"><i class="fas fa-user"></i> <span id="userName">User</span></span></div>
+    </aside>
+    <main class="main-content">
+      <header class="header">
+        <h1><i class="fas fa-gift"></i> Referral & Invite</h1>
+        <div class="header-actions">
+          <span class="clock" id="clock"></span>
+          <button class="btn-refresh" onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
+        </div>
+      </header>
+      <section class="referral-content" style="padding:24px 30px;overflow-y:auto;">
+        <div class="card" style="background:linear-gradient(135deg, #075E54, #128C7E);color:#fff;border:none;margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:14px;opacity:0.8;">Kode Referral Anda</div>
+              <div style="font-size:28px;font-weight:700;letter-spacing:2px;font-family:monospace;" id="referralCode">------</div>
+            </div>
+            <button class="btn btn-light" onclick="copyReferralLink()" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);">
+              <i class="fas fa-copy"></i> Salin Link
+            </button>
+          </div>
+          <div style="margin-top:12px;font-size:14px;opacity:0.9;">
+            <i class="fas fa-link"></i> Link referral: <span id="referralLink" style="font-weight:500;">https://cumamarketing.online/register?ref=------</span>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);display:flex;gap:24px;flex-wrap:wrap;">
+            <div>
+              <span style="opacity:0.7;">Total Referral</span><br>
+              <span style="font-size:24px;font-weight:700;" id="totalReferral">0</span>
+            </div>
+            <div>
+              <span style="opacity:0.7;">Bonus (Rp50/referral)</span><br>
+              <span style="font-size:24px;font-weight:700;" id="bonusEarned">Rp0</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:24px;">
+          <h3><i class="fas fa-info-circle"></i> Cara Dapat Bonus</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:12px;">
+            <div style="text-align:center;padding:16px;background:var(--bg-main);border-radius:var(--radius-sm);">
+              <div style="font-size:28px;color:var(--primary);">1</div>
+              <div style="font-weight:600;margin-top:4px;">Bagikan Link</div>
+              <div style="font-size:13px;color:var(--text-secondary);">Kirim link referral ke teman</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:var(--bg-main);border-radius:var(--radius-sm);">
+              <div style="font-size:28px;color:var(--primary);">2</div>
+              <div style="font-weight:600;margin-top:4px;">Teman Daftar</div>
+              <div style="font-size:13px;color:var(--text-secondary);">Teman daftar pake link kamu</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:var(--bg-main);border-radius:var(--radius-sm);">
+              <div style="font-size:28px;color:var(--primary);">3</div>
+              <div style="font-weight:600;margin-top:4px;">Dapat Rp50</div>
+              <div style="font-size:13px;color:var(--text-secondary);">Bonus masuk ke saldo Anda</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3><i class="fas fa-history"></i> Riwayat Referral</h3>
+          <div id="referralHistory">
+            <p class="empty">Belum ada referral</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script src="helpers.js"></script>
+  <script src="app.js"></script>
+  <script>
+    async function loadReferralData() {
+      try {
+        const res = await fetch('/api/referral');
+        const data = await res.json();
+        document.getElementById('referralCode').textContent = data.code || '------';
+        document.getElementById('referralLink').textContent = data.link || 'https://cumamarketing.online/register?ref=------';
+        document.getElementById('totalReferral').textContent = data.total || 0;
+        document.getElementById('bonusEarned').textContent = 'Rp' + ((data.total || 0) * 50).toLocaleString();
+        return data;
+      } catch (e) {
+        console.error('Error loading referral:', e);
+        document.getElementById('referralCode').textContent = '------';
+        document.getElementById('referralLink').textContent = 'https://cumamarketing.online/register?ref=------';
+        document.getElementById('totalReferral').textContent = '0';
+        document.getElementById('bonusEarned').textContent = 'Rp0';
+      }
+    }
+    async function loadReferralHistory() {
+      try {
+        const res = await fetch('/api/referral/history');
+        const history = await res.json();
+        const container = document.getElementById('referralHistory');
+        if (!history || history.length === 0) {
+          container.innerHTML = '<p class="empty">Belum ada referral</p>';
+          return;
+        }
+        container.innerHTML = history.map(item => `
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-light);">
+            <div>
+              <strong>${item.referred_name || 'User'}</strong>
+              <span style="font-size:13px;color:var(--text-secondary);margin-left:8px;">${item.referred_email || ''}</span>
+            </div>
+            <div>
+              <span style="font-weight:500;color:var(--success);">+Rp50</span>
+              <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">${new Date(item.created_at).toLocaleDateString('id-ID')}</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Error loading referral history:', e);
+        document.getElementById('referralHistory').innerHTML = '<p class="empty">Gagal memuat riwayat</p>';
+      }
+    }
+    function copyReferralLink() {
+      const link = document.getElementById('referralLink').textContent;
+      if (!link || link === 'https://cumamarketing.online/register?ref=------') {
+        showToast('Kode referral belum tersedia', 'warning');
+        return;
+      }
+      navigator.clipboard.writeText(link).then(() => {
+        showToast('✅ Link referral disalin!', 'success');
+      }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = link;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('✅ Link referral disalin!', 'success');
+      });
+    }
+    async function refreshData() {
+      await loadReferralData();
+      await loadReferralHistory();
+      showToast('✅ Data diperbarui', 'info');
+    }
+    function updateClock() {
+      document.getElementById('clock').textContent = new Date().toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadReferralData();
+      loadReferralHistory();
+      updateClock();
+
+      setInterval(updateClock, 1000);
+      setInterval(loadReferralData, 15000);
+      setInterval(loadReferralHistory, 15000);
+
+      fetch('/api/me')
+        .then(r => r.json())
+        .then(u => {
+          document.getElementById('userName').textContent = u.name || u.email;
+          if (u.role === 'admin') {
+            document.getElementById('adminLink').style.display = 'flex';
+          }
+        })
+        .catch(() => console.error('Gagal load user info'));
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketingCuan - Daftar</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-box register-box">
+      <div class="login-brand">
+        <i class="fab fa-whatsapp"></i>
+        <span>Marketing<span class="highlight">Cuan</span></span>
+        <small>Daftar Akun Baru & Mulai Earning</small>
+      </div>
+      <form id="registerForm" class="login-form register-form">
+        <div class="register-step" id="step1">
+          <div class="step-header">
+            <div class="step-number">1</div>
+            <h3>Data Akun</h3>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Email</label>
+            <input type="email" id="registerEmail" class="form-control" placeholder="nama@domain.com" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-user"></i> Username</label>
+            <input type="text" id="registerUsername" class="form-control" placeholder="username (5-20 karakter)" required>
+            <small class="help-text">Akan digunakan untuk login alternatif</small>
+          </div>
+          <button type="button" class="btn btn-primary btn-block" onclick="nextStep(1)">
+            Lanjut <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+        <div class="register-step" id="step2" style="display: none;">
+          <div class="step-header">
+            <div class="step-number">2</div>
+            <h3>Data Pribadi & Keamanan</h3>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-phone"></i> Nomor WhatsApp</label>
+            <input type="tel" id="registerPhone" class="form-control" placeholder="628xxxxxxxxxx" required>
+            <small class="help-text">Gunakan format: 628xxxxxxxxxx (dengan kode negara)</small>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-lock"></i> Password</label>
+            <input type="password" id="registerPassword" class="form-control" placeholder="••••••••••" required>
+            <small class="help-text">Minimal 8 karakter, campurkan huruf & angka</small>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-lock"></i> Konfirmasi Password</label>
+            <input type="password" id="registerPasswordConfirm" class="form-control" placeholder="••••••••••" required>
+          </div>
+
+          <div class="form-group" style="margin-top: 8px;">
+            <label class="checkbox-label" style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">
+              <input type="checkbox" id="humanCheckRegister" checked> Aku manusia
+            </label>
+            <small class="help-text">Centang untuk verifikasi bahwa Anda bukan robot</small>
+          </div>
+
+          <div class="password-strength" id="passwordStrength">
+            <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+            <span class="strength-text" id="strengthText">Kekuatan password</span>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 16px;">
+            <button type="button" class="btn btn-secondary btn-block" onclick="prevStep(2)">
+              <i class="fas fa-arrow-left"></i> Kembali
+            </button>
+            <button type="submit" class="btn btn-primary btn-block" id="registerBtn">
+              Daftar <i class="fas fa-check"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="login-footer">
+        <p>Sudah punya akun? <a href="/">Masuk di sini</a></p>
+      </div>
+    </div>
+  </div>
+  <div id="toastContainer" class="toast-container"></div>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralRef = urlParams.get('ref');
+    console.log('🔗 Referral code from URL:', referralRef);
+
+    let currentStep = 1;
+    document.getElementById('registerPassword')?.addEventListener('input', function() {
+      const password = this.value;
+      let strength = 0;
+      let text = '';
+      
+      if (password.length >= 8) strength += 25;
+      if (password.length >= 12) strength += 25;
+      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
+      if (/[0-9]/.test(password)) strength += 25;
+      
+      if (strength <= 25) {
+        text = 'Lemah';
+        document.getElementById('strengthFill').style.backgroundColor = '#EF4444';
+      } else if (strength <= 50) {
+        text = 'Cukup';
+        document.getElementById('strengthFill').style.backgroundColor = '#F59E0B';
+      } else if (strength <= 75) {
+        text = 'Baik';
+        document.getElementById('strengthFill').style.backgroundColor = '#3B82F6';
+      } else {
+        text = 'Sangat Kuat';
+        document.getElementById('strengthFill').style.backgroundColor = '#10B981';
+      }
+      
+      document.getElementById('strengthFill').style.width = strength + '%';
+      document.getElementById('strengthText').textContent = text;
+    });
+
+    function nextStep(step) {
+      const email = document.getElementById('registerEmail')?.value?.trim();
+      const username = document.getElementById('registerUsername')?.value?.trim();
+
+      if (!email || !username) {
+        showToast('Email dan username wajib diisi', 'error');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Email tidak valid', 'error');
+        return;
+      }
+
+      if (username.length < 5 || username.length > 20) {
+        showToast('Username harus 5-20 karakter', 'error');
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        showToast('Username hanya boleh huruf, angka, dan underscore', 'error');
+        return;
+      }
+
+      currentStep = 2;
+      document.getElementById('step1').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+    }
+
+    function prevStep(step) {
+      currentStep = 1;
+      document.getElementById('step1').style.display = 'block';
+      document.getElementById('step2').style.display = 'none';
+    }
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const humanCheck = document.getElementById('humanCheckRegister');
+      if (!humanCheck.checked) {
+        showToast('Centang "Aku manusia" untuk melanjutkan.', 'error');
+        return;
+      }
+
+      const email = document.getElementById('registerEmail').value.trim();
+      const username = document.getElementById('registerUsername').value.trim();
+      const phone = document.getElementById('registerPhone').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+
+      if (!email || !username || !phone || !password) {
+        showToast('Semua field wajib diisi', 'error');
+        return;
+      }
+
+      if (password !== passwordConfirm) {
+        showToast('Password tidak cocok', 'error');
+        return;
+      }
+
+      if (password.length < 8) {
+        showToast('Password minimal 8 karakter', 'error');
+        return;
+      }
+
+      if (!/^\d{10,15}$/.test(phone)) {
+        showToast('Format nomor WhatsApp tidak valid (628xxxxxxxxxx)', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan...';
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email, 
+            username, 
+            phone, 
+            password,
+            ref: referralRef 
+          })
+        });
+
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Pendaftaran gagal');
+        
+        showToast('✅ Akun berhasil dibuat! Silakan login.', 'success');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Daftar <i class="fas fa-check"></i>';
+      }
+    });
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
