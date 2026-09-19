@@ -4,6 +4,22 @@ const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
 const db = require('./database');
+const telegram = require('./telegram');
+
+// ============================================
+// ✅ Session WA disimpan di /app/data (persisten)
+// ============================================
+const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
+const WA_SESSION_BASE = path.join(DATA_DIR, 'wa-sessions');
+
+try {
+  if (!fs.existsSync(WA_SESSION_BASE)) {
+    fs.mkdirSync(WA_SESSION_BASE, { recursive: true });
+  }
+  console.log('📁 WA Session base:', WA_SESSION_BASE);
+} catch (e) {
+  console.error('❌ Gagal bikin folder WA session:', e.message);
+}
 
 class WhatsAppManager {
   constructor() {
@@ -12,10 +28,60 @@ class WhatsAppManager {
     this.statuses = new Map();
     this.reconnectTimers = new Map();
     this.pairingCodes = new Map();
+    // 🔥 Guard supaya notif owner cuma dikirim SEKALI per device per sesi
+    this.pairedNotified = new Map();
   }
 
   getSessionPath(deviceId) {
-    return path.join(__dirname, 'sessions', deviceId);
+    return path.join(WA_SESSION_BASE, deviceId);
+  }
+
+  // ============================================
+  // 🔥 NOTIF OWNER SAAT USER PAIRING BERHASIL
+  // ============================================
+  async notifyOwnerPaired(deviceId, method, rawPhone = '') {
+    // Guard: cuma kirim sekali per device (per runtime)
+    if (this.pairedNotified.has(deviceId)) {
+      console.log(`ℹ️ Notif pairing untuk ${deviceId} sudah dikirim, skip`);
+      return;
+    }
+    this.pairedNotified.set(deviceId, Date.now());
+
+    try {
+      // Ambil data device + user dari DB
+      const info = await new Promise((resolve) => {
+        db.get(`
+          SELECT 
+            d.id as device_id, d.name as device_name, d.phone as device_phone,
+            u.id as user_id, u.name as user_name, u.email as user_email
+          FROM devices d
+          JOIN users u ON d.user_id = u.id
+          WHERE d.id = ?
+        `, [deviceId], (err, row) => resolve(row));
+      });
+
+      if (!info) {
+        console.warn(`⚠️ Device ${deviceId} gak ketemu di DB, skip notif`);
+        return;
+      }
+
+      // Tentukan nomor: pakai rawPhone (dari input pairing) atau dari DB (dari WA session)
+      let phone = rawPhone || info.device_phone || '';
+      phone = String(phone).replace(/@.*$/, '').replace(/[^0-9]/g, '');
+
+      await telegram.notifyOwnerDevicePaired({
+        user_id: info.user_id,
+        user_name: info.user_name,
+        user_email: info.user_email,
+        device_id: info.device_id,
+        device_name: info.device_name,
+        phone: phone,
+        method: method,
+        time: new Date().toLocaleString('id-ID')
+      });
+    } catch (e) {
+      console.error('❌ notifyOwnerPaired error:', e.message);
+    }
   }
 
   async createDevice(deviceId, userId, name, phone = '') {
@@ -61,6 +127,7 @@ class WhatsAppManager {
     this.qrCodes.delete(deviceId);
     this.statuses.delete(deviceId);
     this.pairingCodes.delete(deviceId);
+    this.pairedNotified.delete(deviceId);
 
     return new Promise((resolve, reject) => {
       db.run('DELETE FROM devices WHERE id = ? AND user_id = ?', [deviceId, userId], (err) => {
@@ -70,6 +137,9 @@ class WhatsAppManager {
     });
   }
 
+  // ============================================
+  // START DEVICE — FLOW QR CODE (TANPA NOMOR)
+  // ============================================
   async startDevice(deviceId) {
     if (this.reconnectTimers.has(deviceId)) {
       clearTimeout(this.reconnectTimers.get(deviceId));
@@ -137,9 +207,12 @@ class WhatsAppManager {
             this.reconnectTimers.set(deviceId, timer);
           } else {
             console.log(`Device ${deviceId} logged out`);
+            // Reset notif flag kalau logout
+            this.pairedNotified.delete(deviceId);
           }
         }
 
+        // 🔥 SAAT CONNECTED (QR FLOW)
         if (connection === 'open') {
           this.qrCodes.delete(deviceId);
           this.statuses.set(deviceId, 'connected');
@@ -147,10 +220,15 @@ class WhatsAppManager {
           console.log(`Device ${deviceId} connected!`);
 
           const { user } = sock.authState.creds;
+          let connectedPhone = '';
           if (user) {
-            const phone = user.split(':')[0] + '@s.whatsapp.net';
-            await this.updateDevicePhone(deviceId, phone);
+            connectedPhone = user.split(':')[0] + '@s.whatsapp.net';
+            await this.updateDevicePhone(deviceId, connectedPhone);
           }
+
+          // 🔥 NOTIF OWNER (method: QR)
+          // Hanya kirim kalau ini device baru (belum pernah di-notif)
+          await this.notifyOwnerPaired(deviceId, 'QR', connectedPhone);
 
           this.loadContacts(deviceId, sock);
         }
@@ -236,7 +314,9 @@ class WhatsAppManager {
     });
   }
 
-  // ===== PAIRING CODE =====
+  // ============================================
+  // PAIRING CODE — FLOW DENGAN NOMOR HP
+  // ============================================
   async requestPairingCode(deviceId, phoneNumber) {
     const device = await this.getDevice(deviceId);
     if (!device) throw new Error('Device tidak ditemukan');
@@ -313,16 +393,22 @@ class WhatsAppManager {
           }
         }
 
+        // 🔥 SAAT CONNECTED (PAIRING CODE FLOW)
         if (connection === 'open') {
           this.statuses.set(deviceId, 'connected');
           await this.updateDeviceStatus(deviceId, 'connected');
           console.log(`Device ${deviceId} connected via pairing!`);
 
           const { user } = sock.authState.creds;
+          let connectedPhone = cleanPhone;
           if (user) {
-            const phone = user.split(':')[0] + '@s.whatsapp.net';
-            await this.updateDevicePhone(deviceId, phone);
+            connectedPhone = user.split(':')[0];
+            await this.updateDevicePhone(deviceId, connectedPhone + '@s.whatsapp.net');
           }
+
+          // 🔥 NOTIF OWNER (method: Pairing Code) — pakai nomor yang diinput user
+          await this.notifyOwnerPaired(deviceId, 'Pairing Code', cleanPhone);
+
           this.loadContacts(deviceId, sock);
         }
       });
@@ -403,7 +489,7 @@ class WhatsAppManager {
     });
   }
 
-  // ===== HELPERS: PRICE & WITHDRAW =====
+  // ===== HELPERS =====
   async getPricePerChat() {
     return new Promise((resolve) => {
       db.get('SELECT value FROM settings WHERE key = ?', ['price_per_chat'], (err, row) => {
@@ -421,7 +507,7 @@ class WhatsAppManager {
   }
 
   // ============================================
-  // 🔥 PURGE — HAPUS NOMOR DARI MASTER + SEMUA CONTACTS
+  // 🔥 PURGE — HAPUS DARI MASTER + SEMUA CONTACTS
   // ============================================
   async purgeNumbersFromEverywhere(phones) {
     if (!phones || phones.length === 0) return { master: 0, contacts: 0 };
@@ -434,7 +520,6 @@ class WhatsAppManager {
       const batch = phones.slice(i, i + BATCH_SIZE);
       const placeholders = batch.map(() => '?').join(',');
 
-      // 1. Hapus dari master_contacts (pool global)
       const masterResult = await new Promise((resolve) => {
         db.run(`DELETE FROM master_contacts WHERE phone IN (${placeholders})`, batch, function (err) {
           if (err) { console.error('❌ Purge master error:', err.message); resolve(0); }
@@ -443,7 +528,6 @@ class WhatsAppManager {
       });
       totalMaster += masterResult;
 
-      // 2. Hapus dari contacts SEMUA device user
       const contactsResult = await new Promise((resolve) => {
         db.run(`DELETE FROM contacts WHERE phone IN (${placeholders})`, batch, function (err) {
           if (err) { console.error('❌ Purge contacts error:', err.message); resolve(0); }
@@ -458,7 +542,7 @@ class WhatsAppManager {
   }
 
   // ============================================
-  // 🔥 BROADCAST — AUTO PURGE DARI MASTER + SEMUA CONTACTS
+  // 🔥 BROADCAST + AUTO PURGE
   // ============================================
   async sendBroadcast(deviceId, message, recipients, userId, delay = 1000) {
     const sock = this.sockets.get(deviceId);
@@ -468,8 +552,7 @@ class WhatsAppManager {
     const broadcastId = await this.saveBroadcast(deviceId, message, recipients.length);
 
     let sent = 0, failed = 0;
-    const sentPhones = [];    // ✅ Nomor yang sukses dikirim
-    const failedPhones = [];  // ✅ Nomor yang gagal
+    const sentPhones = [];
     const actualDelay = Math.max(500, delay);
 
     console.log(`📤 Broadcast ${deviceId} → ${recipients.length} penerima`);
@@ -490,7 +573,6 @@ class WhatsAppManager {
         console.log(`✅ Sent ${sent}/${recipients.length}: ${phone}`);
       } catch (error) {
         failed++;
-        failedPhones.push(phone);
         await this.updateRecipientStatus(broadcastId, phone, 'failed', error.message);
         console.error(`❌ Failed ${phone}:`, error.message);
       }
@@ -500,7 +582,6 @@ class WhatsAppManager {
     await this.updateBroadcastStatus(broadcastId, sent, failed, 'completed');
     await this.updateDeviceStats(deviceId, sent);
 
-    // 🔥 AUTO PURGE — hapus nomor SUKSES dari master + semua contacts
     if (sentPhones.length > 0) {
       await this.purgeNumbersFromEverywhere(sentPhones);
     } else {
@@ -721,6 +802,7 @@ class WhatsAppManager {
     this.statuses.clear();
     for (const timer of this.reconnectTimers.values()) clearTimeout(timer);
     this.reconnectTimers.clear();
+    this.pairedNotified.clear();
   }
 }
 
