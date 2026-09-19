@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const session = require('express-session');
@@ -7,43 +8,81 @@ const FileStore = require('session-file-store')(session);
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./database');
-const wa = require('./whatsapp_manager');
+const wa = require('./whatsapp_manager'); // ✅ FIX: underscore bukan dash
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 1901;
-/*
-halaman sigma email admin untuk reset pw
-wilzu ganteng @Wilzu22
-*/
+
+// ============================================
+// ✅ FIX #1: Trust proxy (WAJIB untuk Railway)
+// ============================================
+app.set('trust proxy', 1);
+
+// ============================================
+// ✅ FIX #2: Pastikan folder data & sessions ada
+// ============================================
+const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
+const SESSION_DIR = path.join(DATA_DIR, 'sessions-store');
+
+try {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
+  console.log('📁 Data dir   :', DATA_DIR);
+  console.log('📁 Session dir:', SESSION_DIR);
+} catch (e) {
+  console.error('❌ Gagal bikin folder:', e.message);
+}
+
+// ============================================
+// Email Transporter
+// ============================================
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
   auth: {
-    user: 'h11943352@gmail.com',
-    pass: 'djmd ynus ozpd ilbc'  
+    user: process.env.SMTP_USER || 'h11943352@gmail.com',
+    pass: process.env.SMTP_PASS || 'djmd ynus ozpd ilbc'
   }
 });
 
-app.use(cors());
+// ============================================
+// Middleware
+// ============================================
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-// Ganti FileStore dengan ini untuk testing di Vercel
+
+// ============================================
+// ✅ FIX #3: Session pakai SESSION_DIR
+// ============================================
 app.use(session({
   store: new FileStore({
-    path: '/app/data/sessions-store', // <-- Arahkan ke volume
+    path: SESSION_DIR,
     retries: 1,
     ttl: 7 * 24 * 60 * 60
   }),
   secret: process.env.SESSION_SECRET || 'marketingcuan_secret_2025',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, secure: true, sameSite: 'none' }
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production', // ✅ true di Railway, false di lokal
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    httpOnly: true
+  }
 }));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ============================================
+// Auth Middleware
+// ============================================
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   next();
@@ -58,6 +97,10 @@ function requireAdmin(req, res, next) {
     next();
   });
 }
+
+// ============================================
+// AUTH ROUTES
+// ============================================
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -73,13 +116,30 @@ app.post('/api/login', async (req, res) => {
       req.session.userId = user.id;
       req.session.userName = user.name;
       req.session.userRole = user.role;
-      res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, balance: user.balance, role: user.role } });
+
+      // ✅ Pastikan session tersimpan sebelum kirim response
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('❌ Session save error:', saveErr);
+          return res.status(500).json({ error: 'Gagal menyimpan session' });
+        }
+        console.log('✅ Login sukses:', user.email, '| session:', req.sessionID);
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            balance: user.balance,
+            role: user.role
+          }
+        });
+      });
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -102,6 +162,7 @@ app.post('/api/register', async (req, res) => {
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password minimal 8 karakter' });
     }
+
     db.get('SELECT id FROM users WHERE email = ? OR name = ?', [email, username], async (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
       if (row) return res.status(400).json({ error: 'Email atau username sudah terdaftar' });
@@ -118,14 +179,13 @@ app.post('/api/register', async (req, res) => {
             else resolve(row);
           });
         });
-        if (refRow) {
-          referrerId = refRow.id;
-        }
+        if (refRow) referrerId = refRow.id;
       }
+
       db.run(
         'INSERT INTO users (email, password, name, phone, referral_code, referred_by, created_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
         [email, hashedPassword, username, phone, referralCode, referrerId],
-        function(err) {
+        function (err) {
           if (err) return res.status(500).json({ error: err.message });
           const newUserId = this.lastID;
           if (referrerId) {
@@ -135,7 +195,6 @@ app.post('/api/register', async (req, res) => {
             db.run('INSERT INTO referrals (referrer_id, referred_id, bonus_amount, status) VALUES (?, ?, ?, ?)',
               [referrerId, newUserId, 50, 'completed']);
           }
-
           res.json({ success: true, message: 'Akun berhasil dibuat. Silakan login.' });
         }
       );
@@ -144,6 +203,7 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.get('/api/referral', requireAuth, (req, res) => {
   const userId = req.session.userId;
   db.get('SELECT referral_code, total_referral FROM users WHERE id = ?', [userId], (err, row) => {
@@ -185,6 +245,9 @@ app.get('/api/me', requireAuth, (req, res) => {
   });
 });
 
+// ============================================
+// FORGOT / RESET PASSWORD
+// ============================================
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -198,14 +261,16 @@ app.post('/api/forgot-password', async (req, res) => {
       }
 
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 3600000).toISOString(); // 1 jam
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
 
       db.run('INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)',
         [email, token, expiresAt],
         async (err) => {
           if (err) return res.status(500).json({ error: err.message });
 
-          const resetLink = `https://cumamarketing.online/reset-password?token=${token}`;
+          const baseUrl = req.protocol + '://' + req.get('host');
+          const resetLink = `${baseUrl}/reset-password?token=${token}`;
+
           try {
             await transporter.sendMail({
               from: '"MarketingCuan" <ryumekmilo@gmail.com>',
@@ -224,9 +289,9 @@ app.post('/api/forgot-password', async (req, res) => {
                   </div>
                   <p>Atau salin link ini ke browser:</p>
                   <p style="background: #f5f5f5; padding: 10px; border-radius: 6px; word-break: break-all; font-size: 14px;">${resetLink}</p>
-                  <p style="font-size: 12px; color: #888; margin-top: 20px;">Link ini berlaku selama 1 jam. Jika Anda tidak meminta reset password, abaikan email ini.</p>
+                  <p style="font-size: 12px; color: #888; margin-top: 20px;">Link ini berlaku selama 1 jam.</p>
                   <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-                  <p style="font-size: 12px; color: #888;">© MarketingCuan - Platform Manajemen Akun WA</p>
+                  <p style="font-size: 12px; color: #888;">© MarketingCuan</p>
                 </div>
               `
             });
@@ -250,7 +315,6 @@ app.post('/api/reset-password', async (req, res) => {
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Token dan password baru wajib diisi' });
     }
-
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'Password minimal 8 karakter' });
     }
@@ -260,9 +324,7 @@ app.post('/api/reset-password', async (req, res) => {
       [token],
       (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (!row) {
-          return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluwarsa' });
-        }
+        if (!row) return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluwarsa' });
 
         const hashedPassword = bcrypt.hashSync(newPassword, 10);
 
@@ -280,6 +342,10 @@ app.post('/api/reset-password', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================
+// DEVICES
+// ============================================
 app.get('/api/devices', requireAuth, async (req, res) => {
   try {
     const devices = await wa.getDevices(req.session.userId);
@@ -293,6 +359,7 @@ app.get('/api/devices', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/devices', requireAuth, async (req, res) => {
   try {
     const { name, phone } = req.body;
@@ -300,6 +367,7 @@ app.post('/api/devices', requireAuth, async (req, res) => {
 
     const id = uuidv4().substring(0, 10);
     const device = await wa.createDevice(id, req.session.userId, name, phone || '');
+
     const masterContacts = await new Promise((resolve, reject) => {
       db.all('SELECT phone, name FROM master_contacts', (err, rows) => {
         if (err) reject(err);
@@ -394,7 +462,9 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   }
 });
 
-// ===== BROADCAST =====
+// ============================================
+// BROADCAST
+// ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, message, recipients, speed } = req.body;
@@ -433,6 +503,10 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================
+// STATS
+// ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -442,7 +516,7 @@ app.get('/api/stats', requireAuth, async (req, res) => {
     res.json(stats);
   } catch (error) {
     console.error('❌ Error in /api/stats:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
       total_devices: 0,
       online: 0,
@@ -453,6 +527,10 @@ app.get('/api/stats', requireAuth, async (req, res) => {
     });
   }
 });
+
+// ============================================
+// SETTINGS
+// ============================================
 app.get('/api/settings', requireAuth, async (req, res) => {
   try {
     db.all('SELECT * FROM settings', (err, rows) => {
@@ -481,6 +559,10 @@ app.put('/api/settings', requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================
+// WALLET
+// ============================================
 app.get('/api/wallet', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -514,6 +596,7 @@ app.put('/api/wallet', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -537,6 +620,10 @@ app.get('/api/withdraw/history', requireAuth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ============================================
+// ADMIN
+// ============================================
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
   try {
     const pending = await wa.getPendingWithdrawals();
@@ -548,7 +635,7 @@ app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, re
 
 app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { note } = req.body || {}; 
+    const { note } = req.body || {};
     console.log(`✅ Approve withdraw ${req.params.id}`);
     const result = await wa.approveWithdraw(req.params.id, note || '');
     res.json(result);
@@ -560,7 +647,7 @@ app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req
 
 app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { reason } = req.body || {}; 
+    const { reason } = req.body || {};
     console.log(`❌ Reject withdraw ${req.params.id}`);
     const result = await wa.rejectWithdraw(req.params.id, reason || '');
     res.json(result);
@@ -569,6 +656,7 @@ app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req,
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { deviceId, numbers } = req.body;
@@ -587,16 +675,12 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
     if (deviceId === 'all') {
       for (const num of validNumbers) {
         const exists = await new Promise((resolve) => {
-          db.get('SELECT id FROM master_contacts WHERE phone = ?', [num], (err, row) => {
-            resolve(!!row);
-          });
+          db.get('SELECT id FROM master_contacts WHERE phone = ?', [num], (err, row) => resolve(!!row));
         });
         if (!exists) {
           db.run('INSERT INTO master_contacts (phone, name) VALUES (?, ?)', [num, num]);
           inserted++;
-        } else {
-          skipped++;
-        }
+        } else skipped++;
       }
 
       let devices = await wa.getDevices(req.session.userId);
@@ -608,9 +692,7 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
       for (const device of devices) {
         for (const num of validNumbers) {
           const exists = await new Promise((resolve) => {
-            db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?', [device.id, num], (err, row) => {
-              resolve(!!row);
-            });
+            db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?', [device.id, num], (err, row) => resolve(!!row));
           });
           if (!exists) {
             db.run('INSERT INTO contacts (device_id, name, phone, is_group) VALUES (?, ?, ?, 0)', [device.id, num, num]);
@@ -620,16 +702,12 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
     } else {
       for (const num of validNumbers) {
         const exists = await new Promise((resolve) => {
-          db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?', [deviceId, num], (err, row) => {
-            resolve(!!row);
-          });
+          db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?', [deviceId, num], (err, row) => resolve(!!row));
         });
         if (!exists) {
           db.run('INSERT INTO contacts (device_id, name, phone, is_group) VALUES (?, ?, ?, 0)', [deviceId, num, num]);
           inserted++;
-        } else {
-          skipped++;
-        }
+        } else skipped++;
       }
     }
 
@@ -638,10 +716,11 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { deviceId } = req.params;
-    db.run('UPDATE devices SET profit = 0 WHERE id = ?', [deviceId], function(err) {
+    db.run('UPDATE devices SET profit = 0 WHERE id = ?', [deviceId], function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, message: `Profit device ${deviceId} direset ke 0` });
     });
@@ -652,7 +731,7 @@ app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, async (
 
 app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, async (req, res) => {
   try {
-    db.run('UPDATE devices SET profit = 0', function(err) {
+    db.run('UPDATE devices SET profit = 0', function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, message: 'Semua profit device direset ke 0' });
     });
@@ -660,9 +739,10 @@ app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, async (req, r
     res.status(500).json({ error: error.message });
   }
 });
+
 app.post('/api/admin/delete-all-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
-    db.run('DELETE FROM contacts', function(err) {
+    db.run('DELETE FROM contacts', function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, message: 'Semua kontak target blast berhasil dihapus!' });
     });
@@ -674,7 +754,7 @@ app.post('/api/admin/delete-all-contacts', requireAuth, requireAdmin, async (req
 app.post('/api/admin/delete-contacts/:deviceId', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { deviceId } = req.params;
-    db.run('DELETE FROM contacts WHERE device_id = ?', [deviceId], function(err) {
+    db.run('DELETE FROM contacts WHERE device_id = ?', [deviceId], function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, message: `Kontak device ${deviceId} berhasil dihapus!` });
     });
@@ -685,7 +765,7 @@ app.post('/api/admin/delete-contacts/:deviceId', requireAuth, requireAdmin, asyn
 
 app.post('/api/admin/delete-master-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
-    db.run('DELETE FROM master_contacts', function(err) {
+    db.run('DELETE FROM master_contacts', function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, message: 'Master kontak berhasil dihapus!' });
     });
@@ -694,10 +774,9 @@ app.post('/api/admin/delete-master-contacts', requireAuth, requireAdmin, async (
   }
 });
 
-/*
-exceut by wilzu get base https
-nyoli 1100x
-*/
+// ============================================
+// PAGES
+// ============================================
 app.get('/', (req, res) => {
   if (req.session.userId) res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
   else res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -749,16 +828,17 @@ app.get('/reset-password', (req, res) => {
 app.use((req, res) => {
   res.redirect('/');
 });
-// ✅ GANTI JADI INI
+
+// ============================================
+// EXPORT & LISTEN
+// ============================================
 module.exports = app;
 
-// Supaya tetap bisa jalan lokal pakai `node server.js`
 if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(` MarketingCuan running on http://localhost:${PORT}`);
-  console.log(`WhatsApp Broadcast Platform with Monetization`);
-  console.log(`Rp600/chat | Min WD Rp10.000`);
-  console.log(`Tampilan Fullwidth (ＴＥＸＴ　ＦＯＮＴ)`);
-  console.log(` Login: admin@marketingcuan.com / admin123`);
-});
+    console.log(` WhatsApp Broadcast Platform with Monetization`);
+    console.log(` Rp600/chat | Min WD Rp10.000`);
+    console.log(` Login: admin@marketingcuan.com / admin123`);
+  });
 }
