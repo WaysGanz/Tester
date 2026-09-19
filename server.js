@@ -13,7 +13,6 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 1901;
-const path = require('path');
 /*
 halaman sigma email admin untuk reset pw
 wilzu ganteng @Wilzu22
