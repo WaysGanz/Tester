@@ -665,11 +665,64 @@ app.get('/api/contacts/summary', requireAuth, (req, res) => {
 });
 
 // ============================================
-// BROADCAST
+// HELPER: Purge nomor dari master + contacts semua user
+// ============================================
+function purgeNumbersFromDatabase(phones) {
+  return new Promise((resolve) => {
+    if (!phones || phones.length === 0) return resolve({ master: 0, contacts: 0 });
+
+    // Batasi 500 nomor per batch biar SQLite gak timeout
+    const BATCH_SIZE = 500;
+    const batches = [];
+    for (let i = 0; i < phones.length; i += BATCH_SIZE) {
+      batches.push(phones.slice(i, i + BATCH_SIZE));
+    }
+
+    let totalMaster = 0;
+    let totalContacts = 0;
+    let batchIndex = 0;
+
+    function processBatch() {
+      if (batchIndex >= batches.length) {
+        console.log(`🗑️ PURGE TOTAL: ${totalMaster} master, ${totalContacts} contacts`);
+        return resolve({ master: totalMaster, contacts: totalContacts });
+      }
+
+      const batch = batches[batchIndex];
+      const placeholders = batch.map(() => '?').join(',');
+
+      // 1. Hapus dari master_contacts
+      db.run(`DELETE FROM master_contacts WHERE phone IN (${placeholders})`, batch, function (err) {
+        if (err) {
+          console.error('❌ Purge master error:', err.message);
+        } else {
+          totalMaster += this.changes;
+        }
+
+        // 2. Hapus dari contacts SEMUA device user
+        db.run(`DELETE FROM contacts WHERE phone IN (${placeholders})`, batch, function (err2) {
+          if (err2) {
+            console.error('❌ Purge contacts error:', err2.message);
+          } else {
+            totalContacts += this.changes;
+          }
+          batchIndex++;
+          processBatch();
+        });
+      });
+    }
+
+    processBatch();
+  });
+}
+
+// ============================================
+// BROADCAST — WITH AUTO PURGE
 // ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, message, recipients, speed } = req.body;
+
     if (!deviceId) return res.status(400).json({ error: 'Device ID wajib' });
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
       return res.status(400).json({ error: 'Minimal 1 penerima' });
@@ -680,15 +733,80 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
       const settings = await new Promise((resolve) => {
         db.get('SELECT value FROM settings WHERE key = ?', ['promo_text'], (err, row) => resolve(row));
       });
-      finalMessage = settings?.value || 'Pesan broadcast';
+      finalMessage = settings?.value || 'Pesan broadcast dari MarketingCuan';
     }
 
     const status = wa.getStatus(deviceId);
     if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
 
-    const result = await wa.sendBroadcast(deviceId, finalMessage, recipients, req.session.userId, speed || 1000);
-    res.json(result);
+    // ===== Catat timestamp sebelum broadcast buat track nomor yg sukses =====
+    const broadcastStartTime = new Date().toISOString();
+
+    console.log(`📤 Broadcast dari user ${req.session.userId}: ${recipients.length} nomor`);
+
+    // ===== Kirim broadcast =====
+    const result = await wa.sendBroadcast(
+      deviceId,
+      finalMessage,
+      recipients,
+      req.session.userId,
+      speed || 1000
+    );
+
+    console.log(`✅ Broadcast result: ${result.sent || 0} sukses, ${result.failed || 0} gagal`);
+
+    // ===== AUTO PURGE (async, gak block response) =====
+    setTimeout(async () => {
+      try {
+        // Ambil nomor yang sukses dari broadcast_recipients
+        // Filter: created setelah broadcastStartTime + status='sent'
+        const sentPhones = await new Promise((resolve) => {
+          db.all(
+            `SELECT DISTINCT phone FROM broadcast_recipients 
+             WHERE status = 'sent' AND phone IN (${recipients.map(() => '?').join(',')})
+             AND sent_at >= ?`,
+            [...recipients, broadcastStartTime],
+            (err, rows) => {
+              if (err) {
+                console.error('Query sent phones error:', err.message);
+                // Fallback: ambil SEMUA dari recipients (anggap sukses)
+                // Ini berisiko, tapi lebih baik dari gak purge
+                return resolve([]);
+              }
+              resolve(rows || []);
+            }
+          );
+        });
+
+        let phonesToPurge = sentPhones.map(r => r.phone).filter(p => p);
+
+        // Fallback: kalau broadcast_recipients gak keisi, purge semua recipients
+        // (asumsi: user yang kirim mau consume semua yang udah dikirim)
+        if (phonesToPurge.length === 0 && result.sent > 0) {
+          console.log('⚠️ broadcast_recipients kosong, pakai fallback: purge semua recipients');
+          phonesToPurge = recipients;
+        }
+
+        if (phonesToPurge.length === 0) {
+          console.log('ℹ️ Gak ada nomor untuk di-purge');
+          return;
+        }
+
+        console.log(`🗑️ Memulai purge ${phonesToPurge.length} nomor...`);
+        const purgeResult = await purgeNumbersFromDatabase(phonesToPurge);
+        console.log(`✅ Auto-purge selesai: ${purgeResult.master} master, ${purgeResult.contacts} contacts`);
+      } catch (e) {
+        console.error('❌ Auto-purge error:', e.message);
+      }
+    }, 1000);
+
+    res.json({
+      ...result,
+      auto_purge: true,
+      auto_purge_msg: `${result.sent || 0} nomor akan otomatis dihapus dari pool global`
+    });
   } catch (error) {
+    console.error('❌ Broadcast error:', error);
     res.status(500).json({ error: error.message });
   }
 });
