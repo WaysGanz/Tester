@@ -11,6 +11,7 @@ const db = require('./database');
 const wa = require('./whatsapp_manager');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const telegram = require('./telegram');
 
 const app = express();
 const PORT = process.env.PORT || 1901;
@@ -55,8 +56,10 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(session({
   store: new FileStore({
     path: SESSION_DIR,
-    retries: 1,
-    ttl: 7 * 24 * 60 * 60
+    retries: 0,
+    ttl: 7 * 24 * 60 * 60,
+    reapInterval: 3600,
+    logFn: () => {}
   }),
   secret: process.env.SESSION_SECRET || 'marketingcuan_secret_2025',
   resave: false,
@@ -89,7 +92,6 @@ function requireAdmin(req, res, next) {
   });
 }
 
-// Helper: copy master_contacts ke satu device (return jumlah inserted)
 function syncMasterToDevice(deviceId) {
   return new Promise((resolve) => {
     db.all('SELECT phone, name FROM master_contacts', (err, masters) => {
@@ -97,6 +99,7 @@ function syncMasterToDevice(deviceId) {
       let pending = 0;
       let inserted = 0;
       const total = masters.length;
+      if (total === 0) return resolve(0);
 
       for (const mc of masters) {
         db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?',
@@ -116,6 +119,137 @@ function syncMasterToDevice(deviceId) {
       }
     });
   });
+}
+
+function getWithdrawWithUser(wdId) {
+  return new Promise((resolve) => {
+    db.get(`
+      SELECT w.*, u.name as user_name, u.email as user_email, u.telegram_username
+      FROM withdrawals w
+      JOIN users u ON w.user_id = u.id
+      WHERE w.id = ?
+    `, [wdId], (err, row) => resolve(row || null));
+  });
+}
+
+// ============================================
+// TELEGRAM WEBHOOK
+// ============================================
+app.post('/api/telegram/webhook', async (req, res) => {
+  // Respond cepat ke Telegram (max 5 detik)
+  res.json({ ok: true });
+
+  try {
+    const update = req.body;
+    if (!update) return;
+
+    console.log('📩 Telegram update:', JSON.stringify(update).substring(0, 200));
+
+    // Handle callback_query (klik inline button)
+    if (update.callback_query) {
+      const cq = update.callback_query;
+      const data = cq.data || '';
+      const chatId = cq.message?.chat?.id;
+      const messageId = cq.message?.message_id;
+      const callbackId = cq.id;
+
+      if (data.startsWith('wd_acc_')) {
+        const wdId = data.replace('wd_acc_', '');
+        await handleApproveFromTelegram(wdId, chatId, messageId, callbackId);
+      } else if (data.startsWith('wd_rej_')) {
+        const wdId = data.replace('wd_rej_', '');
+        await handleRejectFromTelegram(wdId, chatId, messageId, callbackId);
+      } else {
+        await telegram.answerCallbackQuery(callbackId, 'Aksi tidak dikenal');
+      }
+    }
+  } catch (e) {
+    console.error('❌ Webhook handler error:', e.message);
+  }
+});
+
+async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
+  try {
+    const wdInfo = await getWithdrawWithUser(wdId);
+
+    if (!wdInfo) {
+      await telegram.answerCallbackQuery(callbackId, '❌ WD tidak ditemukan', true);
+      return;
+    }
+
+    if (wdInfo.status !== 'pending') {
+      await telegram.answerCallbackQuery(callbackId, `⚠️ WD sudah di-${wdInfo.status}`, true);
+      return;
+    }
+
+    // Approve via wa manager
+    await wa.approveWithdraw(wdId, 'Approved via Telegram Bot');
+    console.log(`✅ WD ${wdId} approved via Telegram`);
+
+    await telegram.answerCallbackQuery(callbackId, '✅ Withdraw di-ACC!');
+
+    // Edit message — ganti button jadi status
+    const newText = `
+<b>✅ WITHDRAW DI-ACC</b>
+
+👤 <b>User:</b> ${wdInfo.user_name || 'Unknown'}
+💰 <b>Nominal:</b> ${telegram.rp(wdInfo.amount)}
+📱 <b>Telegram:</b> ${wdInfo.telegram_username ? '@' + String(wdInfo.telegram_username).replace('@','') : '-'}
+💳 <b>Metode:</b> ${String(wdInfo.method || '').toUpperCase()}
+
+✅ <b>Status:</b> APPROVED
+🕐 ${new Date().toLocaleString('id-ID')}
+
+<i>Diproses via Telegram Bot.</i>
+`.trim();
+
+    await telegram.editMessageText(chatId, messageId, newText);
+
+    // Kirim ke channel
+    await telegram.notifyChannelWithdrawSuccess(wdInfo);
+  } catch (e) {
+    console.error('❌ Approve error:', e.message);
+    try { await telegram.answerCallbackQuery(callbackId, '❌ Error: ' + e.message, true); } catch (_) {}
+  }
+}
+
+async function handleRejectFromTelegram(wdId, chatId, messageId, callbackId) {
+  try {
+    const wdInfo = await getWithdrawWithUser(wdId);
+
+    if (!wdInfo) {
+      await telegram.answerCallbackQuery(callbackId, '❌ WD tidak ditemukan', true);
+      return;
+    }
+
+    if (wdInfo.status !== 'pending') {
+      await telegram.answerCallbackQuery(callbackId, `⚠️ WD sudah di-${wdInfo.status}`, true);
+      return;
+    }
+
+    await wa.rejectWithdraw(wdId, 'Ditolak via Telegram Bot');
+    console.log(`❌ WD ${wdId} rejected via Telegram`);
+
+    await telegram.answerCallbackQuery(callbackId, '❌ Withdraw ditolak');
+
+    const newText = `
+<b>❌ WITHDRAW DITOLAK</b>
+
+👤 <b>User:</b> ${wdInfo.user_name || 'Unknown'}
+💰 <b>Nominal:</b> ${telegram.rp(wdInfo.amount)}
+📱 <b>Telegram:</b> ${wdInfo.telegram_username ? '@' + String(wdInfo.telegram_username).replace('@','') : '-'}
+
+❌ <b>Status:</b> REJECTED
+🕐 ${new Date().toLocaleString('id-ID')}
+
+<i>Saldo dikembalikan ke user.</i>
+`.trim();
+
+    await telegram.editMessageText(chatId, messageId, newText);
+  } catch (e) {
+    console.error('❌ Reject error:', e.message);
+    try { await telegram.answerCallbackQuery(callbackId, '❌ Error: ' + e.message, true); } catch (_) {}
+  }
 }
 
 // ============================================
@@ -142,7 +276,7 @@ app.post('/api/login', async (req, res) => {
           console.error('❌ Session save error:', saveErr);
           return res.status(500).json({ error: 'Gagal menyimpan session' });
         }
-        console.log('✅ Login sukses:', user.email);
+        console.log('✅ Login:', user.email);
         res.json({
           success: true,
           user: {
@@ -185,8 +319,8 @@ app.post('/api/register', async (req, res) => {
       }
 
       db.run(
-        'INSERT INTO users (email, password, name, phone, referral_code, referred_by, created_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
-        [email, hashedPassword, username, phone, referralCode, referrerId],
+        'INSERT INTO users (email, password, name, phone, role, referral_code, referred_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+        [email, hashedPassword, username, phone, 'user', referralCode, referrerId],
         function (err) {
           if (err) return res.status(500).json({ error: err.message });
           const newUserId = this.lastID;
@@ -212,9 +346,20 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', requireAuth, (req, res) => {
-  db.get('SELECT id, email, name, phone, balance, role FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+  db.get('SELECT id, email, name, phone, balance, role, telegram_username FROM users WHERE id = ?', [req.session.userId], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(user);
+  });
+});
+
+// Update telegram username user
+app.post('/api/user/telegram', requireAuth, (req, res) => {
+  const { telegram_username } = req.body;
+  const clean = String(telegram_username || '').replace('@', '').trim();
+  if (!clean) return res.status(400).json({ error: 'Username Telegram wajib diisi' });
+  db.run('UPDATE users SET telegram_username = ? WHERE id = ?', [clean, req.session.userId], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, telegram_username: clean });
   });
 });
 
@@ -280,23 +425,18 @@ app.post('/api/forgot-password', async (req, res) => {
                   <h2 style="color: #075E54;">🔐 Reset Password</h2>
                   <p>Halo,</p>
                   <p>Kami menerima permintaan untuk mereset password akun MarketingCuan Anda.</p>
-                  <p>Klik tombol di bawah untuk mengatur password baru:</p>
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${resetLink}" style="background: #075E54; color: #fff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                      Reset Password
-                    </a>
+                    <a href="${resetLink}" style="background: #075E54; color: #fff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 600;">Reset Password</a>
                   </div>
-                  <p>Atau salin link ini ke browser:</p>
+                  <p>Atau salin link ini:</p>
                   <p style="background: #f5f5f5; padding: 10px; border-radius: 6px; word-break: break-all; font-size: 14px;">${resetLink}</p>
-                  <p style="font-size: 12px; color: #888; margin-top: 20px;">Link ini berlaku selama 1 jam.</p>
-                  <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-                  <p style="font-size: 12px; color: #888;">© MarketingCuan</p>
+                  <p style="font-size: 12px; color: #888;">Berlaku 1 jam.</p>
                 </div>
               `
             });
-            console.log(`✅ Email reset terkirim ke ${email}`);
+            console.log(`✅ Email reset ke ${email}`);
           } catch (emailErr) {
-            console.error('❌ Gagal kirim email:', emailErr);
+            console.error('❌ Gagal kirim email:', emailErr.message);
           }
 
           res.json({ success: true, message: 'Link reset password telah dikirim ke email Anda.' });
@@ -322,7 +462,6 @@ app.post('/api/reset-password', async (req, res) => {
         if (!row) return res.status(400).json({ error: 'Token tidak valid atau sudah kadaluwarsa' });
 
         const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
         db.run('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, row.email], (err) => {
           if (err) return res.status(500).json({ error: err.message });
           db.run('UPDATE password_resets SET used = 1 WHERE token = ?', [token], () => {
@@ -339,8 +478,6 @@ app.post('/api/reset-password', async (req, res) => {
 // ============================================
 // DEVICES
 // ============================================
-
-// ⚠️ PENTING: route statis didahulukan supaya gak bentrok
 app.get('/api/devices/summary', requireAuth, (req, res) => {
   const userId = req.session.userId;
 
@@ -359,14 +496,12 @@ app.get('/api/devices/summary', requireAuth, (req, res) => {
           COALESCE(SUM(failed), 0) as total_failed,
           COUNT(*) as total_campaigns,
           COALESCE(SUM(recipients), 0) as total_recipients
-        FROM broadcast_history
-        WHERE user_id = ?
+        FROM broadcast_history WHERE user_id = ?
       `, [userId], (err3, hist) => {
         const finish = (sent, failed, camps, recips) => {
           db.get(`
             SELECT COUNT(DISTINCT c.phone) as unique_total
-            FROM contacts c
-            JOIN devices d ON c.device_id = d.id
+            FROM contacts c JOIN devices d ON c.device_id = d.id
             WHERE d.user_id = ?
           `, [userId], (err5, contactRow) => {
             res.json({
@@ -384,10 +519,8 @@ app.get('/api/devices/summary', requireAuth, (req, res) => {
         };
 
         if (err3) {
-          // Fallback tanpa kolom failed
           db.get(`
-            SELECT COALESCE(SUM(sent), 0) as total_sent,
-                   COUNT(*) as total_campaigns,
+            SELECT COALESCE(SUM(sent), 0) as total_sent, COUNT(*) as total_campaigns,
                    COALESCE(SUM(recipients), 0) as total_recipients
             FROM broadcast_history WHERE user_id = ?
           `, [userId], (err4, hist2) => {
@@ -423,10 +556,8 @@ app.post('/api/devices', requireAuth, async (req, res) => {
 
     const id = uuidv4().substring(0, 10);
     const device = await wa.createDevice(id, req.session.userId, name, phone || '');
-
-    // Auto-copy master contacts ke device baru
     const inserted = await syncMasterToDevice(id);
-    if (inserted > 0) console.log(`✅ Copied ${inserted} master contacts to device ${id}`);
+    if (inserted > 0) console.log(`✅ Copied ${inserted} master contacts to ${id}`);
 
     await wa.startDevice(id);
     res.json(device);
@@ -436,39 +567,23 @@ app.post('/api/devices', requireAuth, async (req, res) => {
 });
 
 app.post('/api/devices/:id/start', requireAuth, async (req, res) => {
-  try {
-    const result = await wa.startDevice(req.params.id);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { res.json(await wa.startDevice(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/devices/:id/stop', requireAuth, async (req, res) => {
-  try {
-    const result = await wa.stopDevice(req.params.id);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { res.json(await wa.stopDevice(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/devices/:id', requireAuth, async (req, res) => {
-  try {
-    await wa.deleteDevice(req.params.id, req.session.userId);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { await wa.deleteDevice(req.params.id, req.session.userId); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/devices/:id/qr', requireAuth, async (req, res) => {
-  try {
-    const qr = await wa.getQR(req.params.id);
-    res.json({ qr: qr || null });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { const qr = await wa.getQR(req.params.id); res.json({ qr: qr || null }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/devices/:id/pairing', requireAuth, async (req, res) => {
@@ -476,12 +591,10 @@ app.post('/api/devices/:id/pairing', requireAuth, async (req, res) => {
     const deviceId = req.params.id;
     const { phoneNumber } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'Nomor HP wajib diisi' });
-
     const device = await wa.getDevice(deviceId);
     if (!device || device.user_id !== req.session.userId) {
       return res.status(403).json({ error: 'Device tidak ditemukan atau bukan milik Anda' });
     }
-
     const result = await wa.requestPairingCode(deviceId, phoneNumber);
     res.json({ success: true, code: result.code });
   } catch (error) {
@@ -490,30 +603,19 @@ app.post('/api/devices/:id/pairing', requireAuth, async (req, res) => {
 });
 
 app.put('/api/devices/:id/mode', requireAuth, async (req, res) => {
-  try {
-    const { mode } = req.body;
-    await wa.updateDeviceMode(req.params.id, mode);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { await wa.updateDeviceMode(req.params.id, req.body.mode); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
-  try {
-    const contacts = await wa.getContacts(req.params.id);
-    res.json(contacts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { res.json(await wa.getContacts(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// SYNC master contacts → device user
 app.post('/api/devices/:id/sync-contacts', requireAuth, async (req, res) => {
   try {
     const deviceId = req.params.id;
     const userId = req.session.userId;
-
     const device = await wa.getDevice(deviceId);
     if (!device || device.user_id !== userId) {
       return res.status(403).json({ error: 'Device tidak ditemukan atau bukan milik Anda' });
@@ -524,19 +626,16 @@ app.post('/api/devices/:id/sync-contacts', requireAuth, async (req, res) => {
     });
 
     if (totalMaster === 0) {
-      return res.json({ success: true, inserted: 0, total: 0, message: 'Belum ada master kontak dari admin' });
+      return res.json({ success: true, inserted: 0, total: 0, message: 'Belum ada master kontak' });
     }
 
     const inserted = await syncMasterToDevice(deviceId);
-    console.log(`🔄 Sync device ${deviceId}: +${inserted} dari ${totalMaster} master`);
-
+    console.log(`🔄 Sync ${deviceId}: +${inserted} dari ${totalMaster}`);
     res.json({
       success: true,
       inserted,
       total: totalMaster,
-      message: inserted > 0
-        ? `${inserted} kontak baru disync dari ${totalMaster} master`
-        : `Semua kontak sudah up-to-date (${totalMaster} master)`
+      message: inserted > 0 ? `${inserted} kontak baru disync` : 'Semua up-to-date'
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -544,22 +643,17 @@ app.post('/api/devices/:id/sync-contacts', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// CONTACTS SUMMARY (dashboard)
+// CONTACTS SUMMARY
 // ============================================
 app.get('/api/contacts/summary', requireAuth, (req, res) => {
   const userId = req.session.userId;
-
   db.get('SELECT COUNT(*) as total, MAX(created_at) as last_update FROM master_contacts', (err, masterRow) => {
     if (err) return res.status(500).json({ error: err.message });
-
     db.get(`
       SELECT COUNT(DISTINCT c.phone) as unique_total, COUNT(*) as total
-      FROM contacts c
-      JOIN devices d ON c.device_id = d.id
-      WHERE d.user_id = ?
+      FROM contacts c JOIN devices d ON c.device_id = d.id WHERE d.user_id = ?
     `, [userId], (err2, userRow) => {
       if (err2) return res.status(500).json({ error: err2.message });
-
       res.json({
         master_total: masterRow?.total || 0,
         my_unique_contacts: userRow?.unique_total || 0,
@@ -586,7 +680,7 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
       const settings = await new Promise((resolve) => {
         db.get('SELECT value FROM settings WHERE key = ?', ['promo_text'], (err, row) => resolve(row));
       });
-      finalMessage = settings?.value || 'Pesan broadcast dari MarketingCuan';
+      finalMessage = settings?.value || 'Pesan broadcast';
     }
 
     const status = wa.getStatus(deviceId);
@@ -602,8 +696,7 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
 app.get('/api/broadcast/history', requireAuth, async (req, res) => {
   try {
     const { deviceId } = req.query;
-    const history = await wa.getBroadcastHistory(req.session.userId, deviceId || null);
-    res.json(history);
+    res.json(await wa.getBroadcastHistory(req.session.userId, deviceId || null));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -614,15 +707,10 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
 // ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
-    const stats = await wa.getUserStats(req.session.userId);
-    res.json(stats);
+    res.json(await wa.getUserStats(req.session.userId));
   } catch (error) {
-    console.error('❌ Error in /api/stats:', error);
-    res.status(500).json({
-      error: error.message,
-      total_devices: 0, online: 0, offline: 0,
-      balance: 0, revenue: 0, total_sent: 0
-    });
+    console.error('❌ /api/stats error:', error);
+    res.status(500).json({ error: error.message, total_devices: 0, online: 0, offline: 0, balance: 0, revenue: 0, total_sent: 0 });
   }
 });
 
@@ -688,14 +776,42 @@ app.put('/api/wallet', requireAuth, (req, res) => {
   }
 });
 
+// ============================================
+// WITHDRAW — AUTO PENDING + NOTIF TELEGRAM
+// ============================================
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
-    const { amount, method, account_number, account_name } = req.body;
+    const userId = req.session.userId;
+    const { amount, method, account_number, account_name, telegram_username } = req.body;
+
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
     if (!method) return res.status(400).json({ error: 'Metode wajib dipilih' });
     if (!account_number) return res.status(400).json({ error: 'Nomor akun wajib diisi' });
-    if (!account_name) return res.status(400).json({ error: 'Nama pemilik akun wajib diisi' });
-    const result = await wa.requestWithdraw(req.session.userId, amount, method, account_number, account_name);
+    if (!account_name) return res.status(400).json({ error: 'Nama pemilik wajib diisi' });
+
+    // Simpan telegram_username kalau diisi
+    if (telegram_username) {
+      const tgClean = String(telegram_username).replace('@', '').trim();
+      await new Promise((resolve) => {
+        db.run('UPDATE users SET telegram_username = ? WHERE id = ?', [tgClean, userId], () => resolve());
+      });
+    }
+
+    // Request WD (auto pending)
+    const result = await wa.requestWithdraw(userId, amount, method, account_number, account_name);
+
+    // Ambil info WD untuk notif
+    const wdId = result.id || result.withdrawId || result.insertId;
+    if (!wdId) {
+      console.warn('⚠️ requestWithdraw tidak mengembalikan ID:', result);
+      return res.json(result);
+    }
+
+    const wdInfo = await getWithdrawWithUser(wdId);
+    if (wdInfo) {
+      telegram.notifyAdminWithdraw(wdInfo).catch(e => console.error('Notif WD error:', e.message));
+    }
+
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -704,8 +820,7 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
 
 app.get('/api/withdraw/history', requireAuth, async (req, res) => {
   try {
-    const history = await wa.getWithdrawHistory(req.session.userId);
-    res.json(history);
+    res.json(await wa.getWithdrawHistory(req.session.userId));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -715,18 +830,18 @@ app.get('/api/withdraw/history', requireAuth, async (req, res) => {
 // ADMIN
 // ============================================
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const pending = await wa.getPendingWithdrawals();
-    res.json(pending);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  try { res.json(await wa.getPendingWithdrawals()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Manual approve dari admin panel (fallback)
 app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { note } = req.body || {};
-    const result = await wa.approveWithdraw(req.params.id, note || '');
+    const wdId = req.params.id;
+    const wdInfo = await getWithdrawWithUser(wdId);
+    const result = await wa.approveWithdraw(wdId, note || '');
+    if (wdInfo) telegram.notifyChannelWithdrawSuccess(wdInfo).catch(() => {});
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -736,14 +851,31 @@ app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req
 app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body || {};
-    const result = await wa.rejectWithdraw(req.params.id, reason || '');
-    res.json(result);
+    res.json(await wa.rejectWithdraw(req.params.id, reason || ''));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// IMPORT CONTACTS — sync ke SEMUA device semua user
+// List semua user + telegram + wallet
+app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
+  db.all(`
+    SELECT 
+      u.id, u.email, u.name, u.phone, u.telegram_username,
+      u.balance, u.role, u.total_referral, u.created_at,
+      w.gopay_phone, w.ovo_phone, w.dana_phone,
+      w.bank_name, w.bank_account, w.bank_holder
+    FROM users u
+    LEFT JOIN user_wallets w ON w.user_id = u.id
+    WHERE u.role != 'admin'
+    ORDER BY u.created_at DESC
+  `, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows || []);
+  });
+});
+
+// Import contacts
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { deviceId, numbers } = req.body;
@@ -751,18 +883,14 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
     if (!numbers || !Array.isArray(numbers) || numbers.length === 0) {
       return res.status(400).json({ error: 'Tidak ada nomor yang di-import' });
     }
-    if (numbers.length > 10000) {
-      return res.status(400).json({ error: 'Maksimal 10.000 nomor sekali import' });
-    }
+    if (numbers.length > 10000) return res.status(400).json({ error: 'Maksimal 10.000 nomor' });
+
     const validNumbers = numbers.filter(n => /^[0-9]{5,20}$/.test(String(n).trim()));
-    if (validNumbers.length === 0) {
-      return res.status(400).json({ error: 'Format nomor tidak valid! Hanya angka, minimal 5 digit.' });
-    }
+    if (validNumbers.length === 0) return res.status(400).json({ error: 'Format nomor tidak valid' });
 
     let inserted = 0, skipped = 0;
 
     if (deviceId === 'all') {
-      // 1. Insert ke master_contacts
       for (const num of validNumbers) {
         const exists = await new Promise((resolve) => {
           db.get('SELECT id FROM master_contacts WHERE phone = ?', [num], (err, row) => resolve(!!row));
@@ -775,7 +903,6 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
         } else skipped++;
       }
 
-      // 2. Sync ke SEMUA device milik SEMUA user
       const allDevices = await new Promise((resolve) => {
         db.all('SELECT id FROM devices', (err, rows) => resolve(rows || []));
       });
@@ -785,28 +912,15 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
         const ins = await syncMasterToDevice(device.id);
         totalSynced += ins;
       }
-
-      console.log(`✅ Admin import: ${inserted} master baru, ${totalSynced} contact rows synced ke ${allDevices.length} device`);
-
-      res.json({
-        success: true,
-        inserted,
-        skipped,
-        total: validNumbers.length,
-        synced_to_devices: allDevices.length,
-        synced_rows: totalSynced
-      });
+      res.json({ success: true, inserted, skipped, total: validNumbers.length, synced_to_devices: allDevices.length, synced_rows: totalSynced });
     } else {
-      // Import ke device tertentu (langsung ke contacts device itu)
       for (const num of validNumbers) {
         const exists = await new Promise((resolve) => {
-          db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?',
-            [deviceId, num], (err, row) => resolve(!!row));
+          db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ?', [deviceId, num], (err, row) => resolve(!!row));
         });
         if (!exists) {
           await new Promise((resolve) => {
-            db.run('INSERT INTO contacts (device_id, name, phone, is_group) VALUES (?, ?, ?, 0)',
-              [deviceId, num, num], () => resolve());
+            db.run('INSERT INTO contacts (device_id, name, phone, is_group) VALUES (?, ?, ?, 0)', [deviceId, num, num], () => resolve());
           });
           inserted++;
         } else skipped++;
@@ -821,36 +935,49 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
 app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, (req, res) => {
   db.run('UPDATE devices SET profit = 0 WHERE id = ?', [req.params.deviceId], function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: `Profit device ${req.params.deviceId} direset ke 0` });
+    res.json({ success: true, message: `Profit ${req.params.deviceId} reset` });
   });
 });
 
 app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, (req, res) => {
   db.run('UPDATE devices SET profit = 0', function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: 'Semua profit device direset ke 0' });
+    res.json({ success: true, message: 'Semua profit reset' });
   });
 });
 
 app.post('/api/admin/delete-all-contacts', requireAuth, requireAdmin, (req, res) => {
   db.run('DELETE FROM contacts', function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: 'Semua kontak target blast berhasil dihapus!' });
+    res.json({ success: true, message: 'Semua kontak dihapus' });
   });
 });
 
 app.post('/api/admin/delete-contacts/:deviceId', requireAuth, requireAdmin, (req, res) => {
   db.run('DELETE FROM contacts WHERE device_id = ?', [req.params.deviceId], function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: `Kontak device ${req.params.deviceId} berhasil dihapus!` });
+    res.json({ success: true, message: `Kontak ${req.params.deviceId} dihapus` });
   });
 });
 
 app.post('/api/admin/delete-master-contacts', requireAuth, requireAdmin, (req, res) => {
   db.run('DELETE FROM master_contacts', function (err) {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: 'Master kontak berhasil dihapus!' });
+    res.json({ success: true, message: 'Master kontak dihapus' });
   });
+});
+
+// Telegram debug
+app.get('/api/telegram/test', requireAuth, requireAdmin, async (req, res) => {
+  const result = await telegram.testBot();
+  res.json(result);
+});
+
+app.get('/api/telegram/webhook-info', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const info = await telegram.getWebhookInfo();
+    res.json(info);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ============================================
@@ -912,10 +1039,23 @@ app.use((req, res) => res.redirect('/'));
 module.exports = app;
 
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(` MarketingCuan running on http://localhost:${PORT}`);
-    console.log(` WhatsApp Broadcast Platform with Monetization`);
+    console.log(` WhatsApp Broadcast Platform`);
     console.log(` Rp1100/chat | Min WD Rp10.000`);
-    console.log(` Login: admin@marketingcuan.com / admin123`);
+
+    // Auto-set Telegram webhook
+    const PUBLIC_URL = process.env.PUBLIC_URL ||
+      (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : '');
+
+    if (PUBLIC_URL && process.env.TELEGRAM_BOT_TOKEN) {
+      try {
+        await telegram.setWebhook(PUBLIC_URL);
+      } catch (e) {
+        console.error('⚠️ Webhook setup gagal:', e.message);
+      }
+    } else {
+      console.warn('⚠️ PUBLIC_URL / RAILWAY_PUBLIC_DOMAIN belum ada, webhook Telegram tidak di-set');
+    }
   });
 }
