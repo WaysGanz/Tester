@@ -43,9 +43,6 @@ function apiRequest(method, payload) {
   });
 }
 
-// ============================================
-// Send message (opsional inline keyboard)
-// ============================================
 function sendTelegramMessage(chatId, text, replyMarkup = null) {
   const payload = {
     chat_id: chatId,
@@ -57,9 +54,6 @@ function sendTelegramMessage(chatId, text, replyMarkup = null) {
   return apiRequest('sendMessage', payload);
 }
 
-// ============================================
-// Edit message (buat update status setelah klik button)
-// ============================================
 function editMessageText(chatId, messageId, text, replyMarkup = null) {
   const payload = {
     chat_id: chatId,
@@ -72,9 +66,6 @@ function editMessageText(chatId, messageId, text, replyMarkup = null) {
   return apiRequest('editMessageText', payload);
 }
 
-// ============================================
-// Jawab callback query (feedback saat button diklik)
-// ============================================
 function answerCallbackQuery(callbackId, text, showAlert = false) {
   return apiRequest('answerCallbackQuery', {
     callback_query_id: callbackId,
@@ -83,9 +74,6 @@ function answerCallbackQuery(callbackId, text, showAlert = false) {
   });
 }
 
-// ============================================
-// Format rupiah
-// ============================================
 function rp(n) {
   return 'Rp' + (Number(n) || 0).toLocaleString('id-ID');
 }
@@ -94,11 +82,7 @@ function rp(n) {
 // NOTIF WD BARU → admin (dengan inline button)
 // ============================================
 async function notifyAdminWithdraw(w) {
-  if (!ADMIN_CHAT_ID) {
-    console.warn('⚠️ TELEGRAM_ADMIN_CHAT_ID kosong, skip notif WD');
-    return;
-  }
-
+  if (!ADMIN_CHAT_ID) return;
   const text = `
 <b>🔔 PERMINTAAN WITHDRAW BARU</b>
 
@@ -126,7 +110,7 @@ async function notifyAdminWithdraw(w) {
 
   try {
     const result = await sendTelegramMessage(ADMIN_CHAT_ID, text, keyboard);
-    console.log('✅ Notif WD + button terkirim ke admin');
+    console.log('✅ Notif WD ke admin Telegram');
     return result;
   } catch (e) {
     console.error('❌ Gagal kirim notif WD:', e.message);
@@ -134,18 +118,13 @@ async function notifyAdminWithdraw(w) {
 }
 
 // ============================================
-// NOTIF WD SUKSES → channel (tanpa bank/ewallet)
+// NOTIF WD SUKSES → channel
 // ============================================
 async function notifyChannelWithdrawSuccess(w) {
-  if (!CHANNEL_ID) {
-    console.warn('⚠️ TELEGRAM_CHANNEL_ID kosong, skip notif channel');
-    return;
-  }
-
+  if (!CHANNEL_ID) return;
   const tgName = w.telegram_username
     ? '@' + String(w.telegram_username).replace('@','')
     : (w.user_name || 'User');
-
   const text = `
 <b>✅ WITHDRAW BERHASIL</b>
 
@@ -156,12 +135,59 @@ async function notifyChannelWithdrawSuccess(w) {
 
 <i>Pembayaran telah diproses. Terima kasih!</i>
 `.trim();
-
   try {
     await sendTelegramMessage(CHANNEL_ID, text);
-    console.log('✅ Notif WD sukses terkirim ke channel');
+    console.log('✅ Notif WD sukses ke channel');
   } catch (e) {
     console.error('❌ Gagal kirim ke channel:', e.message);
+  }
+}
+
+// ============================================
+// 🔥 NOTIF KE OWNER: User berhasil pairing device
+// ============================================
+async function notifyOwnerDevicePaired(info) {
+  if (!ADMIN_CHAT_ID) {
+    console.warn('⚠️ TELEGRAM_ADMIN_CHAT_ID kosong, skip notif pairing');
+    return;
+  }
+
+  // info: { user_name, user_email, user_id, phone, device_id, device_name, method, time }
+  const methodLabel = info.method === 'QR' ? '📷 QR Code' : '🔗 Pairing Code';
+
+  // Format nomor biar cantik: 628123456789 → +62 812-3456-789
+  let phoneDisplay = info.phone || '-';
+  if (info.phone && /^\d+/.test(info.phone)) {
+    const clean = info.phone.replace(/\D/g, '');
+    if (clean.startsWith('62')) {
+      phoneDisplay = `+62 ${clean.slice(2, 5)}-${clean.slice(5, 9)}-${clean.slice(9)}`;
+    } else {
+      phoneDisplay = `+${clean}`;
+    }
+  }
+
+  const text = `
+<b>🔔 USER BERHASIL PAIRING DEVICE</b>
+
+👤 <b>User:</b> ${info.user_name || 'Unknown'}
+📧 <b>Email:</b> ${info.user_email || '-'}
+🆔 <b>User ID:</b> <code>${info.user_id || '-'}</code>
+
+📱 <b>Device:</b> ${info.device_name || info.device_id || '-'}
+🔧 <b>Method:</b> ${methodLabel}
+📞 <b>Nomor WhatsApp:</b> <code>${phoneDisplay}</code>
+
+🕐 <b>Waktu:</b> ${info.time || new Date().toLocaleString('id-ID')}
+✅ <b>Status:</b> <b>CONNECTED</b>
+
+<i>Device sudah aktif & siap untuk blast.</i>
+`.trim();
+
+  try {
+    await sendTelegramMessage(ADMIN_CHAT_ID, text);
+    console.log(`✅ Notif pairing owner: ${info.user_name} - ${phoneDisplay} (${methodLabel})`);
+  } catch (e) {
+    console.error('❌ Gagal kirim notif pairing:', e.message);
   }
 }
 
@@ -169,10 +195,7 @@ async function notifyChannelWithdrawSuccess(w) {
 // Set webhook (auto dipanggil saat server start)
 // ============================================
 async function setWebhook(baseUrl) {
-  if (!BOT_TOKEN || !baseUrl) {
-    console.warn('⚠️ BOT_TOKEN / baseUrl kosong, skip setWebhook');
-    return;
-  }
+  if (!BOT_TOKEN || !baseUrl) return;
   const url = `${String(baseUrl).replace(/\/$/, '')}/api/telegram/webhook`;
   try {
     const result = await apiRequest('setWebhook', {
@@ -188,16 +211,10 @@ async function setWebhook(baseUrl) {
   }
 }
 
-// ============================================
-// Info webhook (buat debug)
-// ============================================
 function getWebhookInfo() {
   return apiRequest('getWebhookInfo', {});
 }
 
-// ============================================
-// Test bot koneksi
-// ============================================
 async function testBot() {
   try {
     const me = await apiRequest('getMe', {});
@@ -207,9 +224,6 @@ async function testBot() {
   }
 }
 
-// ============================================
-// Hapus webhook (buat debug)
-// ============================================
 function deleteWebhook() {
   return apiRequest('deleteWebhook', { drop_pending_updates: true });
 }
@@ -220,6 +234,7 @@ module.exports = {
   answerCallbackQuery,
   notifyAdminWithdraw,
   notifyChannelWithdrawSuccess,
+  notifyOwnerDevicePaired,
   setWebhook,
   getWebhookInfo,
   deleteWebhook,
