@@ -12,7 +12,6 @@
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
   <div class="app-layout">
-    <!-- ============ SIDEBAR ============ -->
     <aside class="sidebar" id="sidebar">
       <div class="logo">
         <i class="fab fa-whatsapp"></i>
@@ -31,7 +30,6 @@
       </div>
     </aside>
 
-    <!-- ============ MAIN ============ -->
     <main class="main-content">
       <header class="header">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -49,7 +47,7 @@
 
       <div class="devices-content">
 
-        <!-- ====== 1. BANNER ATURAN PROFIL ====== -->
+        <!-- Banner Aturan Profil -->
         <div class="alert-profile">
           <div class="alert-profile-head">
             <i class="fas fa-exclamation-triangle"></i>
@@ -69,12 +67,12 @@
               <a href="#" class="btn-primary-outline" onclick="downloadPhoto(event)">
                 <i class="fas fa-download"></i> Download Photo
               </a>
-              <span class="badge-name"><i class="fas fa-user"></i> <span id="profileNameBadge">Lydia</span></span>
+              <span class="badge-name"><i class="fas fa-user"></i> <span id="profileNameBadge">User</span></span>
             </div>
           </div>
         </div>
 
-        <!-- ====== 2. DATA KONTAK TERSEDIA ====== -->
+        <!-- Data Bar -->
         <div class="data-available-bar">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
@@ -89,13 +87,12 @@
           </button>
         </div>
 
-        <!-- ====== 3. RINGKASAN PERFORMA BLAST ====== -->
+        <!-- Ringkasan Performa Blast -->
         <div class="perf-section-title">
           <i class="fas fa-chart-bar"></i> Ringkasan Performa Blast
         </div>
 
         <div class="perf-grid">
-          <!-- Slot Aktif -->
           <div class="perf-card">
             <div class="perf-icon neutral"><i class="fas fa-layer-group"></i></div>
             <div class="perf-body">
@@ -103,8 +100,6 @@
               <div class="perf-value" id="perfSlotsActive">0</div>
             </div>
           </div>
-
-          <!-- Sukses All Time -->
           <div class="perf-card">
             <div class="perf-icon success"><i class="fas fa-check-circle"></i></div>
             <div class="perf-body">
@@ -112,8 +107,6 @@
               <div class="perf-value text-success" id="perfSuccess">0</div>
             </div>
           </div>
-
-          <!-- Gagal All Time -->
           <div class="perf-card">
             <div class="perf-icon danger"><i class="fas fa-times-circle"></i></div>
             <div class="perf-body">
@@ -121,8 +114,6 @@
               <div class="perf-value text-danger" id="perfFailed">0</div>
             </div>
           </div>
-
-          <!-- Partisipasi Blast -->
           <div class="perf-card">
             <div class="perf-icon info"><i class="fas fa-chart-line"></i></div>
             <div class="perf-body">
@@ -131,8 +122,6 @@
               <div class="perf-sub" id="perfProcessed">0 total pesan diproses</div>
             </div>
           </div>
-
-          <!-- Nomor Tertaut -->
           <div class="perf-card">
             <div class="perf-icon purple"><i class="fas fa-address-book"></i></div>
             <div class="perf-body">
@@ -140,8 +129,6 @@
               <div class="perf-value text-purple" id="perfUniqueContacts">0 <small>Unik</small></div>
             </div>
           </div>
-
-          <!-- Rata-rata Speed -->
           <div class="perf-card">
             <div class="perf-icon warning"><i class="fas fa-bolt"></i></div>
             <div class="perf-body">
@@ -151,8 +138,8 @@
           </div>
         </div>
 
-        <!-- ====== 4. TOOLBAR DEVICE ====== -->
-        <div class="device-toolbar" style="margin-top:24px;">
+        <!-- Toolbar Device -->
+        <div class="device-toolbar">
           <div class="btn-group">
             <button class="btn btn-sm btn-secondary" onclick="filterDevices('all')">Semua</button>
             <button class="btn btn-sm btn-secondary" onclick="filterDevices('connected')">Online</button>
@@ -164,18 +151,17 @@
           </div>
           <div class="btn-group">
             <button class="btn btn-sm btn-success" onclick="showAddDeviceModal('qr')"><i class="fas fa-qrcode"></i> Scan QR</button>
-            <button class="btn btn-sm btn-info" onclick="showPairingModal()"><i class="fas fa-link"></i> Pairing Code</button>
+            <button class="btn btn-sm btn-info" onclick="showPairingModal()"><i class="fas fa-link"></i> Pairing</button>
             <button class="btn btn-sm btn-warning" onclick="syncAllDevices()" id="btnSyncAll"><i class="fas fa-sync"></i> Sync</button>
           </div>
         </div>
 
-        <!-- ====== 5. DEVICES GRID ====== -->
         <div id="devicesGrid" class="devices-grid"></div>
       </div>
     </main>
   </div>
 
-  <!-- ============ MODAL ADD DEVICE ============ -->
+  <!-- MODAL ADD DEVICE -->
   <div class="modal" id="addDeviceModal">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
@@ -186,7 +172,7 @@
         <div class="form-group">
           <label><i class="fas fa-phone"></i> Nomor HP WhatsApp</label>
           <input type="tel" id="newDevicePhone" class="form-control" placeholder="628123456789" maxlength="15">
-          <small style="font-size:12px;color:var(--text-muted);">Format: 628xxxxxxxxxx (dengan kode negara)</small>
+          <small style="font-size:12px;color:var(--text-muted);">Format: 628xxxxxxxxxx</small>
         </div>
         <div style="display:flex;gap:12px;margin:16px 0;flex-wrap:wrap;">
           <button type="button" class="btn btn-sm btn-primary" id="btnMethodQR" onclick="setMethod('qr')" style="flex:1;">
@@ -222,7 +208,7 @@
     </div>
   </div>
 
-  <!-- ============ MODAL PAIRING ============ -->
+  <!-- MODAL PAIRING -->
   <div class="modal" id="pairingModal">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
@@ -270,24 +256,19 @@
     let searchTerm = '';
     let currentMethod = 'qr';
     let pendingDeviceId = null;
-
-    const devicesGrid = document.getElementById('devicesGrid');
     const MAX_SLOTS = 3;
 
-    // ===== TOGGLE SIDEBAR =====
+    const devicesGrid = document.getElementById('devicesGrid');
+
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('active');
     }
 
-    // ===== CLOCK =====
     function updateClock() {
       document.getElementById('clock').textContent =
         new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     }
-
-    // ===== HELPER =====
-    function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
 
     function animateNumber(elId, target) {
       const el = document.getElementById(elId);
@@ -305,24 +286,23 @@
       requestAnimationFrame(tick);
     }
 
-    // ===== LOAD SUMMARY (Header & Perf) =====
+    function downloadPhoto(e) {
+      e.preventDefault();
+      alert('Silakan hubungi admin untuk mendapatkan foto profil yang wajib digunakan.');
+    }
+
+    // ===== SUMMARY =====
     async function loadSummary() {
       try {
         const res = await fetch('/api/devices/summary', { credentials: 'include' });
         if (!res.ok) throw new Error('Gagal fetch summary');
         const d = await res.json();
 
-        // Data tersisa
         animateNumber('dataAvailable', d.master_total || 0);
-
-        // Slot badge
-        document.getElementById('slotBadge').textContent =
-          `${d.devices_total || 0}/${MAX_SLOTS}`;
-
-        // Perf cards
+        document.getElementById('slotBadge').textContent = `${d.devices_total || 0}/${MAX_SLOTS}`;
         document.getElementById('perfSlotsActive').textContent = d.devices_connected || 0;
-        document.getElementById('perfSuccess').textContent = (d.total_sent || 0).toLocaleString('id-ID');
-        document.getElementById('perfFailed').textContent = (d.total_failed || 0).toLocaleString('id-ID');
+        animateNumber('perfSuccess', d.total_sent || 0);
+        animateNumber('perfFailed', d.total_failed || 0);
 
         document.getElementById('perfCampaigns').innerHTML =
           `${d.total_campaigns || 0} <small>Campaign</small>`;
@@ -339,7 +319,7 @@
       }
     }
 
-    // ===== LOAD DEVICES =====
+    // ===== DEVICES =====
     async function loadDevices() {
       try {
         const res = await fetch('/api/devices', { credentials: 'include' });
@@ -354,7 +334,6 @@
       }
     }
 
-    // ===== RENDER DEVICES =====
     function renderDevices() {
       let filtered = [...allDevices];
 
@@ -401,12 +380,12 @@
           `;
         } else {
           actionButtons = `
-            <button class="btn btn-sm btn-start" disabled><i class="fas fa-play"></i> Start</button>
+            <button class="btn btn-sm btn-start" disabled title="Pair dulu"><i class="fas fa-play"></i> Start</button>
           `;
         }
         actionButtons += `
           <button class="btn btn-sm btn-secondary" onclick="showQR('${d.id}')"><i class="fas fa-qrcode"></i></button>
-          <button class="btn btn-sm btn-info" onclick="syncDeviceContacts('${d.id}')"><i class="fas fa-sync"></i></button>
+          <button class="btn btn-sm btn-info" onclick="syncDeviceContacts('${d.id}')" title="Sync kontak master ke device ini"><i class="fas fa-sync"></i></button>
           <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')"><i class="fas fa-trash"></i></button>
         `;
 
@@ -433,25 +412,39 @@
     function filterDevices(filter) { currentFilter = filter; renderDevices(); }
     function searchDevices() { searchTerm = document.getElementById('deviceSearch').value.trim(); renderDevices(); }
 
-    // ===== DEVICE ACTIONS =====
+    // ===== ACTIONS =====
     async function stopDevice(id) {
-      try { await fetch(`/api/devices/${id}/stop`, { method: 'POST', credentials: 'include' }); showToast('Device dihentikan', 'warning'); loadDevices(); }
-      catch(e) { showToast('Gagal stop', 'error'); }
+      try {
+        await fetch(`/api/devices/${id}/stop`, { method: 'POST', credentials: 'include' });
+        showToast('Device dihentikan', 'warning');
+        loadDevices();
+      } catch (e) { showToast('Gagal stop', 'error'); }
     }
+
     async function deleteDevice(id) {
       if (!confirm('Yakin hapus device ini?')) return;
-      try { await fetch(`/api/devices/${id}`, { method: 'DELETE', credentials: 'include' }); showToast('Device dihapus', 'success'); loadDevices(); loadSummary(); }
-      catch(e) { showToast('Gagal hapus', 'error'); }
+      try {
+        await fetch(`/api/devices/${id}`, { method: 'DELETE', credentials: 'include' });
+        showToast('Device dihapus', 'success');
+        loadDevices();
+        loadSummary();
+      } catch (e) { showToast('Gagal hapus', 'error'); }
     }
+
     async function showQR(id) {
       try {
         const res = await fetch(`/api/devices/${id}/qr`, { credentials: 'include' });
         const data = await res.json();
         if (data.qr) {
           const win = window.open('', '_blank');
-          win.document.write(`<img src="${data.qr}" style="max-width:300px;display:block;margin:20px auto;"><p style="text-align:center;">Scan QR dengan WhatsApp</p>`);
-        } else showToast('Tidak ada QR, coba start ulang', 'warning');
-      } catch(e) { showToast('Gagal ambil QR', 'error'); }
+          win.document.write(`<html><body style="background:#0a0e0d;color:#fff;text-align:center;padding:40px;font-family:sans-serif;">
+            <h3>Scan QR dengan WhatsApp</h3>
+            <img src="${data.qr}" style="max-width:300px;display:block;margin:20px auto;border-radius:12px;">
+          </body></html>`);
+        } else {
+          showToast('Tidak ada QR, coba start ulang device', 'warning');
+        }
+      } catch (e) { showToast('Gagal ambil QR', 'error'); }
     }
 
     // ===== SYNC CONTACTS =====
@@ -480,6 +473,7 @@
       if (!confirm(`Sync kontak master ke SEMUA ${allDevices.length} device?`)) return;
 
       const btn = document.getElementById('btnSyncAll');
+      const original = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
 
@@ -494,15 +488,18 @@
         } catch (e) { console.error('Sync error for', d.id, e); }
       }
 
-      loadSummary();
-      loadDevices();
+      await loadSummary();
+      await loadDevices();
 
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-sync"></i> Sync';
-      showToast(totalInserted > 0 ? `✅ ${totalInserted} kontak baru disync` : '✓ Semua up-to-date', 'success');
+      btn.innerHTML = original;
+      showToast(
+        totalInserted > 0 ? `✅ ${totalInserted} kontak baru disync` : '✓ Semua device up-to-date',
+        totalInserted > 0 ? 'success' : 'info'
+      );
     }
 
-    // ===== ADD DEVICE MODAL =====
+    // ===== MODAL =====
     function showAddDeviceModal() {
       document.getElementById('addDeviceModal').classList.add('active');
       document.getElementById('newDevicePhone').value = '';
@@ -518,9 +515,12 @@
 
     function setMethod(method) {
       currentMethod = method;
+      const qrBtn = document.getElementById('btnMethodQR');
+      const pairBtn = document.getElementById('btnMethodPairing');
+
       if (method === 'qr') {
-        document.getElementById('btnMethodQR').className = 'btn btn-sm btn-primary';
-        document.getElementById('btnMethodPairing').className = 'btn btn-sm btn-secondary';
+        qrBtn.className = 'btn btn-sm btn-primary';
+        pairBtn.className = 'btn btn-sm btn-secondary';
         document.getElementById('pairingResult').style.display = 'none';
         if (document.getElementById('qrImage').src) {
           document.getElementById('qrContainer').style.display = 'block';
@@ -530,8 +530,8 @@
           document.getElementById('placeholderMsg').style.display = 'block';
         }
       } else {
-        document.getElementById('btnMethodQR').className = 'btn btn-sm btn-secondary';
-        document.getElementById('btnMethodPairing').className = 'btn btn-sm btn-primary';
+        qrBtn.className = 'btn btn-sm btn-secondary';
+        pairBtn.className = 'btn btn-sm btn-primary';
         document.getElementById('qrContainer').style.display = 'none';
         if (document.getElementById('pairingCodeDisplayModal').textContent !== '------') {
           document.getElementById('pairingResult').style.display = 'block';
@@ -557,8 +557,7 @@
 
       try {
         const createRes = await fetch('/api/devices', {
-          method: 'POST',
-          credentials: 'include',
+          method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: `Device-${phone.substring(0, 4)}`, phone })
         });
@@ -584,8 +583,7 @@
           }
         } else {
           const pairRes = await fetch(`/api/devices/${createData.id}/pairing`, {
-            method: 'POST',
-            credentials: 'include',
+            method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phoneNumber: phone })
           });
@@ -594,6 +592,7 @@
           document.getElementById('pairingResult').style.display = 'block';
           document.getElementById('pairingCodeDisplayModal').textContent = pairData.code || '------';
           document.getElementById('placeholderMsg').style.display = 'none';
+          showToast('✅ Kode pairing berhasil!', 'success');
         }
         setTimeout(() => { loadDevices(); loadSummary(); }, 3000);
       } catch (err) {
@@ -604,7 +603,6 @@
       }
     }
 
-    // ===== PAIRING MODAL =====
     function showPairingModal() {
       document.getElementById('pairingModal').classList.add('active');
       document.getElementById('pairingStep1').style.display = 'block';
@@ -620,7 +618,7 @@
       const btn = document.getElementById('pairingBtn');
       if (!phone || !/^[0-9]{10,15}$/.test(phone)) { showToast('❌ Format nomor tidak valid', 'error'); return; }
 
-      let availableDevices = allDevices.filter(d => d.real_status !== 'connected' && d.real_status !== 'qr_scanned');
+      const availableDevices = allDevices.filter(d => d.real_status !== 'connected' && d.real_status !== 'qr_scanned');
       let deviceId = availableDevices.length > 0 ? availableDevices[0].id : null;
 
       btn.disabled = true;
@@ -669,32 +667,60 @@
       document.getElementById('pairingBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Dapatkan Kode';
     }
 
-    // ===== BLAST =====
+    // ===== BLAST (WITH AUTO-SYNC) =====
     async function blastAll(deviceId) {
       const device = allDevices.find(d => d.id === deviceId);
-      if (!device || device.real_status !== 'connected') { showToast('❌ Device offline', 'error'); return; }
+      if (!device || device.real_status !== 'connected') {
+        showToast('❌ Device offline', 'error');
+        return;
+      }
 
       const speedSelect = document.getElementById(`speed-${deviceId}`);
       const speed = speedSelect ? parseInt(speedSelect.value) : 6000;
 
+      const btn = document.querySelector(`#speed-${deviceId}`)?.parentElement?.querySelector('.btn-start');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
       try {
+        // 1. AUTO-SYNC master → contacts
+        try {
+          const syncRes = await fetch(`/api/devices/${deviceId}/sync-contacts`, {
+            method: 'POST', credentials: 'include'
+          });
+          const syncData = await syncRes.json();
+          if (syncRes.ok && syncData.inserted > 0) {
+            showToast(`🔄 Auto-sync: +${syncData.inserted} kontak baru`, 'info');
+          }
+        } catch (e) { console.warn('Auto-sync skipped:', e); }
+
+        // 2. Ambil kontak
         const res = await fetch(`/api/devices/${deviceId}/contacts`, { credentials: 'include' });
         if (!res.ok) throw new Error('Gagal memuat kontak');
         const contacts = await res.json();
-        if (!contacts || contacts.length === 0) { showToast('😕 Belum ada kontak!', 'warning'); return; }
+
+        if (!contacts || contacts.length === 0) {
+          showToast('😕 Belum ada kontak! Tunggu admin upload atau sync dulu.', 'warning');
+          return;
+        }
 
         const recipients = contacts.map(c => c.phone).filter(p => p);
         if (recipients.length === 0) { showToast('Tidak ada nomor valid', 'error'); return; }
 
+        // 3. Ambil template pesan
         const settingsRes = await fetch('/api/settings', { credentials: 'include' });
         const settingsData = await settingsRes.json();
-        const message = settingsData.promo_text || 'Belum ada template.';
-        if (message === 'Belum ada template.') { showToast('⚠️ Template belum diatur!', 'error'); return; }
+        const message = settingsData.promo_text || '';
+        if (!message) {
+          showToast('⚠️ Template pesan belum diatur admin!', 'error');
+          return;
+        }
 
         const estSec = Math.ceil((recipients.length * speed) / 1000);
-        const estimasi = estSec > 60 ? `${Math.ceil(estSec/60)} menit` : `${estSec} detik`;
+        const estimasi = estSec > 60 ? `${Math.ceil(estSec / 60)} menit` : `${estSec} detik`;
+
         if (!confirm(`Kirim blast ke ${recipients.length} kontak?\nSpeed: ${speed}ms\nEstimasi: ~${estimasi}`)) return;
 
+        // 4. Kirim blast
         const blastRes = await fetch('/api/broadcast', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -703,19 +729,24 @@
         const data = await blastRes.json();
         if (!blastRes.ok) throw new Error(data.error || 'Gagal mengirim');
 
-        showToast(`✅ ${data.sent} sukses, ${data.failed || 0} gagal`, data.failed > 0 ? 'warning' : 'success');
+        showToast(
+          `✅ ${data.sent || 0} sukses, ${data.failed || 0} gagal`,
+          (data.failed || 0) > 0 ? 'warning' : 'success'
+        );
         loadDevices();
         loadSummary();
-      } catch (err) { showToast('❌ ' + err.message, 'error'); }
+      } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Start'; }
+      }
     }
 
-    // ===== MODAL CLOSE =====
     function closeModal(id) {
       document.getElementById(id).classList.remove('active');
       if (id === 'pairingModal') resetPairingModal();
     }
 
-    // ===== REFRESH =====
     async function refreshDevices() {
       await Promise.all([loadDevices(), loadSummary()]);
       showToast('✅ Data diperbarui', 'info');
@@ -740,12 +771,16 @@
       setInterval(loadDevices, 10000);
       setInterval(loadSummary, 30000);
 
-      fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(u => {
-        const name = u.name || u.email || 'User';
-        document.getElementById('userName').textContent = name;
-        document.getElementById('profileNameBadge').textContent = name;
-        if (u.role === 'admin') document.getElementById('adminLink').style.display = 'flex';
-      });
+      fetch('/api/me', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(u => {
+          if (!u) return;
+          const name = u.name || u.email || 'User';
+          document.getElementById('userName').textContent = name;
+          document.getElementById('profileNameBadge').textContent = name;
+          if (u.role === 'admin') document.getElementById('adminLink').style.display = 'flex';
+        })
+        .catch(() => {});
     });
   </script>
 </body>
