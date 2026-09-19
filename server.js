@@ -23,16 +23,18 @@ app.set('trust proxy', 1);
 // ============================================
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
 const SESSION_DIR = path.join(DATA_DIR, 'sessions-store');
+const WA_SESSION_DIR = path.join(DATA_DIR, 'wa-sessions');   // ← TAMBAH
 
 try {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
+  if (!fs.existsSync(WA_SESSION_DIR)) fs.mkdirSync(WA_SESSION_DIR, { recursive: true });  // ← TAMBAH
   console.log('📁 Data dir   :', DATA_DIR);
   console.log('📁 Session dir:', SESSION_DIR);
+  console.log('📁 WA session :', WA_SESSION_DIR);   // ← TAMBAH
 } catch (e) {
   console.error('❌ Gagal bikin folder:', e.message);
 }
-
 // ============================================
 // Email Transporter
 // ============================================
