@@ -8,39 +8,63 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="login-page">
-  <div class="login-container">
-    <div class="login-box">
-      <div class="login-brand">
-        <i class="fab fa-whatsapp"></i>
-        <span>Marketing<span class="highlight">Cuan</span></span>
-        <small>Platform Manajemen & Monetisasi Akun WA</small>
+
+  <div class="login-wrapper">
+    <!-- Sisi Kiri: Branding (Desktop Only) -->
+    <div class="login-side">
+      <div class="login-side-content">
+        <i class="fab fa-whatsapp login-side-logo"></i>
+        <h1>Marketing<span>Cuan</span></h1>
+        <p>Platform Manajemen & Monetisasi Akun WhatsApp</p>
+        <ul class="login-side-features">
+          <li><i class="fas fa-check-circle"></i> Broadcast pesan massal</li>
+          <li><i class="fas fa-check-circle"></i> Kelola banyak device</li>
+          <li><i class="fas fa-check-circle"></i> Penghasilan dari setiap chat</li>
+          <li><i class="fas fa-check-circle"></i> Withdraw mudah ke e-wallet</li>
+        </ul>
       </div>
-      <form id="loginForm" class="login-form">
-        <div class="form-group">
-          <label><i class="fas fa-envelope"></i> Email</label>
-          <input type="email" id="loginEmail" class="form-control" placeholder="nama@domain.com">
+    </div>
+
+    <!-- Sisi Kanan: Form Login -->
+    <div class="login-main">
+      <div class="login-container">
+        <div class="login-box">
+          <div class="login-brand">
+            <i class="fab fa-whatsapp"></i>
+            <span>Marketing<span class="highlight">Cuan</span></span>
+            <small>Masuk ke akun Anda</small>
+          </div>
+
+          <form id="loginForm" class="login-form">
+            <div class="form-group">
+              <label><i class="fas fa-envelope"></i> Email</label>
+              <input type="email" id="loginEmail" class="form-control" placeholder="nama@domain.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label><i class="fas fa-lock"></i> Password</label>
+              <input type="password" id="loginPassword" class="form-control" placeholder="••••••••••" autocomplete="current-password">
+            </div>
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="humanCheck"> Aku manusia
+              </label>
+              <a href="/forgot-password" class="forgot-link">Lupa password?</a>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+              <i class="fas fa-sign-in-alt"></i> Masuk
+            </button>
+            <div class="register-link">
+              <a href="/register">+ Daftar Akun Baru</a>
+            </div>
+            <p class="terms">Dengan masuk, Anda menyetujui <a href="#">Ketentuan & Kebijakan Privasi</a>.</p>
+          </form>
         </div>
-        <div class="form-group">
-          <label><i class="fas fa-lock"></i> Password</label>
-          <input type="password" id="loginPassword" class="form-control" placeholder="••••••••••">
-        </div>
-        <div class="form-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="humanCheck"> Aku manusia
-          </label>
-          <a href="/forgot-password" class="forgot-link">Lupa password?</a>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
-          <i class="fas fa-sign-in-alt"></i> Masuk
-        </button>
-        <div class="register-link">
-          <a href="/register">+ Daftar Akun Baru</a>
-        </div>
-        <p class="terms">Dengan masuk, Anda menyetujui <a href="#">Ketentuan & Kebijakan Privasi</a>.</p>
-      </form>
+      </div>
     </div>
   </div>
+
   <div id="toastContainer" class="toast-container"></div>
+
   <script>
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
@@ -66,19 +90,31 @@
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
 
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login gagal');
 
-        window.location.href = '/dashboard';
+        showToast('✅ Login berhasil! Mengalihkan...', 'success');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 800);
       } catch (err) {
-        showToast(err.message, 'error');
+        if (err.name === 'AbortError') {
+          showToast('⏱️ Server timeout. Coba lagi.', 'error');
+        } else {
+          showToast(err.message, 'error');
+        }
         loginBtn.disabled = false;
         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
       }
