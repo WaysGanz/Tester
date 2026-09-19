@@ -463,6 +463,91 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
 });
 
 // ============================================
+// DEVICES PAGE SUMMARY — untuk header & performa blast
+// ============================================
+app.get('/api/devices/summary', requireAuth, (req, res) => {
+  const userId = req.session.userId;
+
+  // 1. Total master contacts (data yang tersisa untuk di-blast)
+  db.get('SELECT COUNT(*) as total FROM master_contacts', (err, masterRow) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    // 2. Semua device user
+    db.all('SELECT id, status FROM devices WHERE user_id = ?', [userId], (err2, devices) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+
+      const totalDevices = devices.length;
+      const connectedDevices = devices.filter(d => d.status === 'connected').length;
+
+      // 3. Total sukses & gagal broadcast user
+      db.get(`
+        SELECT 
+          COALESCE(SUM(sent), 0) as total_sent,
+          COALESCE(SUM(failed), 0) as total_failed,
+          COUNT(*) as total_campaigns,
+          COALESCE(SUM(recipients), 0) as total_recipients
+        FROM broadcast_history
+        WHERE user_id = ?
+      `, [userId], (err3, hist) => {
+        if (err3) {
+          // Fallback: kalau kolom `failed` gak ada
+          return db.get(`
+            SELECT 
+              COALESCE(SUM(sent), 0) as total_sent,
+              COUNT(*) as total_campaigns,
+              COALESCE(SUM(recipients), 0) as total_recipients
+            FROM broadcast_history
+            WHERE user_id = ?
+          `, [userId], (err4, hist2) => {
+            if (err4) {
+              return res.json({
+                master_total: masterRow?.total || 0,
+                devices_total: totalDevices,
+                devices_connected: connectedDevices,
+                total_sent: 0,
+                total_failed: 0,
+                total_campaigns: 0,
+                total_recipients: 0,
+                unique_contacts: 0,
+                avg_speed: 0
+              });
+            }
+            queryUnique(hist2, 0);
+          });
+        }
+
+        queryUnique(hist, hist.total_failed || 0);
+      });
+
+      function queryUnique(hist, failed) {
+        db.get(`
+          SELECT COUNT(DISTINCT c.phone) as unique_total
+          FROM contacts c
+          JOIN devices d ON c.device_id = d.id
+          WHERE d.user_id = ?
+        `, [userId], (err5, contactRow) => {
+          if (err5) return res.status(500).json({ error: err5.message });
+
+          const avgSpeed = 0;
+
+          res.json({
+            master_total: masterRow?.total || 0,
+            devices_total: totalDevices,
+            devices_connected: connectedDevices,
+            total_sent: hist?.total_sent || 0,
+            total_failed: failed || 0,
+            total_campaigns: hist?.total_campaigns || 0,
+            total_recipients: hist?.total_recipients || 0,
+            unique_contacts: contactRow?.unique_total || 0,
+            avg_speed: avgSpeed
+          });
+        });
+      }
+    });
+  });
+});
+
+// ============================================
 // BROADCAST
 // ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
@@ -838,7 +923,7 @@ if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(` MarketingCuan running on http://localhost:${PORT}`);
     console.log(` WhatsApp Broadcast Platform with Monetization`);
-    console.log(` Rp600/chat | Min WD Rp10.000`);
+    console.log(` Rp1100/chat | Min WD Rp10.000`);
     console.log(` Login: admin@marketingcuan.com / admin123`);
   });
 }
