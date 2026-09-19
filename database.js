@@ -1,8 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcryptjs');
-
-const dbPath = path.join(__dirname, 'marketingcuan.db');
+// Sebelumnya mungkin: const db = new sqlite3.Database('./database.db');
+// Ubah menjadi:
+const dbPath = path.join('/app/data', 'database.db');
 const db = new sqlite3.Database(dbPath);
 /*
 Databse Db my wilzu tamfan
