@@ -572,7 +572,7 @@ app.put('/api/devices/:id/mode', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ✅ USER bisa ganti database device sendiri
+// User bisa ganti database device sendiri
 app.put('/api/devices/:id/site', requireAuth, async (req, res) => {
   try {
     const { siteId } = req.body;
@@ -608,7 +608,9 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ✅ FIX: Blast langsung dari master_contacts
+// ============================================
+// 🔥 BROADCAST — AUTO-FALLBACK (cari DB yang ada nomor)
+// ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, speed } = req.body;
@@ -619,39 +621,68 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Device tidak ditemukan atau bukan milik Anda' });
     }
 
-    const siteId = device.site_id || 1;
     const status = wa.getStatus(deviceId);
     if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
 
-    const site = await new Promise((resolve) => {
-      db.get('SELECT template_text, template_photo FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
+    // 🔥 AUTO-DETECT: cari DB yang punya nomor available
+    const dbWithNumbers = await new Promise((resolve) => {
+      db.get(`
+        SELECT site_id, COUNT(*) as total 
+        FROM master_contacts 
+        WHERE status = 'available' OR status IS NULL
+        GROUP BY site_id
+        ORDER BY total DESC
+        LIMIT 1
+      `, (err, row) => resolve(row));
     });
-    if (!site || !site.template_text) {
-      return res.status(400).json({ error: 'Database belum ada template. Hubungi admin.' });
+
+    console.log(`🔍 Cek DB available:`, dbWithNumbers);
+
+    if (!dbWithNumbers || dbWithNumbers.total === 0) {
+      // Debug log
+      db.all('SELECT site_id, COUNT(*) as total FROM master_contacts GROUP BY site_id', (err, rows) => {
+        console.log('📊 Nomor per DB (total):', JSON.stringify(rows));
+      });
+      return res.status(400).json({
+        error: 'Belum ada nomor tersedia. Tunggu admin upload.',
+        available_count: 0
+      });
     }
 
-    // ✅ LANGSUNG dari master_contacts
+    const siteId = dbWithNumbers.site_id;
+
+    // Auto-update device ke DB yang punya nomor
+    if (device.site_id !== siteId) {
+      await new Promise((resolve) => {
+        db.run('UPDATE devices SET site_id = ? WHERE id = ?', [siteId, deviceId], () => resolve());
+      });
+      console.log(`🔄 Auto-switch device ${deviceId} ke DB${siteId}`);
+    }
+
+    // Ambil template
+    const site = await new Promise((resolve) => {
+      db.get('SELECT id, name, template_text, template_photo FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
+    });
+
+    if (!site || !site.template_text) {
+      return res.status(400).json({
+        error: `Database "${site?.name || siteId}" belum ada template. Hubungi admin.`
+      });
+    }
+
+    // Ambil nomor
     const availablePhones = await new Promise((resolve) => {
       db.all(
         `SELECT phone FROM master_contacts 
-         WHERE site_id = ? 
-           AND (status = 'available' OR status IS NULL)
-         ORDER BY id ASC
-         LIMIT 10000`,
+         WHERE site_id = ? AND (status = 'available' OR status IS NULL)
+         ORDER BY id ASC LIMIT 10000`,
         [siteId],
         (err, rows) => resolve(rows || [])
       );
     });
 
-    if (availablePhones.length === 0) {
-      return res.status(400).json({
-        error: 'Database ini belum ada nomor tersedia. Tunggu admin upload.',
-        available_count: 0
-      });
-    }
-
     const recipients = availablePhones.map(r => r.phone).filter(p => p);
-    console.log(`📤 Blast DB${siteId}: ${recipients.length} nomor`);
+    console.log(`📤 Blast DB${siteId} (${site.name}): ${recipients.length} nomor`);
 
     const result = await wa.sendBroadcast(
       deviceId, site.template_text, recipients,
@@ -670,6 +701,33 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
     const { deviceId } = req.query;
     res.json(await wa.getBroadcastHistory(req.session.userId, deviceId || null));
   } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============================================
+// 🔍 DEBUG ENDPOINT
+// ============================================
+app.get('/api/debug/blast-status', requireAuth, (req, res) => {
+  db.all(`
+    SELECT 
+      site_id,
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'available' OR status IS NULL THEN 1 ELSE 0 END) as available,
+      SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+      SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+    FROM master_contacts
+    GROUP BY site_id
+  `, (err, numbers) => {
+    if (err) return res.status(500).json({ error: err.message });
+    db.all('SELECT id, name, template_text FROM sites', (err2, sites) => {
+      db.all('SELECT id, name, site_id, status FROM devices WHERE user_id = ?', [req.session.userId], (err3, devices) => {
+        res.json({
+          sites: sites || [],
+          numbers_by_site: numbers || [],
+          my_devices: devices || []
+        });
+      });
+    });
+  });
 });
 
 // ============================================
