@@ -307,7 +307,7 @@ class WhatsAppManager {
   }
 
   // ============================================
-  // CONTACTS
+  // CONTACTS (Baileys sync)
   // ============================================
   async loadContacts(deviceId, sock) {
     try {
@@ -373,89 +373,54 @@ class WhatsAppManager {
   }
 
   // ============================================
-  // LOCK (per database)
-  // ============================================
-  async lockNumbers(deviceId, phones, siteId = 1) {
-    if (!phones || phones.length === 0) return 0;
-    const cleanPhones = phones.map(p => this.cleanPhone(p)).filter(p => p);
-    if (cleanPhones.length === 0) return 0;
-    const BATCH_SIZE = 200;
-    let totalLocked = 0;
-    for (let i = 0; i < cleanPhones.length; i += BATCH_SIZE) {
-      const batch = cleanPhones.slice(i, i + BATCH_SIZE);
-      const placeholders = batch.map(() => '?').join(',');
-      const result = await new Promise((resolve) => {
-        db.run(`UPDATE contacts SET is_group = 2 WHERE phone IN (${placeholders}) AND device_id = ? AND site_id = ? AND is_group = 0`,
-          [...batch, deviceId, siteId],
-          function (err) { if (err) resolve(0); else resolve(this.changes); });
-      });
-      totalLocked += result;
-    }
-    return totalLocked;
-  }
-
-  async getLockedNumbers(deviceId, siteId = 1) {
-    return new Promise((resolve) => {
-      db.all('SELECT phone FROM contacts WHERE device_id = ? AND site_id = ? AND is_group = 2',
-        [deviceId, siteId], (err, rows) => resolve(rows || []));
-    });
-  }
-
-  async unlockNumbers(deviceId, siteId = 1) {
-    return new Promise((resolve) => {
-      db.run('UPDATE contacts SET is_group = 0 WHERE device_id = ? AND site_id = ? AND is_group = 2',
-        [deviceId, siteId], () => resolve());
-    });
-  }
-
-  // ============================================
-  // MARK AS SENT (update status, tidak hapus)
-  // ============================================
-  async markAsSent(phones, siteId = 1) {
-    if (!phones || phones.length === 0) return { marked: 0 };
-    const cleanPhones = phones.map(p => this.cleanPhone(p)).filter(p => p);
-    const BATCH_SIZE = 500;
-    let totalMarked = 0;
-
-    for (let i = 0; i < cleanPhones.length; i += BATCH_SIZE) {
-      const batch = cleanPhones.slice(i, i + BATCH_SIZE);
-      const placeholders = batch.map(() => '?').join(',');
-
-      const masterResult = await new Promise((resolve) => {
-        db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP 
-                WHERE phone IN (${placeholders}) AND site_id = ? AND (status = 'available' OR status IS NULL)`,
-          [...batch, siteId],
-          function (err) { if (err) resolve(0); else resolve(this.changes); });
-      });
-      totalMarked += masterResult;
-
-      await new Promise((resolve) => {
-        db.run(`DELETE FROM contacts WHERE phone IN (${placeholders}) AND site_id = ?`,
-          [...batch, siteId], () => resolve());
-      });
-    }
-
-    console.log(`✅ Mark-as-sent: ${totalMarked} nomor di DB${siteId}`);
-    return { marked: totalMarked };
-  }
-
-  // ============================================
-  // SEND BROADCAST
+  // 🔥 SEND BROADCAST — FIX: baca langsung dari master_contacts
   // ============================================
   async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null) {
     const sock = this.sockets.get(deviceId);
     if (!sock) throw new Error('Device not connected');
-    if (!recipients || recipients.length === 0) throw new Error('Tidak ada recipient');
+    if (!recipients || recipients.length === 0) throw new Error('Tidak ada nomor');
 
     console.log(`📤 Broadcast ${deviceId} → DB${siteId} → ${recipients.length} nomor${templatePhoto ? ' + foto' : ''}`);
 
-    const lockedCount = await this.lockNumbers(deviceId, recipients, siteId);
-    if (lockedCount === 0) throw new Error('Semua nomor sedang dipakai user lain.');
+    const cleanPhones = recipients.map(p => this.cleanPhone(p)).filter(p => p);
+    if (cleanPhones.length === 0) throw new Error('Tidak ada nomor valid');
 
-    const lockedRows = await this.getLockedNumbers(deviceId, siteId);
-    const finalRecipients = lockedRows.map(r => this.cleanPhone(r.phone)).filter(p => p);
+    // 🔒 Lock nomor: ubah status ke 'processing'
+    const BATCH_SIZE = 200;
+    for (let i = 0; i < cleanPhones.length; i += BATCH_SIZE) {
+      const batch = cleanPhones.slice(i, i + BATCH_SIZE);
+      const placeholders = batch.map(() => '?').join(',');
+      await new Promise((resolve) => {
+        db.run(
+          `UPDATE master_contacts SET status = 'processing' 
+           WHERE phone IN (${placeholders}) AND site_id = ? AND (status = 'available' OR status IS NULL)`,
+          [...batch, siteId],
+          () => resolve()
+        );
+      });
+    }
 
-    if (finalRecipients.length === 0) throw new Error('Tidak ada nomor yang bisa di-blast.');
+    // Ambil yang berhasil di-lock (status = 'processing')
+    const lockedPhones = [];
+    for (let i = 0; i < cleanPhones.length; i += BATCH_SIZE) {
+      const batch = cleanPhones.slice(i, i + BATCH_SIZE);
+      const placeholders = batch.map(() => '?').join(',');
+      const rows = await new Promise((resolve) => {
+        db.all(
+          `SELECT phone FROM master_contacts WHERE phone IN (${placeholders}) AND site_id = ? AND status = 'processing'`,
+          [...batch, siteId],
+          (err, rows) => resolve(rows || [])
+        );
+      });
+      rows.forEach(r => lockedPhones.push(r.phone));
+    }
+
+    const finalRecipients = lockedPhones;
+    console.log(`🔒 Locked ${finalRecipients.length} nomor`);
+
+    if (finalRecipients.length === 0) {
+      throw new Error('Semua nomor sedang dipakai user lain.');
+    }
 
     const broadcastId = await this.saveBroadcast(deviceId, message, finalRecipients.length, siteId);
 
@@ -466,20 +431,41 @@ class WhatsAppManager {
     for (const phone of finalRecipients) {
       try {
         const jid = phone + '@s.whatsapp.net';
+
         if (templatePhoto) {
           await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
         } else {
           await sock.sendMessage(jid, { text: message });
         }
+
         sent++;
         sentPhones.push(phone);
         await this.updateRecipientStatus(broadcastId, phone, 'sent');
         await this.addProfit(deviceId, userId, 1);
+
+        // ✅ Update status di master_contacts jadi 'sent'
+        await new Promise((resolve) => {
+          db.run(
+            `UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone = ? AND site_id = ?`,
+            [phone, siteId],
+            () => resolve()
+          );
+        });
+
         console.log(`✅ Sent ${sent}/${finalRecipients.length}: ${phone}`);
       } catch (error) {
         failed++;
         await this.updateRecipientStatus(broadcastId, phone, 'failed', error.message);
         console.error(`❌ Failed ${phone}:`, error.message);
+
+        // Balikin status jadi 'available' biar bisa dicoba lagi
+        await new Promise((resolve) => {
+          db.run(
+            `UPDATE master_contacts SET status = 'available' WHERE phone = ? AND site_id = ? AND status = 'processing'`,
+            [phone, siteId],
+            () => resolve()
+          );
+        });
       }
       await new Promise(r => setTimeout(r, actualDelay));
     }
@@ -487,16 +473,8 @@ class WhatsAppManager {
     await this.updateBroadcastStatus(broadcastId, sent, failed, 'completed');
     await this.updateDeviceStats(deviceId, sent);
 
-    if (sentPhones.length > 0) {
-      await this.markAsSent(sentPhones, siteId);
-    }
-
-    if (failed > 0) {
-      await this.unlockNumbers(deviceId, siteId);
-    }
-
-    console.log(`📊 Broadcast selesai: sent=${sent}, failed=${failed}`);
-    return { sent, failed, total: finalRecipients.length, marked: sentPhones.length };
+    console.log(`📊 Selesai: sent=${sent}, failed=${failed}`);
+    return { sent, failed, total: finalRecipients.length };
   }
 
   async addProfit(deviceId, userId, count) {
