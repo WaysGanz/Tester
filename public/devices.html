@@ -46,7 +46,6 @@
 
       <div class="devices-content">
 
-        <!-- ALERT PROFIL -->
         <div class="alert-profile">
           <div class="alert-profile-head">
             <i class="fas fa-exclamation-triangle"></i>
@@ -78,7 +77,6 @@
           </div>
         </div>
 
-        <!-- DATA BAR -->
         <div class="data-available-bar">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
@@ -93,7 +91,6 @@
           </button>
         </div>
 
-        <!-- PERF GRID -->
         <div class="perf-section-title">
           <i class="fas fa-chart-bar"></i> Ringkasan Performa Blast
         </div>
@@ -144,7 +141,6 @@
           </div>
         </div>
 
-        <!-- TOOLBAR -->
         <div class="device-toolbar">
           <div class="btn-group">
             <button class="btn btn-sm btn-secondary" onclick="filterDevices('all')">Semua</button>
@@ -383,7 +379,6 @@
       modal.classList.add('active');
 
       try {
-        // 1. Create device (site_id otomatis default 1, admin yang assign nanti)
         const name = 'Device-' + Date.now().toString(36).slice(-5);
         const createRes = await fetch('/api/devices', {
           method: 'POST', credentials: 'include',
@@ -396,7 +391,6 @@
         await loadDevices();
         await loadSummary();
 
-        // 2. Poll QR
         document.getElementById('qrStatus').textContent = 'Menunggu QR Code dari WhatsApp...';
         let qrData = null;
         for (let i = 0; i < 20; i++) {
@@ -633,7 +627,7 @@
     }
 
     // ============================================
-    // BLAST — KLIK START, AUTO BLAST
+    // 🔥 BLAST — Langsung panggil server, gak cek contacts lokal
     // ============================================
     async function blastAll(deviceId) {
       const device = allDevices.find(d => d.id === deviceId);
@@ -648,32 +642,19 @@
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
       try {
-        // 1. Ambil kontak device (otomatis dari site yang di-assign admin)
-        const res = await fetch(`/api/devices/${deviceId}/contacts`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Gagal memuat kontak');
-        const contacts = await res.json();
+        if (!confirm(`Mulai blast pake device ini?\nSpeed: ${speed}ms per pesan`)) return;
 
-        if (!contacts || contacts.length === 0) {
-          showToast('😕 Data nomor belum tersedia. Tunggu admin upload.', 'warning');
-          return;
-        }
-
-        const recipients = contacts.map(c => c.phone).filter(p => p);
-        if (recipients.length === 0) { showToast('Tidak ada nomor valid', 'error'); return; }
-
-        const estSec = Math.ceil((recipients.length * speed) / 1000);
-        const estimasi = estSec > 60 ? `${Math.ceil(estSec / 60)} menit` : `${estSec} detik`;
-
-        if (!confirm(`Mulai blast ke ${recipients.length} nomor?\nEstimasi: ~${estimasi}`)) return;
-
-        // 2. Kirim blast (server otomatis ambil template dari database)
+        // ✅ LANGSUNG panggil broadcast — server yang handle semua pengecekan
         const blastRes = await fetch('/api/broadcast', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ deviceId, speed })
         });
         const data = await blastRes.json();
-        if (!blastRes.ok) throw new Error(data.error || 'Gagal mengirim');
+
+        if (!blastRes.ok) {
+          throw new Error(data.error || 'Gagal mengirim');
+        }
 
         showToast(
           `✅ ${data.sent || 0} sukses, ${data.failed || 0} gagal`,
