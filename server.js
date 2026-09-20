@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -19,7 +20,7 @@ const PORT = process.env.PORT || 1901;
 app.set('trust proxy', 1);
 
 // ============================================
-// Folder Data & Session
+// FOLDER DATA & SESSION
 // ============================================
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/home/data' : __dirname;
 const SESSION_DIR = path.join(DATA_DIR, 'sessions-store');
@@ -34,7 +35,7 @@ try {
 }
 
 // ============================================
-// Email
+// EMAIL
 // ============================================
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -47,7 +48,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // ============================================
-// Middleware
+// MIDDLEWARE
 // ============================================
 app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -92,7 +93,7 @@ app.use(session(sessionOptions));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================
-// Helpers
+// HELPERS
 // ============================================
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -320,7 +321,7 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 // ============================================
-// DATABASES (SITES)
+// SITES / DATABASES
 // ============================================
 app.get('/api/sites', requireAuth, (req, res) => {
   db.all('SELECT * FROM sites WHERE is_active = 1 ORDER BY id ASC', (err, rows) => {
@@ -571,6 +572,34 @@ app.put('/api/devices/:id/mode', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ✅ USER bisa ganti database device sendiri
+app.put('/api/devices/:id/site', requireAuth, async (req, res) => {
+  try {
+    const { siteId } = req.body;
+    if (!siteId) return res.status(400).json({ error: 'Database wajib dipilih' });
+
+    const deviceId = req.params.id;
+    const device = await wa.getDevice(deviceId);
+    if (!device || device.user_id !== req.session.userId) {
+      return res.status(403).json({ error: 'Device tidak ditemukan atau bukan milik Anda' });
+    }
+
+    const site = await new Promise((resolve) => {
+      db.get('SELECT id, name FROM sites WHERE id = ? AND is_active = 1', [siteId], (err, row) => resolve(row));
+    });
+    if (!site) return res.status(400).json({ error: 'Database tidak valid' });
+
+    db.run('UPDATE devices SET site_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [siteId, deviceId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        db.run('DELETE FROM contacts WHERE device_id = ?', [deviceId], () => {
+          console.log(`🔄 Device ${deviceId} pindah ke DB${siteId} (${site.name})`);
+          res.json({ success: true, site_id: siteId, site_name: site.name });
+        });
+      });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   try {
     const device = await wa.getDevice(req.params.id);
@@ -579,85 +608,61 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/devices/:id/sync-contacts', requireAuth, async (req, res) => {
-  try {
-    const deviceId = req.params.id;
-    const userId = req.session.userId;
-    const device = await wa.getDevice(deviceId);
-    if (!device || device.user_id !== userId) return res.status(403).json({ error: 'Bukan milik Anda' });
-
-    const siteId = device.site_id || 1;
-
-    const totalMaster = await new Promise((resolve) => {
-      db.get(`SELECT COUNT(*) as total FROM master_contacts WHERE site_id = ? AND (status = 'available' OR status IS NULL)`,
-        [siteId], (err, row) => resolve(row?.total || 0));
-    });
-
-    if (totalMaster === 0) {
-      return res.json({ success: true, inserted: 0, total: 0, site_id: siteId, message: 'Database ini belum ada nomor' });
-    }
-
-    const inserted = await new Promise((resolve) => {
-      db.all(`SELECT phone, name FROM master_contacts WHERE site_id = ? AND (status = 'available' OR status IS NULL)`,
-        [siteId], (err, masters) => {
-          if (err || !masters || masters.length === 0) return resolve(0);
-          let pending = 0, inserted = 0;
-          const total = masters.length;
-          for (const mc of masters) {
-            db.get('SELECT id FROM contacts WHERE device_id = ? AND phone = ? AND site_id = ?',
-              [deviceId, mc.phone, siteId], (err2, row) => {
-                if (err2 || row) { pending++; if (pending === total) resolve(inserted); return; }
-                db.run('INSERT INTO contacts (device_id, site_id, name, phone, is_group) VALUES (?, ?, ?, ?, 0)',
-                  [deviceId, siteId, mc.name || mc.phone, mc.phone], (err3) => {
-                    if (!err3) inserted++;
-                    pending++;
-                    if (pending === total) resolve(inserted);
-                  });
-              });
-          }
-        });
-    });
-
-    console.log(`🔄 Sync ${deviceId} (DB${siteId}): +${inserted} dari ${totalMaster}`);
-    res.json({ success: true, inserted, total: totalMaster, site_id: siteId, message: inserted > 0 ? `${inserted} kontak baru` : 'Up-to-date' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// ============================================
-// BROADCAST
-// ============================================
+// ✅ FIX: Blast langsung dari master_contacts
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, speed } = req.body;
     if (!deviceId) return res.status(400).json({ error: 'Device ID wajib' });
 
     const device = await wa.getDevice(deviceId);
-    if (!device || device.user_id !== req.session.userId) return res.status(403).json({ error: 'Bukan milik Anda' });
+    if (!device || device.user_id !== req.session.userId) {
+      return res.status(403).json({ error: 'Device tidak ditemukan atau bukan milik Anda' });
+    }
 
     const siteId = device.site_id || 1;
+    const status = wa.getStatus(deviceId);
+    if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
 
     const site = await new Promise((resolve) => {
       db.get('SELECT template_text, template_photo FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
     });
+    if (!site || !site.template_text) {
+      return res.status(400).json({ error: 'Database belum ada template. Hubungi admin.' });
+    }
 
-    if (!site || !site.template_text) return res.status(400).json({ error: 'Database belum ada template. Hubungi admin.' });
-
-    const contacts = await new Promise((resolve) => {
-      db.all('SELECT phone FROM contacts WHERE device_id = ? AND site_id = ? AND is_group != 2',
-        [deviceId, siteId], (err, rows) => resolve(rows || []));
+    // ✅ LANGSUNG dari master_contacts
+    const availablePhones = await new Promise((resolve) => {
+      db.all(
+        `SELECT phone FROM master_contacts 
+         WHERE site_id = ? 
+           AND (status = 'available' OR status IS NULL)
+         ORDER BY id ASC
+         LIMIT 10000`,
+        [siteId],
+        (err, rows) => resolve(rows || [])
+      );
     });
 
-    if (contacts.length === 0) return res.status(400).json({ error: 'Belum ada nomor tersedia.' });
+    if (availablePhones.length === 0) {
+      return res.status(400).json({
+        error: 'Database ini belum ada nomor tersedia. Tunggu admin upload.',
+        available_count: 0
+      });
+    }
 
-    const recipients = contacts.map(c => c.phone).filter(p => p);
-    if (recipients.length === 0) return res.status(400).json({ error: 'Tidak ada nomor valid' });
+    const recipients = availablePhones.map(r => r.phone).filter(p => p);
+    console.log(`📤 Blast DB${siteId}: ${recipients.length} nomor`);
 
-    const status = wa.getStatus(deviceId);
-    if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
+    const result = await wa.sendBroadcast(
+      deviceId, site.template_text, recipients,
+      req.session.userId, speed || 1000, siteId, site.template_photo || null
+    );
 
-    const result = await wa.sendBroadcast(deviceId, site.template_text, recipients, req.session.userId, speed || 1000, siteId, site.template_photo || null);
     res.json(result);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    console.error('❌ Broadcast error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/broadcast/history', requireAuth, async (req, res) => {
@@ -758,7 +763,7 @@ app.get('/api/withdraw/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// ADMIN — DEVICE ASSIGNMENT
+// ADMIN — DEVICES
 // ============================================
 app.get('/api/admin/devices', requireAuth, requireAdmin, (req, res) => {
   db.all(`SELECT d.*, u.name as user_name, u.email as user_email, s.name as site_name
@@ -837,7 +842,7 @@ app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, (req, res) =>
 });
 
 // ============================================
-// TELEGRAM TEST
+// TELEGRAM
 // ============================================
 app.get('/api/telegram/test', requireAuth, requireAdmin, async (req, res) => {
   res.json(await telegram.testBot());
