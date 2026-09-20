@@ -3,7 +3,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* ============================================
-   THEME — BLUE GLOW
+   THEME VARIABLES
    ============================================ */
 :root {
   --primary: #3B82F6;
@@ -86,7 +86,6 @@ body.login-page {
   overflow: hidden;
 }
 
-/* Branding side — hidden di mobile */
 .login-side {
   display: none !important;
   visibility: hidden !important;
@@ -95,7 +94,6 @@ body.login-page {
   overflow: hidden !important;
 }
 
-/* Form side */
 .login-main {
   display: flex;
   align-items: center;
@@ -130,6 +128,7 @@ body.login-page {
   z-index: 1;
   margin: auto;
 }
+
 .register-container { max-width: 480px; }
 
 .login-box {
@@ -316,7 +315,6 @@ body.login-page {
 /* Desktop login */
 @media (min-width: 900px) {
   body.login-page { position: relative; height: 100vh; }
-
   .login-wrapper { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; }
 
   .login-side {
@@ -408,7 +406,6 @@ body.login-page {
    ============================================ */
 .app-layout { display: flex; height: 100vh; background: var(--bg-main); }
 
-/* Sidebar */
 .sidebar {
   width: 240px;
   background: var(--bg-sidebar);
@@ -500,7 +497,6 @@ body.login-page {
 .user-badge { font-size: 13px; display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-weight: 400; }
 .user-badge i { font-size: 14px; color: var(--primary); filter: drop-shadow(0 0 6px var(--primary-glow)); }
 
-/* Main content */
 .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-main); }
 
 .header {
@@ -547,7 +543,6 @@ body.login-page {
 }
 .btn-refresh:hover { background: rgba(59, 130, 246, 0.15); box-shadow: 0 0 20px var(--primary-glow); transform: rotate(180deg); }
 
-/* Content */
 .dashboard-content,
 .devices-content,
 .wallet-content,
@@ -607,7 +602,6 @@ body.login-page {
 .stat-card .number { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-main); line-height: 1.1; }
 .stat-card .label { font-size: 12px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 6px; }
 
-/* Alert banner */
 .alert-banner {
   background: rgba(251, 191, 36, 0.08);
   color: #FCD34D;
@@ -622,7 +616,6 @@ body.login-page {
 }
 .alert-banner i { color: var(--warning); font-size: 18px; }
 
-/* Card */
 .card {
   background: var(--bg-card);
   border-radius: var(--radius-md);
@@ -637,7 +630,6 @@ body.login-page {
 .card h3 i { color: var(--primary); font-size: 18px; filter: drop-shadow(0 0 6px var(--primary-glow)); }
 .card h3 small { font-weight: 400; color: var(--text-secondary); font-size: 13px; }
 
-/* Activity */
 .activity-list .activity-item {
   display: flex;
   justify-content: space-between;
@@ -652,7 +644,7 @@ body.login-page {
 
 .empty { color: var(--text-muted); text-align: center; padding: 24px 0; font-style: italic; }
 
-/* Welcome banner */
+/* Welcome */
 .welcome-banner {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(30, 64, 175, 0.08));
   border: 1px solid var(--border-glow);
@@ -702,13 +694,14 @@ body.login-page {
 .badge-status.rate { background: rgba(251, 191, 36, 0.1); color: var(--warning); border-color: rgba(251, 191, 36, 0.3); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-/* Alert profile */
+/* Alert Profile */
 .alert-profile {
   background: rgba(251, 191, 36, 0.06);
   border: 1px solid rgba(251, 191, 36, 0.25);
   border-radius: var(--radius-md);
   padding: 18px 22px;
   margin-bottom: 22px;
+  overflow: hidden;
 }
 .alert-profile-head {
   display: flex;
@@ -721,7 +714,7 @@ body.login-page {
   color: var(--warning);
 }
 .alert-profile-head i { font-size: 18px; }
-.alert-profile-body p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.alert-profile-body p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); word-wrap: break-word; }
 .alert-profile-sub {
   margin-top: 12px;
   padding: 10px 14px;
@@ -734,48 +727,90 @@ body.login-page {
   font-size: 13px;
   border: 1px solid rgba(251, 191, 36, 0.15);
 }
-.alert-profile-sub a { color: var(--primary); font-weight: 600; text-decoration: none; }
+.alert-profile-sub a { color: var(--primary); font-weight: 600; text-decoration: none; word-break: break-all; }
 .alert-profile-sub a:hover { text-decoration: underline; }
 
-.profile-action-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-.avatar-preview {
-  width: 44px; height: 44px;
+/* ============================================
+   PROFILE TEMPLATE BOX (Foto + Download)
+   ============================================ */
+.profile-template-box {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  margin-top: 14px;
+  background: rgba(6, 8, 15, 0.4);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.profile-template-preview {
+  flex-shrink: 0;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 15px var(--primary-glow-soft);
-  flex-shrink: 0;
+  border: 3px solid var(--warning);
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.4);
+  background: #1a1a1a;
 }
-.img-avatar { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.btn-primary-outline {
-  padding: 8px 16px;
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid var(--warning);
+.profile-template-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-template-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.profile-template-title {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--warning);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  display: inline-flex;
+  margin-bottom: 6px;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
+  gap: 8px;
 }
-.btn-primary-outline:hover { background: rgba(251, 191, 36, 0.25); }
 
-.badge-name {
-  padding: 8px 16px;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid var(--border-glow);
-  color: var(--primary);
-  border-radius: var(--radius-sm);
+.profile-template-title i { font-size: 16px; }
+
+.profile-template-desc {
   font-size: 13px;
-  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.btn-download-photo {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--warning), #D97706);
+  color: #0a0e0d;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 15px rgba(251, 191, 36, 0.3);
 }
+
+.btn-download-photo:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(251, 191, 36, 0.5);
+}
+
+.btn-download-photo:active { transform: translateY(0); }
+.btn-download-photo i { font-size: 15px; }
 
 /* Connect bar */
 .connect-device-bar {
@@ -1451,6 +1486,30 @@ body.login-page {
   .telegram-chat { right: 16px; bottom: 16px; width: 52px; height: 52px; justify-content: center; padding: 0; }
   .telegram-chat span { display: none; }
   .telegram-chat i { font-size: 22px; }
+
+  /* Profile template mobile */
+  .profile-template-box {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 14px;
+  }
+  .profile-template-preview {
+    width: 100px;
+    height: 100px;
+  }
+  .profile-template-info {
+    text-align: center;
+    width: 100%;
+    min-width: 0;
+  }
+  .profile-template-title {
+    justify-content: center;
+  }
+  .btn-download-photo {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ============================================
@@ -1460,117 +1519,4 @@ button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 .btn:focus-visible, .nav-item:focus-visible, .form-control:focus-visible, a:focus-visible {
   outline: 3px solid var(--primary-glow);
   outline-offset: 2px;
-}
-
-/* ============================================
-   PROFILE TEMPLATE BOX (Foto + Download)
-   ============================================ */
-.profile-template-box {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 16px;
-  margin-top: 14px;
-  background: rgba(10, 14, 13, 0.4);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: var(--radius-md);
-  flex-wrap: wrap;
-}
-
-.profile-template-preview {
-  flex-shrink: 0;
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid var(--warning);
-  box-shadow: 0 0 25px rgba(251, 191, 36, 0.4);
-  background: #1a1a1a;
-}
-
-.profile-template-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.profile-template-info {
-  flex: 1;
-  min-width: 200px;
-}
-
-.profile-template-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--warning);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-template-title i {
-  font-size: 16px;
-}
-
-.profile-template-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.btn-download-photo {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, var(--warning), #D97706);
-  color: #0a0e0d;
-  font-weight: 700;
-  font-size: 14px;
-  text-decoration: none;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 3px 15px rgba(251, 191, 36, 0.3);
-}
-
-.btn-download-photo:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(251, 191, 36, 0.5);
-}
-
-.btn-download-photo:active {
-  transform: translateY(0);
-}
-
-.btn-download-photo i {
-  font-size: 15px;
-}
-
-/* Mobile */
-@media (max-width: 480px) {
-  .profile-template-box {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-  .profile-template-preview {
-    width: 100px;
-    height: 100px;
-  }
-  .profile-template-info {
-    text-align: center;
-    width: 100%;
-  }
-  .profile-template-title {
-    justify-content: center;
-  }
-  .btn-download-photo {
-    width: 100%;
-    justify-content: center;
-  }
 }
