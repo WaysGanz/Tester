@@ -2,37 +2,44 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MarketingCuan - Daftar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06080f">
+  <title>Daftar — SewaWA</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="login-page">
 
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
   <div class="login-wrapper">
-    <!-- Sisi Kiri: Branding (Desktop Only) -->
     <div class="login-side">
       <div class="login-side-content">
-        <i class="fab fa-whatsapp login-side-logo"></i>
-        <h1>Marketing<span>Cuan</span></h1>
-        <p>Daftar sekarang & mulai hasilkan cuan dari WhatsApp</p>
+        <div class="brand-logo-big">
+          <i class="fab fa-whatsapp"></i>
+        </div>
+        <h1>Sewa<span>WA</span></h1>
+        <p class="brand-tagline">Platform Broadcast WhatsApp #1</p>
         <ul class="login-side-features">
-          <li><i class="fas fa-rocket"></i> Gratis daftar akun</li>
-          <li><i class="fas fa-coins"></i> Rp1.100 per chat terkirim</li>
-          <li><i class="fas fa-gift"></i> Bonus Rp50 per referral</li>
-          <li><i class="fas fa-wallet"></i> Withdraw ke GoPay/OVO/Dana/Bank</li>
+          <li><i class="fas fa-rocket"></i> <span>Gratis daftar akun</span></li>
+          <li><i class="fas fa-coins"></i> <span>Rp 1.100 per chat terkirim</span></li>
+          <li><i class="fas fa-gift"></i> <span>Bonus Rp 50 per referral</span></li>
+          <li><i class="fas fa-wallet"></i> <span>Withdraw mudah & cepat</span></li>
         </ul>
       </div>
     </div>
 
-    <!-- Sisi Kanan: Form Register -->
     <div class="login-main">
       <div class="login-container register-container">
         <div class="login-box register-box">
           <div class="login-brand">
-            <i class="fab fa-whatsapp"></i>
-            <span>Marketing<span class="highlight">Cuan</span></span>
-            <small>Daftar Akun Baru</small>
+            <div class="brand-logo">
+              <i class="fab fa-whatsapp"></i>
+            </div>
+            <h1 class="brand-title">Sewa<span>WA</span></h1>
+            <p class="brand-subtitle">Daftar Akun Baru</p>
           </div>
 
           <form id="registerForm" class="login-form register-form">
@@ -42,43 +49,52 @@
                 <h3>Data Akun</h3>
               </div>
               <div class="form-group">
-                <label><i class="fas fa-envelope"></i> Email</label>
-                <input type="email" id="registerEmail" class="form-control" placeholder="nama@domain.com" autocomplete="email">
+                <label>Email</label>
+                <div class="input-wrap">
+                  <i class="fas fa-envelope"></i>
+                  <input type="email" id="registerEmail" placeholder="nama@domain.com" autocomplete="email">
+                </div>
               </div>
               <div class="form-group">
-                <label><i class="fas fa-user"></i> Username</label>
-                <input type="text" id="registerUsername" class="form-control" placeholder="username (5-20 karakter)" autocomplete="username">
-                <small class="help-text">Akan digunakan untuk login alternatif</small>
+                <label>Username</label>
+                <div class="input-wrap">
+                  <i class="fas fa-user"></i>
+                  <input type="text" id="registerUsername" placeholder="username (5-20 karakter)" autocomplete="username">
+                </div>
+                <small class="help-text">Bisa dipakai untuk login alternatif</small>
               </div>
-              <button type="button" class="btn btn-primary btn-block" onclick="nextStep(1)">
-                Lanjut <i class="fas fa-arrow-right"></i>
+              <button type="button" class="btn-login" onclick="nextStep()">
+                <span>Lanjut</span>
+                <i class="fas fa-arrow-right"></i>
               </button>
             </div>
 
             <div class="register-step" id="step2" style="display: none;">
               <div class="step-header">
                 <div class="step-number">2</div>
-                <h3>Data Pribadi & Keamanan</h3>
+                <h3>Data Pribadi</h3>
               </div>
               <div class="form-group">
-                <label><i class="fas fa-phone"></i> Nomor WhatsApp</label>
-                <input type="tel" id="registerPhone" class="form-control" placeholder="628xxxxxxxxxx" autocomplete="tel">
-                <small class="help-text">Format: 628xxxxxxxxxx (dengan kode negara)</small>
+                <label>Nomor WhatsApp</label>
+                <div class="input-wrap">
+                  <i class="fas fa-phone"></i>
+                  <input type="tel" id="registerPhone" placeholder="628xxxxxxxxxx" autocomplete="tel">
+                </div>
+                <small class="help-text">Format: 628xxxxxxxxxx</small>
               </div>
               <div class="form-group">
-                <label><i class="fas fa-lock"></i> Password</label>
-                <input type="password" id="registerPassword" class="form-control" placeholder="••••••••••" autocomplete="new-password">
-                <small class="help-text">Minimal 8 karakter, campurkan huruf & angka</small>
+                <label>Password</label>
+                <div class="input-wrap">
+                  <i class="fas fa-lock"></i>
+                  <input type="password" id="registerPassword" placeholder="Minimal 8 karakter" autocomplete="new-password">
+                </div>
               </div>
               <div class="form-group">
-                <label><i class="fas fa-lock"></i> Konfirmasi Password</label>
-                <input type="password" id="registerPasswordConfirm" class="form-control" placeholder="••••••••••" autocomplete="new-password">
-              </div>
-
-              <div class="form-group" style="margin-top: 8px;">
-                <label class="checkbox-label" style="font-size: 14px; font-weight: 500;">
-                  <input type="checkbox" id="humanCheckRegister" checked> Aku manusia
-                </label>
+                <label>Konfirmasi Password</label>
+                <div class="input-wrap">
+                  <i class="fas fa-lock"></i>
+                  <input type="password" id="registerPasswordConfirm" placeholder="Ulangi password" autocomplete="new-password">
+                </div>
               </div>
 
               <div class="password-strength" id="passwordStrength">
@@ -86,12 +102,18 @@
                 <span class="strength-text" id="strengthText">Kekuatan password</span>
               </div>
 
-              <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button type="button" class="btn btn-secondary btn-block" onclick="prevStep(2)">
+              <label class="checkbox-label" style="margin-bottom:14px;">
+                <input type="checkbox" id="humanCheckRegister" checked>
+                <span>Aku manusia</span>
+              </label>
+
+              <div style="display:flex;gap:10px;">
+                <button type="button" class="btn-secondary" onclick="prevStep()" style="flex:1;">
                   <i class="fas fa-arrow-left"></i> Kembali
                 </button>
-                <button type="submit" class="btn btn-primary btn-block" id="registerBtn">
-                  Daftar <i class="fas fa-check"></i>
+                <button type="submit" class="btn-login" id="registerBtn" style="flex:2;">
+                  <span>Daftar</span>
+                  <i class="fas fa-check"></i>
                 </button>
               </div>
             </div>
@@ -101,6 +123,8 @@
             <p>Sudah punya akun? <a href="/">Masuk di sini</a></p>
           </div>
         </div>
+
+        <p class="copyright-footer">© 2026 SewaWA. All rights reserved.</p>
       </div>
     </div>
   </div>
@@ -110,62 +134,40 @@
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const referralRef = urlParams.get('ref');
-    console.log('🔗 Referral code from URL:', referralRef);
 
     document.getElementById('registerPassword').addEventListener('input', function() {
-      const password = this.value;
+      const pwd = this.value;
       let strength = 0;
-      let text = '';
+      if (pwd.length >= 8) strength += 25;
+      if (pwd.length >= 12) strength += 25;
+      if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength += 25;
+      if (/[0-9]/.test(pwd)) strength += 25;
 
-      if (password.length >= 8) strength += 25;
-      if (password.length >= 12) strength += 25;
-      if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25;
-      if (/[0-9]/.test(password)) strength += 25;
+      const fill = document.getElementById('strengthFill');
+      const text = document.getElementById('strengthText');
 
-      if (strength <= 25) {
-        text = 'Lemah';
-        document.getElementById('strengthFill').style.backgroundColor = '#EF4444';
-      } else if (strength <= 50) {
-        text = 'Cukup';
-        document.getElementById('strengthFill').style.backgroundColor = '#F59E0B';
-      } else if (strength <= 75) {
-        text = 'Baik';
-        document.getElementById('strengthFill').style.backgroundColor = '#3B82F6';
-      } else {
-        text = 'Sangat Kuat';
-        document.getElementById('strengthFill').style.backgroundColor = '#10B981';
-      }
+      if (strength <= 25) { text.textContent = 'Lemah'; fill.style.background = '#EF4444'; }
+      else if (strength <= 50) { text.textContent = 'Cukup'; fill.style.background = '#F59E0B'; }
+      else if (strength <= 75) { text.textContent = 'Baik'; fill.style.background = '#3B82F6'; }
+      else { text.textContent = 'Sangat Kuat'; fill.style.background = '#10B981'; }
 
-      document.getElementById('strengthFill').style.width = strength + '%';
-      document.getElementById('strengthText').textContent = text;
+      fill.style.width = strength + '%';
     });
 
-    function nextStep(step) {
-      const email = document.getElementById('registerEmail')?.value?.trim();
-      const username = document.getElementById('registerUsername')?.value?.trim();
+    function nextStep() {
+      const email = document.getElementById('registerEmail').value.trim();
+      const username = document.getElementById('registerUsername').value.trim();
 
-      if (!email || !username) {
-        showToast('Email dan username wajib diisi', 'error');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showToast('Email tidak valid', 'error');
-        return;
-      }
-      if (username.length < 5 || username.length > 20) {
-        showToast('Username harus 5-20 karakter', 'error');
-        return;
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        showToast('Username hanya boleh huruf, angka, dan underscore', 'error');
-        return;
-      }
+      if (!email || !username) return showToast('Email dan username wajib diisi', 'error');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Email tidak valid', 'error');
+      if (username.length < 5 || username.length > 20) return showToast('Username 5-20 karakter', 'error');
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) return showToast('Username hanya huruf, angka, underscore', 'error');
 
       document.getElementById('step1').style.display = 'none';
       document.getElementById('step2').style.display = 'block';
     }
 
-    function prevStep(step) {
+    function prevStep() {
       document.getElementById('step1').style.display = 'block';
       document.getElementById('step2').style.display = 'none';
     }
@@ -174,67 +176,41 @@
       e.preventDefault();
 
       const humanCheck = document.getElementById('humanCheckRegister');
-      if (!humanCheck.checked) {
-        showToast('Centang "Aku manusia" untuk melanjutkan.', 'error');
-        return;
-      }
+      if (!humanCheck.checked) return showToast('Centang "Aku manusia"', 'error');
 
       const email = document.getElementById('registerEmail').value.trim();
       const username = document.getElementById('registerUsername').value.trim();
       const phone = document.getElementById('registerPhone').value.trim();
       const password = document.getElementById('registerPassword').value;
-      const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+      const confirm = document.getElementById('registerPasswordConfirm').value;
 
-      if (!email || !username || !phone || !password) {
-        showToast('Semua field wajib diisi', 'error');
-        return;
-      }
-      if (password !== passwordConfirm) {
-        showToast('Password tidak cocok', 'error');
-        return;
-      }
-      if (password.length < 8) {
-        showToast('Password minimal 8 karakter', 'error');
-        return;
-      }
-      if (!/^\d{10,15}$/.test(phone)) {
-        showToast('Format nomor WhatsApp tidak valid (628xxxxxxxxxx)', 'error');
-        return;
-      }
+      if (!email || !username || !phone || !password) return showToast('Semua field wajib diisi', 'error');
+      if (password !== confirm) return showToast('Password tidak cocok', 'error');
+      if (password.length < 8) return showToast('Password minimal 8 karakter', 'error');
+      if (!/^\d{10,15}$/.test(phone)) return showToast('Format nomor WhatsApp tidak valid', 'error');
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendaftarkan...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Mendaftarkan...</span>';
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
-
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email, username, phone, password, ref: referralRef }),
-          signal: controller.signal
+          body: JSON.stringify({ email, username, phone, password, ref: referralRef })
         });
-        clearTimeout(timeoutId);
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Pendaftaran gagal');
 
-        showToast('✅ Akun berhasil dibuat! Silakan login.', 'success');
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        showToast('✅ Akun berhasil dibuat!', 'success');
+        setTimeout(() => { window.location.href = '/'; }, 1500);
       } catch (err) {
-        if (err.name === 'AbortError') {
-          showToast('⏱️ Server timeout. Coba lagi.', 'error');
-        } else {
-          showToast(err.message, 'error');
-        }
+        showToast(err.message, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = 'Daftar <i class="fas fa-check"></i>';
+        btn.innerHTML = '<span>Daftar</span><i class="fas fa-check"></i>';
       }
     });
 
@@ -244,9 +220,9 @@
       toast.className = `toast ${type}`;
       toast.textContent = msg;
       container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
       setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
+        toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
       }, 4000);
     }
