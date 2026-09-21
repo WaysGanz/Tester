@@ -604,7 +604,7 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// BROADCAST — Auto-fallback + Notif
+// BROADCAST
 // ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
@@ -1010,6 +1010,28 @@ app.get('/reset-password', (req, res) => {
 });
 
 app.use((req, res) => res.redirect('/'));
+
+// ============================================
+// AUTO-RELEASE nomor nyangkut di processing > 10 menit
+// ============================================
+setInterval(() => {
+  db.run(
+    "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
+    function(err) {
+      if (!err && this.changes > 0) {
+        console.log('🧹 Auto-release ' + this.changes + ' nomor nyangkut (stale > 10 menit)');
+      }
+    }
+  );
+}, 2 * 60 * 1000);
+
+// Jalanin sekali saat startup juga
+db.run(
+  "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
+  function(err) {
+    if (!err && this.changes > 0) console.log('🧹 Startup: release ' + this.changes + ' nomor nyangkut');
+  }
+);
 
 // ============================================
 // EXPORT & LISTEN
