@@ -1,10 +1,10 @@
 const bcrypt = require('bcryptjs');
 const db = require('./database');
 
-const email = 'ways@admin.com';
+const email = 'sewawa@admin.com';
 const username = 'admin';
 const phone = '081234567890';
-const password = 'ways123';
+const password = 'sewawa12';
 
 const hash = bcrypt.hashSync(password, 10);
 
