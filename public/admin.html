@@ -44,8 +44,45 @@
 
       <div class="admin-content">
 
+        <!-- PENGATURAN GLOBAL -->
+        <div class="card fade-in" style="margin-bottom:20px;">
+          <h3>
+            <i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD
+          </h3>
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
+            Atur harga per pesan sukses & minimal withdraw untuk semua user.
+          </p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div class="form-field">
+              <label>Rate per Pesan Sukses (Rp)</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-coins" style="color:#FBBF24;"></i>
+                <input type="number" id="setPricePerChat" placeholder="1100" min="0">
+              </div>
+              <small class="help-text">Rate yang dibayarkan ke user tiap pesan sukses</small>
+            </div>
+            <div class="form-field">
+              <label>Minimum Withdraw (Rp)</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-hand-holding-usd" style="color:#34D399;"></i>
+                <input type="number" id="setMinWithdraw" placeholder="50000" min="0">
+              </div>
+              <small class="help-text">Minimal saldo yang bisa ditarik user</small>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="saveSettings()">
+              <i class="fas fa-save"></i> Simpan Pengaturan
+            </button>
+            <button class="btn btn-secondary" onclick="loadSettings()">
+              <i class="fas fa-sync"></i> Reload
+            </button>
+            <span id="settingsStatus" style="font-size:13px; color:#8B97AB; align-self:center; margin-left:auto;"></span>
+          </div>
+        </div>
+
         <!-- KELOLA DATABASE -->
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card fade-in" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-database"></i> Kelola Database
             <button class="btn btn-sm btn-success" onclick="openSiteModal()" style="margin-left:auto;">
@@ -61,7 +98,7 @@
         </div>
 
         <!-- IMPORT KONTAK -->
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-upload"></i> Import Kontak Massal</h3>
           <form id="importForm">
             <div class="form-field" style="margin-bottom:14px;">
@@ -88,7 +125,7 @@
         </div>
 
         <!-- ASSIGN DEVICE -->
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card fade-in" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-mobile-alt"></i> Assign Device ke Database
             <button class="btn btn-sm btn-info" onclick="loadDevices()" style="margin-left:auto;">
@@ -101,13 +138,13 @@
         </div>
 
         <!-- WITHDRAW PENDING -->
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Withdraw Pending</h3>
           <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan</p></div>
         </div>
 
         <!-- DAFTAR USER -->
-        <div class="card">
+        <div class="card fade-in">
           <h3>
             <i class="fas fa-users"></i> Daftar User
             <button class="btn btn-sm btn-info" onclick="loadUsers()" style="margin-left:auto;">
@@ -187,8 +224,8 @@
 
         <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
           <button class="btn btn-sm btn-secondary" onclick="loadContacts('all')" id="filterAll">Semua</button>
-          <button class="btn btn-sm btn-secondary" onclick="loadContacts('available')" id="filterAvailable">⏳ Tersedia</button>
-          <button class="btn btn-sm btn-secondary" onclick="loadContacts('sent')" id="filterSent">✅ Terkirim</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadContacts('available')" id="filterAvailable"><i class="fas fa-clock"></i> Tersedia</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadContacts('sent')" id="filterSent"><i class="fas fa-check-circle"></i> Terkirim</button>
           <input type="text" id="contactSearch" class="form-control" placeholder="Cari nomor..." style="flex:1; min-width:150px; padding:8px 12px; font-size:13px;">
           <button class="btn btn-sm btn-primary" onclick="loadContacts(currentContactFilter)"><i class="fas fa-search"></i></button>
         </div>
@@ -245,6 +282,52 @@
       const val = document.getElementById('importNumbers').value;
       const lines = val.split('\n').filter(l => l.trim() !== '' && /^[0-9]/.test(l.trim()));
       document.getElementById('importCount').textContent = lines.length + ' nomor';
+    }
+
+    // ============================================
+    // SETTINGS — Rate & Min WD
+    // ============================================
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/admin/settings', { credentials: 'include' });
+        if (!res.ok) throw new Error('Gagal load settings');
+        const d = await res.json();
+        document.getElementById('setPricePerChat').value = d.price_per_chat || 1100;
+        document.getElementById('setMinWithdraw').value = d.min_withdraw || 50000;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('setPricePerChat').value = 1100;
+        document.getElementById('setMinWithdraw').value = 50000;
+      }
+    }
+
+    async function saveSettings() {
+      const price_per_chat = document.getElementById('setPricePerChat').value.trim();
+      const min_withdraw = document.getElementById('setMinWithdraw').value.trim();
+      const status = document.getElementById('settingsStatus');
+
+      if (!price_per_chat || parseInt(price_per_chat) < 0) return showToast('Rate tidak valid', 'error');
+      if (!min_withdraw || parseInt(min_withdraw) < 0) return showToast('Min WD tidak valid', 'error');
+
+      status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            price_per_chat: parseInt(price_per_chat),
+            min_withdraw: parseInt(min_withdraw)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal simpan');
+        status.innerHTML = '<span style="color:#34D399;">✅ Tersimpan</span>';
+        showToast('✅ Pengaturan tersimpan!', 'success');
+        setTimeout(() => { status.innerHTML = ''; }, 3000);
+      } catch (e) {
+        status.innerHTML = '<span style="color:#F87171;">❌ Gagal</span>';
+        showToast('❌ ' + e.message, 'error');
+      }
     }
 
     // SITES
@@ -431,11 +514,11 @@
             '<div style="font-size:18px; font-weight:800; color:#3B82F6;">' + (s ? (s.total_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(52,211,153,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">✅ TERKIRIM</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERKIRIM</div>' +
             '<div style="font-size:18px; font-weight:800; color:#34D399;">' + (s ? (s.sent_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(251,191,36,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">⏳ TERSEDIA</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERSEDIA</div>' +
             '<div style="font-size:18px; font-weight:800; color:#FBBF24;">' + (s ? (s.available_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>';
 
@@ -448,8 +531,8 @@
         tbody.innerHTML = data.data.map((c, i) => {
           const isSent = c.status === 'sent';
           const badge = isSent
-            ? '<span style="color:#34D399; font-size:11px;">✅ Terkirim</span>'
-            : '<span style="color:#FBBF24; font-size:11px;">⏳ Tersedia</span>';
+            ? '<span style="color:#34D399; font-size:11px;"><i class="fas fa-check-circle"></i> Terkirim</span>'
+            : '<span style="color:#FBBF24; font-size:11px;"><i class="fas fa-clock"></i> Tersedia</span>';
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:6px;"><input type="checkbox" class="contact-checkbox" value="' + c.phone + '"></td>' +
             '<td style="padding:6px;">' + ((data.page - 1) * data.limit + i + 1) + '</td>' +
@@ -629,6 +712,7 @@
 
     // INIT
     document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
       loadSites();
       loadDevices();
       loadPendingWithdrawals();
