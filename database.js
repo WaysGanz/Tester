@@ -6,25 +6,22 @@ const bcrypt = require('bcryptjs');
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/home/data' : __dirname;
 
 try {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log('✅ DATA_DIR dibuat:', DATA_DIR);
-  } else {
-    console.log('✅ DATA_DIR sudah ada:', DATA_DIR);
-  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  console.log('✅ DATA_DIR:', DATA_DIR);
 } catch (e) {
-  console.error('❌ Gagal bikin DATA_DIR:', e.message);
+  console.error('❌ DATA_DIR error:', e.message);
 }
 
 const dbPath = path.join(DATA_DIR, 'database.db');
-console.log('📁 Database path:', dbPath);
+console.log('📁 DB path:', dbPath);
 
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error('❌ Gagal buka database:', err.message);
-  else console.log('✅ Database terbuka:', dbPath);
+  if (err) console.error('❌ DB error:', err.message);
+  else console.log('✅ DB opened:', dbPath);
 });
 
 db.serialize(() => {
+  // USERS
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
@@ -40,6 +37,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // SITES
   db.run(`CREATE TABLE IF NOT EXISTS sites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
@@ -50,15 +48,7 @@ db.serialize(() => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS referrals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    referrer_id INTEGER,
-    referred_id INTEGER,
-    bonus_amount INTEGER DEFAULT 50,
-    status TEXT DEFAULT 'completed',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
+  // DEVICES
   db.run(`CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY,
     user_id INTEGER,
@@ -73,6 +63,18 @@ db.serialize(() => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // MASTER CONTACTS
+  db.run(`CREATE TABLE IF NOT EXISTS master_contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_id INTEGER NOT NULL,
+    phone TEXT NOT NULL,
+    name TEXT,
+    status TEXT DEFAULT 'available',
+    sent_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // CONTACTS
   db.run(`CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id TEXT,
@@ -83,6 +85,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // BROADCASTS
   db.run(`CREATE TABLE IF NOT EXISTS broadcasts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id TEXT,
@@ -104,6 +107,7 @@ db.serialize(() => {
     sent_at DATETIME
   )`);
 
+  // TRANSACTIONS
   db.run(`CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -114,9 +118,12 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // WALLETS — dengan telegram_id & method
   db.run(`CREATE TABLE IF NOT EXISTS user_wallets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE,
+    telegram_id TEXT,
+    method TEXT,
     gopay_phone TEXT,
     ovo_phone TEXT,
     dana_phone TEXT,
@@ -126,6 +133,7 @@ db.serialize(() => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // WITHDRAWALS
   db.run(`CREATE TABLE IF NOT EXISTS withdrawals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -139,22 +147,24 @@ db.serialize(() => {
     processed_at DATETIME
   )`);
 
+  // SETTINGS
   db.run(`CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS master_contacts (
+  // REFERRALS
+  db.run(`CREATE TABLE IF NOT EXISTS referrals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_id INTEGER NOT NULL,
-    phone TEXT NOT NULL,
-    name TEXT,
-    status TEXT DEFAULT 'available',
-    sent_at DATETIME,
+    referrer_id INTEGER,
+    referred_id INTEGER,
+    bonus_amount INTEGER DEFAULT 50,
+    status TEXT DEFAULT 'completed',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // PASSWORD RESETS
   db.run(`CREATE TABLE IF NOT EXISTS password_resets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL,
@@ -164,7 +174,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // ===== MIGRATION =====
+  // MIGRATIONS
   const migrations = [
     { table: 'users', column: 'telegram_username', type: 'TEXT' },
     { table: 'master_contacts', column: 'site_id', type: 'INTEGER DEFAULT 1' },
@@ -172,7 +182,9 @@ db.serialize(() => {
     { table: 'master_contacts', column: 'sent_at', type: 'DATETIME' },
     { table: 'contacts', column: 'site_id', type: 'INTEGER DEFAULT 1' },
     { table: 'broadcasts', column: 'site_id', type: 'INTEGER DEFAULT 1' },
-    { table: 'devices', column: 'site_id', type: 'INTEGER DEFAULT 1' }
+    { table: 'devices', column: 'site_id', type: 'INTEGER DEFAULT 1' },
+    { table: 'user_wallets', column: 'telegram_id', type: 'TEXT' },
+    { table: 'user_wallets', column: 'method', type: 'TEXT' }
   ];
 
   migrations.forEach(m => {
@@ -186,29 +198,29 @@ db.serialize(() => {
     });
   });
 
-  // ===== SEED =====
+  // SEED
   db.get('SELECT id FROM users WHERE email = ?', ['admin@marketingcuan.com'], (err, row) => {
     if (!row) {
       const hash = bcrypt.hashSync('admin123', 10);
-      const referralCode = 'ADMIN' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const refCode = 'ADMIN' + Math.random().toString(36).substring(2, 8).toUpperCase();
       db.run('INSERT INTO users (id, email, password, name, phone, referral_code, balance, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [1, 'admin@marketingcuan.com', hash, 'Administrator', null, referralCode, 0, 'admin']);
-      console.log('✅ Seed: admin dibuat');
+        [1, 'admin@marketingcuan.com', hash, 'Administrator', null, refCode, 0, 'admin']);
+      console.log('✅ Seed: admin');
     }
   });
 
   db.get("SELECT value FROM settings WHERE key = 'price_per_chat'", (err, row) => {
     if (!row) {
       db.run("INSERT INTO settings (key, value) VALUES ('price_per_chat', '1100')");
-      db.run("INSERT INTO settings (key, value) VALUES ('min_withdraw', '10000')");
+      db.run("INSERT INTO settings (key, value) VALUES ('min_withdraw', '50000')");
+      console.log('✅ Seed: settings');
     }
   });
 
   db.get('SELECT id FROM sites LIMIT 1', (err, row) => {
     if (!row) {
-      db.run(`INSERT INTO sites (id, name, template_text, template_photo, is_active) VALUES (1, 'Database 1', '', NULL, 1)`, (e) => {
-        if (!e) console.log('✅ Seed: Database 1');
-      });
+      db.run(`INSERT INTO sites (id, name, template_text, template_photo, is_active) VALUES (1, 'Database 1', '', NULL, 1)`);
+      console.log('✅ Seed: Database 1');
     }
   });
 });
