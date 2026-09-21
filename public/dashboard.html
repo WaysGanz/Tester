@@ -2,8 +2,9 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - SewaWa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06080f">
+  <title>Dashboard — SewaWA</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -12,26 +13,23 @@
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
   <div class="app-layout">
-    <!-- ============ SIDEBAR ============ -->
     <aside class="sidebar" id="sidebar">
       <div class="logo">
         <i class="fab fa-whatsapp"></i>
-        <span>SEWA<span class="highlight">WHATSAPP</span></span>
+        <span>Sewa<span class="highlight">WA</span></span>
       </div>
       <nav class="nav-menu">
         <a href="/dashboard" class="nav-item active"><i class="fas fa-home"></i> <span>Dashboard</span></a>
         <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> <span>Devices</span></a>
-        <a href="/broadcast" class="nav-item"><i class="fas fa-bullhorn"></i> <span>Undangan</span></a>
         <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> <span>Wallet</span></a>
         <a href="/admin" class="nav-item" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> <span>Admin</span></a>
         <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
       </nav>
       <div class="sidebar-footer">
-        <span class="user-badge"><i class="fas fa-user"></i> <span id="sidebarUserName">User</span></span>
+        <span class="user-badge"><i class="fas fa-user"></i> <span id="userName">User</span></span>
       </div>
     </aside>
 
-    <!-- ============ MAIN CONTENT ============ -->
     <main class="main-content">
       <header class="header">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -46,135 +44,130 @@
 
       <div class="dashboard-content">
 
-        <!-- 1. WELCOME BANNER -->
+        <!-- WELCOME -->
         <div class="welcome-banner">
           <div class="welcome-text">
-            <h2>Selamat datang, <span id="welcomeUserName">User</span>!</h2>
-            <p>Kelola siaran WhatsApp Anda dengan mudah dan pantau semua aktivitas pengiriman pesan dari sini.</p>
+            <h2>Halo, <span id="welcomeUserName">User</span>! 👋</h2>
+            <p>Pantau performa blast & penghasilan Anda dari sini.</p>
           </div>
           <div class="welcome-badges">
-            <span class="badge-status active"><i class="fas fa-circle"></i> SISTEM AKTIF</span>
-            <span class="badge-status rate"><i class="fas fa-tags"></i> Rp700p/pesan</span>
+            <span class="badge-status active"><i class="fas fa-circle"></i> AKTIF</span>
+            <span class="badge-status rate"><i class="fas fa-tags"></i> Rp1.100/pesan</span>
           </div>
         </div>
 
-        <!-- 2. ALERT ATURAN PROFIL -->
-        <div class="alert-profile">
-          <div class="alert-profile-head">
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>PERHATIAN: ATURAN PROFIL</strong>
-          </div>
-          <div class="alert-profile-body">
-            <p>Anda wajib menggunakan foto yang telah disediakan dan mengubah nama WhatsApp Anda sesuai dengan nama yang telah ditentukan sebelum mengirim pesan!!</p>
-            <div class="alert-profile-sub">
-              <i class="fas fa-bullhorn"></i>
-              <strong>WAJIB RECORD &amp; KIRIM KE CH (TIDAK WAJIB):</strong>
-              <a href="https://t.me/sewawacld" target="_blank">https://t.me/sewawacld</a>
+        <!-- STATS COMPACT GRID -->
+        <div class="stats-compact-grid">
+
+          <div class="stat-box">
+            <div class="stat-icon revenue"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="statRevenue">Rp 0</div>
+              <div class="stat-label">Pendapatan</div>
             </div>
           </div>
+
+          <div class="stat-box">
+            <div class="stat-icon sent"><i class="fas fa-paper-plane"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="statSent">0</div>
+              <div class="stat-label">Pesan Sukses</div>
+            </div>
+          </div>
+
+          <div class="stat-box">
+            <div class="stat-icon online"><i class="fas fa-wifi"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="statOnline">0</div>
+              <div class="stat-label">Device Online</div>
+            </div>
+          </div>
+
+          <div class="stat-box">
+            <div class="stat-icon offline"><i class="fas fa-power-off"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="statOffline">0</div>
+              <div class="stat-label">Device Offline</div>
+            </div>
+          </div>
+
+          <div class="stat-box stat-box-wide">
+            <div class="stat-icon balance"><i class="fas fa-coins"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="statBalance">Rp 0</div>
+              <div class="stat-label">Saldo Tersedia</div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- 3. STATS GRID -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="icon revenue"><i class="fas fa-chart-line"></i></div>
-            <div class="number" id="statRevenue">Rp0</div>
-            <div class="label">Pendapatan</div>
-          </div>
-          <div class="stat-card">
-            <div class="icon sent"><i class="fas fa-check-circle"></i></div>
-            <div class="number" id="statSent">0</div>
-            <div class="label">Pesan Sukses</div>
-          </div>
-          <div class="stat-card">
-            <div class="icon online"><i class="fas fa-wifi"></i></div>
-            <div class="number" id="statOnline">0</div>
-            <div class="label">Online</div>
-          </div>
-          <div class="stat-card">
-            <div class="icon offline"><i class="fas fa-power-off"></i></div>
-            <div class="number" id="statOffline">0</div>
-            <div class="label">Offline</div>
-          </div>
-          <div class="stat-card">
-            <div class="icon balance"><i class="fas fa-coins"></i></div>
-            <div class="number" id="statBalance">Rp0</div>
-            <div class="label">Saldo</div>
-          </div>
+        <!-- QUICK ACTIONS -->
+        <div class="section-title">
+          <i class="fas fa-bolt"></i> Aksi Cepat
         </div>
 
-        <!-- 4. HUBUNGKAN DEVICE BARU -->
-        <div class="connect-device-bar">
-          <div class="connect-text">
-            <h3><i class="fas fa-mobile-alt"></i> Hubungkan Perangkat Baru</h3>
-            <p>Pindai kode QR untuk menambahkan nomor WhatsApp baru ke akun Anda.</p>
-          </div>
-          <a href="/devices" class="btn btn-primary">
-            <i class="fas fa-qrcode"></i> Pindai Nomor Baru <i class="fas fa-chevron-right"></i>
+        <div class="quick-grid">
+          <a href="/devices" class="quick-item">
+            <div class="quick-icon primary"><i class="fas fa-plus"></i></div>
+            <div class="quick-text">
+              <span>Tambah Device</span>
+              <small>Scan QR / Pairing</small>
+            </div>
+            <i class="fas fa-chevron-right quick-arrow"></i>
+          </a>
+
+          <a href="/wallet" class="quick-item">
+            <div class="quick-icon success"><i class="fas fa-money-bill-wave"></i></div>
+            <div class="quick-text">
+              <span>Tarik Saldo</span>
+              <small>Withdraw ke e-wallet</small>
+            </div>
+            <i class="fas fa-chevron-right quick-arrow"></i>
           </a>
         </div>
 
-        <!-- 5. GRID BAWAH: WALLET + AFILIASI -->
-        <div class="bottom-grid">
-
-          <!-- WALLET CARD -->
-          <div class="card wallet-card">
-            <h3><i class="fas fa-wallet"></i> Saldo Total Tersedia</h3>
-            <div class="balance-amount" id="walletAmount">Rp0</div>
-            <p class="wallet-note">Jumlah penarikan minimum: <strong>Rp 20.000</strong></p>
-
-            <div class="bank-account-box">
-              <div class="bank-icon"><i class="fas fa-university"></i></div>
-              <div class="bank-details">
-                <strong id="bankName">Belum ada rekening</strong>
-                <span id="bankAccount">Tambahkan rekening di halaman Wallet</span>
-              </div>
-            </div>
-
-            <a href="/wallet" class="btn btn-success btn-block">
-              <i class="fas fa-money-bill-wave"></i> Klaim Saldo
-            </a>
-          </div>
-
-          <!-- AFILIASI CARD -->
-          <div class="card affiliate-card">
-            <h3><i class="fas fa-users"></i> Program Afiliasi</h3>
-
-            <div class="ref-code-box">
-              <div>
-                <p class="ref-label">Kode Referensi Anda</p>
-                <h4 class="ref-code" id="refCode">------</h4>
-                <p class="ref-total">Total referral: <strong id="refTotal">0</strong> orang</p>
-              </div>
-              <button class="btn btn-info btn-sm" onclick="salinLink()">
-                <i class="fas fa-link"></i> Salin Link
-              </button>
-            </div>
-
-            <div class="affiliate-info">
-              <i class="fas fa-info-circle"></i>
-              <p>Dapatkan komisi <strong>Rp 50</strong> untuk setiap pesan yang dikirim oleh tim Anda.</p>
-            </div>
-          </div>
+        <!-- AKTIVITAS -->
+        <div class="section-title">
+          <i class="fas fa-clock-rotate-left"></i> Aktivitas Terakhir
         </div>
 
-        <!-- 6. AKTIVITAS TERAKHIR -->
         <div class="card">
-          <h3><i class="fas fa-calendar-day"></i> Aktivitas Terakhir <small>Update realtime</small></h3>
           <div id="todayActivity" class="activity-list">
-            <p class="empty">Belum ada aktivitas hari ini</p>
+            <p class="empty">Belum ada aktivitas</p>
           </div>
         </div>
 
-        <!-- 7. LAPORKAN BUG -->
-        <div class="card bug-card">
-          <div class="bug-icon"><i class="fas fa-bug"></i></div>
-          <div class="bug-text">
-            <h3>Laporkan Bug</h3>
-            <p>Menemukan masalah teknis? Laporkan langsung ke dukungan Telegram kami.</p>
+        <!-- REFERRAL -->
+        <div class="section-title">
+          <i class="fas fa-gift"></i> Program Referral
+        </div>
+
+        <div class="card referral-card">
+          <div class="ref-box">
+            <div>
+              <div class="ref-lbl">Kode Referral Anda</div>
+              <div class="ref-code-display" id="refCode">------</div>
+              <div class="ref-count">Total: <b id="refTotal">0</b> orang</div>
+            </div>
+            <button class="btn-copy-ref" onclick="salinLink()">
+              <i class="fas fa-link"></i> Salin
+            </button>
           </div>
-          <a href="https://t.me/yianglin1" target="_blank" class="btn btn-info">
-            <i class="fab fa-telegram"></i> Hubungi Telegram
+          <div class="ref-info">
+            <i class="fas fa-info-circle"></i>
+            Dapatkan <b>Rp 50</b> per referral yang daftar via link Anda.
+          </div>
+        </div>
+
+        <!-- BUG REPORT -->
+        <div class="bug-report">
+          <div class="bug-ic"><i class="fas fa-bug"></i></div>
+          <div class="bug-tx">
+            <b>Ada masalah?</b>
+            <small>Laporkan ke support Telegram kami</small>
+          </div>
+          <a href="https://t.me/test1212asd" target="_blank" class="btn-bug">
+            <i class="fab fa-telegram"></i> Hubungi
           </a>
         </div>
 
@@ -184,15 +177,13 @@
 
   <div id="toastContainer" class="toast-container"></div>
 
-  <!-- Floating Telegram -->
-  <a href="https://t.me/yianglin1" target="_blank" class="telegram-chat">
+  <a href="https://t.me/test1212asd" target="_blank" class="telegram-chat">
     <i class="fab fa-telegram"></i>
-    <span>Hubungi Support</span>
+    <span>Support</span>
   </a>
 
   <script src="helpers.js"></script>
   <script>
-    // ============ HELPER ============
     function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
 
     function toggleSidebar() {
@@ -200,62 +191,42 @@
       document.getElementById('sidebarOverlay').classList.toggle('active');
     }
 
-    // ============ 1. LOAD STATS ============
     async function loadStats() {
       try {
         const res = await fetch('/api/stats', { credentials: 'include' });
-        if (!res.ok) throw new Error('Gagal fetch stats');
+        if (!res.ok) throw new Error();
         const s = await res.json();
         document.getElementById('statOnline').textContent = s.online || 0;
         document.getElementById('statOffline').textContent = s.offline || 0;
         document.getElementById('statRevenue').textContent = rupiah(s.revenue);
         document.getElementById('statSent').textContent = (s.total_sent || 0).toLocaleString('id-ID');
-      } catch (e) {
-        console.error('Stats error:', e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // ============ 2. LOAD WALLET ============
     async function loadBalance() {
       try {
         const res = await fetch('/api/wallet', { credentials: 'include' });
-        if (!res.ok) throw new Error('Gagal fetch wallet');
+        if (!res.ok) throw new Error();
         const d = await res.json();
         document.getElementById('statBalance').textContent = rupiah(d.balance);
-        document.getElementById('walletAmount').textContent = rupiah(d.balance);
-
-        if (d.wallet && d.wallet.bank_name) {
-          document.getElementById('bankName').textContent = d.wallet.bank_name;
-          document.getElementById('bankAccount').textContent =
-            `${d.wallet.bank_account || '-'} - ${d.wallet.bank_holder || '-'}`;
-        }
-      } catch (e) {
-        console.error('Wallet error:', e);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // ============ 3. LOAD USER ============
     async function loadUserInfo() {
       try {
         const res = await fetch('/api/me', { credentials: 'include' });
         if (!res.ok) {
-          if (res.status === 401) {
-            window.location.href = '/';
-            return;
-          }
+          if (res.status === 401) window.location.href = '/';
           return;
         }
         const u = await res.json();
         const name = u.name || u.email || 'User';
-        document.getElementById('sidebarUserName').textContent = name;
+        document.getElementById('userName').textContent = name;
         document.getElementById('welcomeUserName').textContent = name;
-        if (u.role === 'admin') {
-          document.getElementById('adminLink').style.display = 'flex';
-        }
-      } catch (e) { console.error('User error:', e); }
+        if (u.role === 'admin') document.getElementById('adminLink').style.display = 'flex';
+      } catch (e) { console.error(e); }
     }
 
-    // ============ 4. LOAD REFERRAL ============
     async function loadReferral() {
       try {
         const res = await fetch('/api/referral', { credentials: 'include' });
@@ -263,17 +234,15 @@
         const r = await res.json();
         document.getElementById('refCode').textContent = r.code || '------';
         document.getElementById('refTotal').textContent = r.total || 0;
-      } catch (e) { console.error('Referral error:', e); }
+      } catch (e) { console.error(e); }
     }
 
-    // ============ 5. LOAD ACTIVITY ============
     async function loadRecentActivity() {
       try {
         const res = await fetch('/api/broadcast/history', { credentials: 'include' });
-        if (!res.ok) throw new Error('History error');
+        if (!res.ok) throw new Error();
         const history = await res.json();
         const c = document.getElementById('todayActivity');
-
         if (Array.isArray(history) && history.length > 0) {
           c.innerHTML = history.slice(0, 5).map(item => `
             <div class="activity-item">
@@ -281,70 +250,56 @@
                 <strong>${item.device_name || item.device_id || 'Device'}</strong>
                 <div class="meta">${new Date(item.created_at).toLocaleString('id-ID')}</div>
               </div>
-              <span style="color:var(--primary);font-weight:600;">
-                ${item.sent || 0}/${item.recipients || 0}
-              </span>
+              <span class="activity-count">${item.sent || 0}/${item.recipients || 0}</span>
             </div>
           `).join('');
         } else {
-          c.innerHTML = '<p class="empty">Belum ada aktivitas hari ini</p>';
+          c.innerHTML = '<p class="empty">Belum ada aktivitas</p>';
         }
       } catch (e) {
-        console.error('Activity error:', e);
-        document.getElementById('todayActivity').innerHTML =
-          '<p class="empty">Gagal memuat aktivitas</p>';
+        document.getElementById('todayActivity').innerHTML = '<p class="empty">Gagal memuat</p>';
       }
     }
 
-    // ============ 6. SALIN LINK AFILIASI ============
     async function salinLink() {
       try {
         const res = await fetch('/api/referral', { credentials: 'include' });
         const r = await res.json();
-        if (!r.link) return alert('Link referensi tidak tersedia');
+        if (!r.link) return alert('Link tidak tersedia');
         await navigator.clipboard.writeText(r.link);
-        if (typeof showToast === 'function') showToast('✅ Link referensi tersalin!', 'success');
-        else alert('Link tersalin: ' + r.link);
-      } catch (e) {
-        alert('Gagal menyalin link');
-      }
+        if (typeof showToast === 'function') showToast('✅ Link tersalin!', 'success');
+      } catch (e) { alert('Gagal salin'); }
     }
 
-    // ============ 7. LOGOUT ============
     document.getElementById('logoutBtn').addEventListener('click', async (e) => {
       e.preventDefault();
-      if (!confirm('Yakin mau logout?')) return;
+      if (!confirm('Yakin logout?')) return;
       try {
         await fetch('/api/logout', { method: 'POST', credentials: 'include' });
         window.location.href = '/';
       } catch (err) { alert('Gagal logout'); }
     });
 
-    // ============ 8. REFRESH ALL ============
     async function refreshAll() {
       await Promise.all([loadStats(), loadBalance(), loadRecentActivity()]);
       if (typeof showToast === 'function') showToast('✅ Data diperbarui', 'info');
     }
 
-    // ============ 9. CLOCK ============
     function updateClock() {
       document.getElementById('clock').textContent =
         new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     }
 
-    // ============ 10. INIT ============
     document.addEventListener('DOMContentLoaded', () => {
       loadUserInfo();
       loadStats();
       loadBalance();
       loadReferral();
       loadRecentActivity();
-
       updateClock();
       setInterval(updateClock, 1000);
       setInterval(loadStats, 15000);
       setInterval(loadBalance, 15000);
-      setInterval(loadRecentActivity, 15000);
     });
   </script>
 </body>
