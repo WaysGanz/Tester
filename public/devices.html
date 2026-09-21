@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -45,7 +46,7 @@
 
       <div class="devices-content">
 
-        <!-- ALERT PROFILE (Compact) -->
+        <!-- ALERT PROFILE -->
         <div class="alert-profile">
           <div class="alert-profile-head">
             <i class="fas fa-exclamation-triangle"></i>
@@ -77,7 +78,7 @@
           </div>
         </div>
 
-        <!-- DATA BAR (Compact) -->
+        <!-- DATA BAR -->
         <div class="data-available-bar">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
@@ -92,7 +93,7 @@
           </button>
         </div>
 
-        <!-- PERFORMANCE GRID (Compact 2 Col — Dashboard Style) -->
+        <!-- PERFORMANCE GRID -->
         <div class="section-title"><i class="fas fa-chart-bar"></i> Ringkasan Performa Blast</div>
 
         <div class="stats-compact-grid">
@@ -237,8 +238,8 @@
     const MAX_SLOTS = 3;
     const devicesGrid = document.getElementById('devicesGrid');
     window._watchers = {};
+    window._blasting = {};   // track device yang lagi blast
 
-    // SPEED OPTIONS — 1s, 3s, 5s, 30s, 60s
     const SPEED_OPTIONS = [
       { value: 1000, label: '1 detik' },
       { value: 3000, label: '3 detik' },
@@ -274,7 +275,6 @@
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-    // WATCHER
     function watchDeviceConnection(deviceId, deviceLabel, onConnected) {
       if (window._watchers[deviceId]) clearInterval(window._watchers[deviceId]);
       const start = Date.now();
@@ -316,7 +316,6 @@
       }, 6000);
     }
 
-    // MODAL QR
     async function openQRModal() {
       const modal = document.getElementById('qrModal');
       document.getElementById('qrImage').src = '';
@@ -361,7 +360,6 @@
       }
     }
 
-    // MODAL PAIRING
     function openPairingModal() {
       document.getElementById('pairingModal').classList.add('active');
       document.getElementById('pairingPhoneArea').style.display = 'block';
@@ -411,7 +409,6 @@
       }
     }
 
-    // SUMMARY
     async function loadSummary() {
       try {
         const res = await fetch('/api/devices/summary', { credentials: 'include' });
@@ -428,7 +425,6 @@
       } catch (e) { console.error(e); }
     }
 
-    // LOAD DEVICES
     async function loadDevices() {
       try {
         const res = await fetch('/api/devices', { credentials: 'include' });
@@ -460,24 +456,43 @@
       }
 
       devicesGrid.innerHTML = filtered.map(d => {
+        const isBlasting = window._blasting && window._blasting[d.id] === true;
         let actionButtons = '';
+
         if (d.real_status === 'connected') {
-          const speedOpts = SPEED_OPTIONS.map(o => '<option value="' + o.value + '"' + (o.selected ? ' selected' : '') + '>' + o.label + '</option>').join('');
-          actionButtons =
-            '<button class="btn btn-sm btn-danger" onclick="stopDevice(\'' + d.id + '\')"><i class="fas fa-stop"></i> Stop</button>' +
-            '<select id="speed-' + d.id + '" class="speed-select">' + speedOpts + '</select>' +
-            '<button class="btn btn-sm btn-start" onclick="blastAll(\'' + d.id + '\')"><i class="fas fa-play"></i> Start</button>';
+          if (isBlasting) {
+            actionButtons =
+              '<button class="btn-blast-stop" onclick="stopBlast(\'' + d.id + '\')">' +
+                '<i class="fas fa-stop"></i> Stop Blast' +
+              '</button>';
+          } else {
+            const speedOpts = SPEED_OPTIONS.map(o =>
+              '<option value="' + o.value + '"' + (o.selected ? ' selected' : '') + '>' + o.label + '</option>'
+            ).join('');
+            actionButtons =
+              '<select id="speed-' + d.id + '" class="speed-select-compact">' + speedOpts + '</select>' +
+              '<button class="btn-blast-start" onclick="blastAll(\'' + d.id + '\')">' +
+                '<i class="fas fa-play"></i> Start Blast' +
+              '</button>';
+          }
+          actionButtons +=
+            '<button class="btn-icon-sm" onclick="showQR(\'' + d.id + '\')" title="Lihat QR"><i class="fas fa-qrcode"></i></button>' +
+            '<button class="btn-icon-sm danger" onclick="deleteDevice(\'' + d.id + '\')" title="Hapus Device"><i class="fas fa-trash"></i></button>';
         } else if (d.real_status === 'qr_scanned') {
-          actionButtons = '<button class="btn btn-sm btn-warning" onclick="stopDevice(\'' + d.id + '\')"><i class="fas fa-times"></i> Batal</button>';
+          actionButtons =
+            '<button class="btn btn-sm btn-warning" onclick="deleteDevice(\'' + d.id + '\')"><i class="fas fa-times"></i> Batal</button>';
         } else {
-          actionButtons = '<button class="btn btn-sm btn-start" disabled><i class="fas fa-play"></i> Start</button>';
+          actionButtons =
+            '<button class="btn-blast-start" disabled><i class="fas fa-play"></i> Start Blast</button>' +
+            '<button class="btn-icon-sm danger" onclick="deleteDevice(\'' + d.id + '\')" title="Hapus Device"><i class="fas fa-trash"></i></button>';
         }
-        actionButtons += '<button class="btn btn-sm btn-secondary" onclick="showQR(\'' + d.id + '\')"><i class="fas fa-qrcode"></i></button>' +
-          '<button class="btn btn-sm btn-danger" onclick="deleteDevice(\'' + d.id + '\')"><i class="fas fa-trash"></i></button>';
+
+        const statusLabel = isBlasting ? 'BLASTING' : (d.real_status || '').toUpperCase();
+        const statusClass = isBlasting ? 'blasting' : d.real_status;
 
         return '<div class="device-card" data-id="' + d.id + '">' +
           '<div class="device-header">' +
-            '<div class="device-info"><span class="device-id">' + d.id + '</span><span class="device-status ' + d.real_status + '">' + (d.real_status || '').toUpperCase() + '</span></div>' +
+            '<div class="device-info"><span class="device-id">' + d.id + '</span><span class="device-status ' + statusClass + '">' + statusLabel + '</span></div>' +
             '<div class="device-phone">' + (d.phone || 'Belum tersambung') + '</div>' +
           '</div>' +
           '<div class="device-stats-row">' +
@@ -493,10 +508,20 @@
     function filterDevices(filter) { currentFilter = filter; renderDevices(); }
     function searchDevices() { searchTerm = document.getElementById('deviceSearch').value.trim(); renderDevices(); }
 
-    // ACTIONS
+    async function stopBlast(deviceId) {
+      if (!confirm('Yakin mau stop blast device ini?')) return;
+      try {
+        await fetch('/api/devices/' + deviceId + '/stop', { method: 'POST', credentials: 'include' });
+        showToast('⏹ Blast dihentikan', 'warning');
+        window._blasting[deviceId] = false;
+        await loadDevices();
+      } catch (e) {
+        showToast('Gagal stop', 'error');
+      }
+    }
+
     async function stopDevice(id) {
-      try { await fetch('/api/devices/' + id + '/stop', { method: 'POST', credentials: 'include' }); showToast('Device dihentikan', 'warning'); loadDevices(); }
-      catch (e) { showToast('Gagal stop', 'error'); }
+      return stopBlast(id);
     }
 
     async function deleteDevice(id) {
@@ -516,7 +541,6 @@
       } catch (e) { showToast('Gagal ambil QR', 'error'); }
     }
 
-    // 🔥 BLAST — LANGSUNG, TANPA KONFIRMASI
     async function blastAll(deviceId) {
       const device = allDevices.find(d => d.id === deviceId);
       if (!device || device.real_status !== 'connected') return showToast('Device offline', 'error');
@@ -524,8 +548,9 @@
       const speedSelect = document.getElementById('speed-' + deviceId);
       const speed = speedSelect ? parseInt(speedSelect.value) : 5000;
 
-      const btn = document.querySelector('#speed-' + deviceId)?.parentElement?.querySelector('.btn-start');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Blasting...'; }
+      // Set state blasting → re-render → tombol berubah jadi STOP
+      window._blasting[deviceId] = true;
+      renderDevices();
 
       try {
         showToast('🚀 Blast dimulai...', 'info');
@@ -539,12 +564,12 @@
         if (!blastRes.ok) throw new Error(data.error || 'Gagal mengirim');
 
         showToast('✅ ' + (data.sent || 0) + ' sukses, ' + (data.failed || 0) + ' gagal', (data.failed || 0) > 0 ? 'warning' : 'success');
-        loadDevices();
-        loadSummary();
       } catch (err) {
         showToast('❌ ' + err.message, 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Start'; }
+        window._blasting[deviceId] = false;
+        await loadDevices();
+        await loadSummary();
       }
     }
 
@@ -553,7 +578,6 @@
       showToast('✅ Data diperbarui', 'info');
     }
 
-    // INIT
     document.addEventListener('DOMContentLoaded', () => {
       loadDevices();
       loadSummary();
@@ -581,3 +605,8 @@
   </script>
 </body>
 </html>
+HTMLEOF
+
+# Verify
+wc -l /home/app/public/devices.html
+grep -c "btn-blast-start\|btn-blast-stop\|window._blasting" /home/app/public/devices.html
