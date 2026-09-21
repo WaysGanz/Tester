@@ -747,6 +747,7 @@ body.login-page {
 .stat-icon.offline { background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.1)); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 .stat-icon.balance { background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(217, 119, 6, 0.1)); color: #FBBF24; border: 1px solid rgba(251, 191, 36, 0.3); }
 .stat-icon.neutral { background: linear-gradient(135deg, rgba(148, 163, 184, 0.2), rgba(100, 116, 139, 0.1)); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); }
+.stat-icon.success { background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(5, 150, 105, 0.1)); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.3); }
 
 .stat-info { flex: 1; min-width: 0; position: relative; z-index: 1; }
 .stat-value {
@@ -1161,17 +1162,29 @@ body.login-page {
   font-weight: 600;
 }
 
+/* ============================================
+   🔥 DEVICES TOOLBAR BARU (QR/Pairing naik)
+   ============================================ */
 .device-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
   margin: 18px 0;
 }
-.device-toolbar .btn-group { display: flex; gap: 6px; }
+.toolbar-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toolbar-row-1 .btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .device-toolbar .search-box {
-  flex: 1;
-  min-width: 200px;
+  width: 100%;
   display: flex;
   align-items: center;
   background: #0f1420;
@@ -1182,7 +1195,7 @@ body.login-page {
 }
 .device-toolbar .search-box:focus-within {
   border-color: #3B82F6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 0 25px rgba(59, 130, 246, 0.25);
 }
 .device-toolbar .search-box i { color: #3B82F6; }
 .device-toolbar .search-box input {
@@ -1263,49 +1276,157 @@ body.login-page {
   font-size: 11px;
   color: #3B82F6;
 }
-.device-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
 
-/* SPEED SELECT — Custom Style */
-.device-actions .speed-select,
-.speed-select {
-  padding: 6px 26px 6px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  background: rgba(6, 10, 22, 0.7);
-  color: #60A5FA;
-  font-size: 12px;
-  font-family: inherit;
-  font-weight: 600;
-  outline: none;
+/* ============================================
+   🔥 BLAST START / STOP BUTTONS
+   ============================================ */
+.device-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-top: 12px;
+}
+
+.btn-blast-start {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-family: inherit;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn-blast-start::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transition: left 0.5s ease;
+}
+.btn-blast-start:hover::before { left: 100%; }
+.btn-blast-start:hover:not(:disabled) {
+  box-shadow: 0 0 32px rgba(59, 130, 246, 0.85);
+  transform: translateY(-1px);
+}
+.btn-blast-start:active:not(:disabled) { transform: translateY(1px) scale(0.98); }
+.btn-blast-start:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+.btn-blast-stop {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-family: inherit;
+  animation: pulseStop 1.4s infinite;
+  white-space: nowrap;
+}
+@keyframes pulseStop {
+  0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.55); }
+  50%      { box-shadow: 0 0 34px rgba(239, 68, 68, 0.95); }
+}
+.btn-blast-stop:hover {
+  transform: translateY(-1px);
+  animation: none;
+  box-shadow: 0 0 42px rgba(239, 68, 68, 1);
+}
+
+.speed-select-compact {
+  background: rgba(6, 8, 15, 0.7);
+  color: #3B82F6;
+  border: 1.5px solid rgba(59, 130, 246, 0.4);
+  border-radius: 10px;
+  padding: 11px 24px 11px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  min-width: 72px;
+  text-align: center;
+  font-family: inherit;
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3e%3cpath d='M1 1L5 5L9 1' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3e%3cpath d='M1 1L5 5L9 1' stroke='%233B82F6' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 8px center;
   transition: all 0.2s ease;
 }
-.device-actions .speed-select:focus,
-.speed-select:focus {
+.speed-select-compact:focus {
   border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
 }
-.device-actions .speed-select option,
-.speed-select option {
-  background: #0f1729;
-  color: #E8EFFB;
+.speed-select-compact option {
+  background: #0B1220;
+  color: #fff;
 }
 
-.device-actions .btn-start {
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
-  color: #fff;
-  box-shadow: 0 3px 15px rgba(59, 130, 246, 0.4);
-  font-weight: 700;
+.btn-icon-sm {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 10px;
+  color: #8B97AB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  padding: 0;
 }
-.device-actions .btn-start:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(59, 130, 246, 0.65);
+.btn-icon-sm:hover {
+  color: #3B82F6;
+  border-color: #3B82F6;
+  background: rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
 }
-.device-actions .btn-start:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btn-icon-sm.danger:hover {
+  color: #EF4444;
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.device-status.blasting {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  animation: blinkStatus 1.5s infinite;
+}
+@keyframes blinkStatus {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
 
 .empty-device-state {
   background: #0f1420;
@@ -1335,7 +1456,141 @@ body.login-page {
 .empty-device-state p { font-size: 13px; color: #8B97AB; max-width: 400px; margin: 0 0 8px; line-height: 1.6; }
 
 /* ============================================
-   WALLET PAGE
+   🔥 WALLET HERO BARU
+   ============================================ */
+.wallet-hero {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(30, 64, 175, 0.08));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  animation: heroGlow 4s ease-in-out infinite;
+}
+@keyframes heroGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(59, 130, 246, 0); }
+  50%      { box-shadow: 0 0 40px rgba(59, 130, 246, 0.25); }
+}
+.wallet-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(96, 165, 250, 0.15), transparent 60%);
+  pointer-events: none;
+}
+.wallet-hero-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+.wallet-hero-label {
+  font-size: 11px;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wallet-hero-label i {
+  color: #3B82F6;
+  font-size: 14px;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
+}
+.wallet-hero-refresh {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #3B82F6;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all 0.25s ease;
+  font-family: inherit;
+}
+.wallet-hero-refresh:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3B82F6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+  transform: rotate(180deg);
+}
+.wallet-hero-value {
+  font-size: 34px;
+  font-weight: 900;
+  color: #3B82F6;
+  letter-spacing: -1px;
+  text-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+  animation: valueShimmer 3s ease-in-out infinite;
+}
+@keyframes valueShimmer {
+  0%, 100% { text-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+  50%      { text-shadow: 0 0 45px rgba(59, 130, 246, 0.9), 0 0 80px rgba(59, 130, 246, 0.4); }
+}
+.wallet-hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+  padding-top: 16px;
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
+}
+.wallet-hero-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s ease;
+}
+.wallet-hero-stat:hover { transform: translateX(2px); }
+.wallet-hero-stat > i {
+  width: 36px;
+  height: 36px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60A5FA;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+.wallet-hero-stat:hover > i {
+  background: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+.wallet-hero-stat small {
+  display: block;
+  font-size: 10px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.wallet-hero-stat b {
+  display: block;
+  font-size: 13px;
+  color: #E8EFFB;
+  font-weight: 700;
+}
+
+/* ============================================
+   WALLET PAGE — lama (balance-hero, dll)
    ============================================ */
 .balance-hero {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(30, 64, 175, 0.1));
@@ -1605,11 +1860,13 @@ body.login-page {
   overflow-y: auto;
   border: 1px solid rgba(59, 130, 246, 0.4);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
-  animation: modalFade 0.3s ease;
 }
-@keyframes modalFade {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+.modal.active .modal-content {
+  animation: modalEnter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes modalEnter {
+  0% { opacity: 0; transform: scale(0.92) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 .modal-header {
   display: flex;
@@ -1673,6 +1930,11 @@ body.login-page {
   transform: translateX(420px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid;
+  animation: toastSlide 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes toastSlide {
+  0% { opacity: 0; transform: translateX(60px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 .toast.success { background: rgba(52, 211, 153, 0.15); color: #34D399; border-color: rgba(52, 211, 153, 0.4); }
 .toast.error { background: rgba(239, 68, 68, 0.15); color: #F87171; border-color: rgba(239, 68, 68, 0.4); }
@@ -1782,153 +2044,60 @@ body.login-page {
 }
 
 /* ============================================
-   🔥 BLAST START / STOP BUTTONS (NEW)
+   ✨ GLOBAL ANIMATIONS
    ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeInUp 0.45s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+.fade-in:nth-child(1) { animation-delay: 0.02s; }
+.fade-in:nth-child(2) { animation-delay: 0.06s; }
+.fade-in:nth-child(3) { animation-delay: 0.10s; }
+.fade-in:nth-child(4) { animation-delay: 0.14s; }
+.fade-in:nth-child(5) { animation-delay: 0.18s; }
+.fade-in:nth-child(6) { animation-delay: 0.22s; }
 
-/* Container aksi tombol device */
-.device-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: nowrap;
-  margin-top: 12px;
+.card,
+.device-card,
+.stat-box {
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-/* START BLAST — full width, glow biru, uppercase */
-.btn-blast-start {
-  flex: 1;
-  min-width: 0;
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
-  color: #fff;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  font-family: 'Inter', inherit;
-  white-space: nowrap;
-}
-.btn-blast-start:hover:not(:disabled) {
-  box-shadow: 0 0 32px rgba(59, 130, 246, 0.85);
-  transform: translateY(-1px);
-}
-.btn-blast-start:active { transform: translateY(0); }
-.btn-blast-start:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
+.device-card:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45), 0 0 35px rgba(59, 130, 246, 0.2);
 }
 
-/* STOP BLAST — muncul saat blasting, pulse merah */
-.btn-blast-stop {
-  flex: 1;
-  min-width: 0;
-  background: linear-gradient(135deg, #EF4444, #DC2626);
-  color: #fff;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  text-transform: uppercase;
-  font-family: 'Inter', inherit;
-  animation: pulseStop 1.4s infinite;
-  white-space: nowrap;
-}
-@keyframes pulseStop {
-  0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.55); }
-  50%      { box-shadow: 0 0 34px rgba(239, 68, 68, 0.95); }
-}
-.btn-blast-stop:hover {
-  transform: translateY(-1px);
-  animation: none;
-  box-shadow: 0 0 42px rgba(239, 68, 68, 1);
+.btn { position: relative; overflow: hidden; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.98); }
+
+.btn-icon-sm:hover i { animation: iconPop 0.3s ease; }
+@keyframes iconPop {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.2); }
 }
 
-/* Speed select versi compact */
-.speed-select-compact {
-  background: rgba(6, 8, 15, 0.7);
-  color: #3B82F6;
-  border: 1.5px solid rgba(59, 130, 246, 0.4);
-  border-radius: 10px;
-  padding: 11px 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  outline: none;
-  min-width: 72px;
-  text-align: center;
-  font-family: inherit;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3e%3cpath d='M1 1L5 5L9 1' stroke='%233B82F6' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 24px;
-}
-.speed-select-compact:focus {
-  border-color: #3B82F6;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
-}
-.speed-select-compact option {
-  background: #0B1220;
-  color: #fff;
+.device-card:has(.device-status.blasting) {
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
 }
 
-/* Icon button kecil (QR, Hapus) */
-.btn-icon-sm {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(59, 130, 246, 0.25);
-  border-radius: 10px;
-  color: #8B97AB;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 15px;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  padding: 0;
+.stat-box {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
-.btn-icon-sm:hover {
-  color: #3B82F6;
-  border-color: #3B82F6;
-  background: rgba(59, 130, 246, 0.1);
-}
-.btn-icon-sm.danger:hover {
-  color: #EF4444;
-  border-color: #EF4444;
-  background: rgba(239, 68, 68, 0.1);
-}
+.stat-box:nth-child(1) { animation-delay: 0.05s; }
+.stat-box:nth-child(2) { animation-delay: 0.10s; }
+.stat-box:nth-child(3) { animation-delay: 0.15s; }
+.stat-box:nth-child(4) { animation-delay: 0.20s; }
+.stat-box:nth-child(5) { animation-delay: 0.25s; }
+.stat-box:nth-child(6) { animation-delay: 0.30s; }
 
-/* Badge status BLASTING — kuning blink */
-.device-status.blasting {
-  background: rgba(251, 191, 36, 0.15);
-  color: #FBBF24;
-  border: 1px solid rgba(251, 191, 36, 0.5);
-  animation: blinkStatus 1.5s infinite;
-}
-@keyframes blinkStatus {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.45; }
+.section-title i { animation: iconFloat 3s ease-in-out infinite; }
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
 }
 
 /* ============================================
@@ -2041,12 +2210,10 @@ body.login-page {
   .data-available-bar .btn-primary { width: 100%; justify-content: center; }
 
   .devices-grid { grid-template-columns: 1fr; }
-  .device-toolbar { flex-direction: column; align-items: stretch; }
-  .device-toolbar .btn-group { flex-wrap: wrap; }
-  .device-toolbar .search-box { min-width: unset; }
+  .toolbar-row-1 { gap: 6px; }
+  .toolbar-row-1 .btn-group .btn { padding: 6px 10px; font-size: 11px; }
   .device-card { padding: 14px 16px; }
 
-  /* Blast button di HP — full width, tetap lega */
   .device-actions {
     gap: 6px;
     flex-wrap: nowrap;
@@ -2067,6 +2234,13 @@ body.login-page {
     height: 40px;
     font-size: 14px;
   }
+
+  .wallet-hero { padding: 18px; }
+  .wallet-hero-value { font-size: 28px; margin-bottom: 14px; }
+  .wallet-hero-stats { gap: 10px; padding-top: 14px; }
+  .wallet-hero-stat > i { width: 32px; height: 32px; font-size: 13px; }
+  .wallet-hero-stat small { font-size: 9px; }
+  .wallet-hero-stat b { font-size: 12px; }
 
   .balance-value { font-size: 28px; }
   .ref-stat-val { font-size: 20px; }
