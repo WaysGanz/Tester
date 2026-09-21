@@ -37,128 +37,126 @@
         <p class="login-tagline">Daftar Akun Baru</p>
       </div>
 
-      <!-- Form -->
+      <!-- Form (1 LANGKAH) -->
       <form id="registerForm" class="login-form-full">
 
-        <!-- STEP 1 -->
-        <div id="step1">
-          <div class="step-label">
-            <span class="step-dot active"></span>
-            <span class="step-dot"></span>
-            <small>Langkah 1 dari 2</small>
+        <div class="form-field">
+          <label>Email</label>
+          <div class="field-input">
+            <i class="fas fa-envelope"></i>
+            <input 
+              type="email" 
+              id="registerEmail" 
+              placeholder="nama@domain.com" 
+              autocomplete="email"
+              required
+            >
           </div>
-
-          <div class="form-field">
-            <label>Email</label>
-            <div class="field-input">
-              <i class="fas fa-envelope"></i>
-              <input 
-                type="email" 
-                id="registerEmail" 
-                placeholder="nama@domain.com" 
-                autocomplete="email"
-              >
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label>Username</label>
-            <div class="field-input">
-              <i class="fas fa-user"></i>
-              <input 
-                type="text" 
-                id="registerUsername" 
-                placeholder="5-20 karakter" 
-                autocomplete="username"
-              >
-            </div>
-          </div>
-
-          <button type="button" class="btn-main" onclick="nextStep()">
-            <span>Lanjut</span>
-            <i class="fas fa-arrow-right"></i>
-          </button>
         </div>
 
-        <!-- STEP 2 -->
-        <div id="step2" style="display:none;">
-          <div class="step-label">
-            <span class="step-dot"></span>
-            <span class="step-dot active"></span>
-            <small>Langkah 2 dari 2</small>
+        <div class="form-field">
+          <label>Username</label>
+          <div class="field-input">
+            <i class="fas fa-user"></i>
+            <input 
+              type="text" 
+              id="registerUsername" 
+              placeholder="5-20 karakter" 
+              autocomplete="username"
+              required
+            >
           </div>
+        </div>
 
-          <div class="form-field">
-            <label>Nomor WhatsApp</label>
-            <div class="field-input">
-              <i class="fas fa-phone"></i>
-              <input 
-                type="tel" 
-                id="registerPhone" 
-                placeholder="628xxxxxxxxxx" 
-                autocomplete="tel"
-              >
-            </div>
+        <div class="form-field">
+          <label>Nomor WhatsApp</label>
+          <div class="field-input">
+            <i class="fas fa-phone"></i>
+            <input 
+              type="tel" 
+              id="registerPhone" 
+              placeholder="628xxxxxxxxxx" 
+              autocomplete="tel"
+              required
+            >
           </div>
+        </div>
 
-          <div class="form-field">
-            <label>Password</label>
-            <div class="field-input">
-              <i class="fas fa-lock"></i>
-              <input 
-                type="password" 
-                id="registerPassword" 
-                placeholder="Minimal 8 karakter" 
-                autocomplete="new-password"
-              >
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label>Konfirmasi Password</label>
-            <div class="field-input">
-              <i class="fas fa-lock"></i>
-              <input 
-                type="password" 
-                id="registerPasswordConfirm" 
-                placeholder="Ulangi password" 
-                autocomplete="new-password"
-              >
-            </div>
-          </div>
-
-          <!-- Strength Meter -->
-          <div class="strength-wrap">
-            <div class="strength-track">
-              <div class="strength-bar" id="strengthBar"></div>
-            </div>
-            <small id="strengthLabel">Kekuatan password</small>
-          </div>
-
-          <!-- Human Check -->
-          <label class="human-check" style="margin:14px 0 16px;">
-            <input type="checkbox" id="humanCheckRegister" checked>
-            <span class="checkmark"></span>
-            <span>Aku manusia</span>
-          </label>
-
-          <!-- Buttons -->
-          <div class="btn-row">
-            <button type="button" class="btn-ghost" onclick="prevStep()">
-              <i class="fas fa-arrow-left"></i>
-            </button>
-            <button type="submit" class="btn-main" id="registerBtn">
-              <span>Daftar</span>
-              <i class="fas fa-check"></i>
+        <div class="form-field">
+          <label>Password</label>
+          <div class="field-input">
+            <i class="fas fa-lock"></i>
+            <input 
+              type="password" 
+              id="registerPassword" 
+              placeholder="Minimal 8 karakter" 
+              autocomplete="new-password"
+              required
+            >
+            <button type="button" class="toggle-pwd" onclick="togglePwd('registerPassword', 'eyeReg1')">
+              <i class="fas fa-eye" id="eyeReg1"></i>
             </button>
           </div>
         </div>
+
+        <div class="form-field">
+          <label>Konfirmasi Password</label>
+          <div class="field-input">
+            <i class="fas fa-lock"></i>
+            <input 
+              type="password" 
+              id="registerPasswordConfirm" 
+              placeholder="Ulangi password" 
+              autocomplete="new-password"
+              required
+            >
+            <button type="button" class="toggle-pwd" onclick="togglePwd('registerPasswordConfirm', 'eyeReg2')">
+              <i class="fas fa-eye" id="eyeReg2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Password Strength -->
+        <div class="strength-wrap">
+          <div class="strength-track">
+            <div class="strength-bar" id="strengthBar"></div>
+          </div>
+          <small id="strengthLabel">Kekuatan password</small>
+        </div>
+
+        <!-- Human Check -->
+        <label class="human-check" style="margin:6px 0 4px;">
+          <input type="checkbox" id="humanCheckRegister" checked>
+          <span class="checkmark"></span>
+          <span>Aku manusia</span>
+        </label>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-main" id="registerBtn">
+          <span>Daftar Sekarang</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
 
       </form>
 
+      <!-- Divider -->
+      <div class="divider">
+        <span></span>
+        <small>atau</small>
+        <span></span>
+      </div>
+
       <!-- Login Link -->
-      <p class="terms-text" style="margin-top:24px;">
-        Sudah punya akun? <a href="/">Masuk di sini</a>
+      <a href="/" class="btn-secondary-full">
+        <i class="fas fa-sign-in-alt"></i>
+        <span>Sudah Punya Akun? Masuk</span>
+      </a>
+
+      <!-- Terms -->
+      <p class="terms-text">
+        Dengan mendaftar, Anda menyetujui 
+        <a href="#">Ketentuan</a> & 
+        <a href="#">Kebijakan Privasi</a>
       </p>
 
     </div>
@@ -171,6 +169,18 @@
 
   <script>
     const referralRef = new URLSearchParams(window.location.search).get('ref');
+
+    function togglePwd(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
 
     // Password strength meter
     document.getElementById('registerPassword').addEventListener('input', function() {
@@ -192,24 +202,6 @@
       bar.style.width = s + '%';
     });
 
-    function nextStep() {
-      const email = document.getElementById('registerEmail').value.trim();
-      const username = document.getElementById('registerUsername').value.trim();
-
-      if (!email || !username) return showToast('Email & username wajib diisi', 'error');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Email tidak valid', 'error');
-      if (username.length < 5 || username.length > 20) return showToast('Username 5-20 karakter', 'error');
-      if (!/^[a-zA-Z0-9_]+$/.test(username)) return showToast('Username hanya huruf, angka, underscore', 'error');
-
-      document.getElementById('step1').style.display = 'none';
-      document.getElementById('step2').style.display = 'block';
-    }
-
-    function prevStep() {
-      document.getElementById('step1').style.display = 'block';
-      document.getElementById('step2').style.display = 'none';
-    }
-
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -223,10 +215,27 @@
       const password = document.getElementById('registerPassword').value;
       const confirm = document.getElementById('registerPasswordConfirm').value;
 
-      if (!email || !username || !phone || !password) return showToast('Semua field wajib diisi', 'error');
-      if (password !== confirm) return showToast('Password tidak cocok', 'error');
-      if (password.length < 8) return showToast('Password minimal 8 karakter', 'error');
-      if (!/^\d{10,15}$/.test(phone)) return showToast('Format nomor tidak valid', 'error');
+      if (!email || !username || !phone || !password) {
+        return showToast('Semua field wajib diisi', 'error');
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return showToast('Email tidak valid', 'error');
+      }
+      if (username.length < 5 || username.length > 20) {
+        return showToast('Username 5-20 karakter', 'error');
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return showToast('Username hanya huruf, angka, underscore', 'error');
+      }
+      if (!/^\d{10,15}$/.test(phone)) {
+        return showToast('Format nomor WhatsApp tidak valid', 'error');
+      }
+      if (password.length < 8) {
+        return showToast('Password minimal 8 karakter', 'error');
+      }
+      if (password !== confirm) {
+        return showToast('Password tidak cocok', 'error');
+      }
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true;
@@ -248,7 +257,7 @@
         showToast(err.message, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>Daftar</span><i class="fas fa-check"></i>';
+        btn.innerHTML = '<span>Daftar Sekarang</span><i class="fas fa-arrow-right"></i>';
       }
     });
 
