@@ -417,6 +417,7 @@ app.get('/api/admin/sites/:id/contacts', requireAuth, requireAdmin, (req, res) =
   const params = [siteId];
   if (status === 'sent') where += ' AND status = "sent"';
   else if (status === 'available') where += ' AND (status = "available" OR status IS NULL)';
+  else if (status === 'processing') where += ' AND status = "processing"';
   if (search) { where += ' AND phone LIKE ?'; params.push('%' + search + '%'); }
 
   db.get('SELECT COUNT(*) as total FROM master_contacts ' + where, params, (err, countRow) => {
@@ -457,6 +458,48 @@ app.post('/api/admin/sites/:id/delete-sent', requireAuth, requireAdmin, (req, re
 });
 
 // ============================================
+// DELETE BULK — hapus N nomor berdasarkan filter
+// ============================================
+app.post('/api/admin/sites/:id/delete-bulk', requireAuth, requireAdmin, (req, res) => {
+  const { status = 'all', limit = 1000, order = 'DESC' } = req.body || {};
+  const siteId = req.params.id;
+  const safeLimit = Math.min(Math.max(parseInt(limit) || 1000, 1), 50000);
+  const safeOrder = (String(order).toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
+
+  let where = 'site_id = ?';
+  const params = [siteId];
+  if (status === 'sent') where += ' AND status = "sent"';
+  else if (status === 'available') where += ' AND (status = "available" OR status IS NULL)';
+  else if (status === 'processing') where += ' AND status = "processing"';
+
+  const sql = 'DELETE FROM master_contacts WHERE id IN (SELECT id FROM master_contacts WHERE ' + where + ' ORDER BY id ' + safeOrder + ' LIMIT ?)';
+
+  db.run(sql, [...params, safeLimit], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, deleted: this.changes });
+  });
+});
+
+// ============================================
+// DELETE ALL — hapus SEMUA nomor sesuai filter
+// ============================================
+app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res) => {
+  const { status = 'all' } = req.body || {};
+  const siteId = req.params.id;
+
+  let where = 'site_id = ?';
+  const params = [siteId];
+  if (status === 'sent') where += ' AND status = "sent"';
+  else if (status === 'available') where += ' AND (status = "available" OR status IS NULL)';
+  else if (status === 'processing') where += ' AND status = "processing"';
+
+  db.run('DELETE FROM master_contacts WHERE ' + where, params, function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, deleted: this.changes });
+  });
+});
+
+// ============================================
 // IMPORT CONTACTS
 // ============================================
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
@@ -470,16 +513,19 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
     if (valid.length === 0) return res.status(400).json({ error: 'Tidak ada nomor valid' });
 
     let inserted = 0, skipped = 0;
-    for (const num of valid) {
-      const exists = await new Promise((resolve) => {
-        db.get('SELECT id FROM master_contacts WHERE phone = ? AND site_id = ?', [num, siteId], (err, row) => resolve(!!row));
-      });
-      if (!exists) {
-        await new Promise((resolve) => {
-          db.run('INSERT INTO master_contacts (site_id, phone, name, status) VALUES (?, ?, ?, "available")', [siteId, num, num], () => resolve());
+    const BS = 500;
+    for (let i = 0; i < valid.length; i += BS) {
+      const batch = valid.slice(i, i + BS);
+      const placeholders = batch.map(() => '(?, ?, ?, "available")').join(',');
+      const params = [];
+      batch.forEach(num => { params.push(siteId, num, num); });
+      const result = await new Promise((resolve) => {
+        db.run('INSERT OR IGNORE INTO master_contacts (site_id, phone, name, status) VALUES ' + placeholders, params, function (err) {
+          resolve(err ? 0 : this.changes);
         });
-        inserted++;
-      } else skipped++;
+      });
+      inserted += result;
+      skipped += (batch.length - result);
     }
     console.log('✅ Import DB' + siteId + ': ' + inserted + ' baru, ' + skipped + ' skip');
     res.json({ success: true, inserted, skipped, total: valid.length });
