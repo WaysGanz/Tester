@@ -2,161 +2,169 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MarketingCuan - Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050810">
+  <title>Admin Panel — SewaWA</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="app-body">
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <div class="app-layout">
-    <aside class="sidebar">
-      <div class="logo"><i class="fab fa-whatsapp"></i><span>Marketing<span class="highlight">Cuan</span></span></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <i class="fab fa-whatsapp"></i>
+        <span>Sewa<span class="highlight">WA</span></span>
+      </div>
       <nav class="nav-menu">
-        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> Devices</a>
-        <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> Wallet</a>
-        <a href="/admin" class="nav-item active"><i class="fas fa-cog"></i> Admin</a>
-        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> <span>Dashboard</span></a>
+        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> <span>Devices</span></a>
+        <a href="/wallet" class="nav-item"><i class="fas fa-wallet"></i> <span>Wallet</span></a>
+        <a href="/referral" class="nav-item"><i class="fas fa-gift"></i> <span>Referral</span></a>
+        <a href="/admin" class="nav-item active"><i class="fas fa-cog"></i> <span>Admin</span></a>
+        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
       </nav>
-      <div class="sidebar-footer"><span class="user-badge"><i class="fas fa-user"></i> <span id="userName">Admin</span></span></div>
+      <div class="sidebar-footer">
+        <span class="user-badge"><i class="fas fa-user"></i> <span id="userName">Admin</span></span>
+      </div>
     </aside>
 
     <main class="main-content">
       <header class="header">
-        <h1>Admin Panel</h1>
-        <div class="header-actions"><span class="clock" id="clock"></span></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="hamburger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+          <h1>Admin Panel</h1>
+        </div>
+        <div class="header-actions">
+          <span class="clock" id="clock">--:--</span>
+        </div>
       </header>
 
-      <section class="admin-content" style="padding:24px 30px;overflow-y:auto;">
+      <div class="admin-content">
 
-        <!-- ============================================
-             CARD 1: KELOLA DATABASE
-             ============================================ -->
-        <div class="card" style="margin-bottom:24px;">
+        <!-- KELOLA DATABASE -->
+        <div class="card" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-database"></i> Kelola Database
             <button class="btn btn-sm btn-success" onclick="openSiteModal()" style="margin-left:auto;">
-              <i class="fas fa-plus"></i> Tambah Database
+              <i class="fas fa-plus"></i> Tambah
             </button>
           </h3>
-          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
-            Setiap database punya <b>template pesan</b> + <b>foto</b> + <b>pool nomor</b> sendiri. 
-            Nomor yang sudah terkirim otomatis <b>ditandai ✅</b> dan tidak akan dikirim ulang.
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
+            Setiap database punya template + foto + pool nomor sendiri.
           </p>
-          <div id="sitesList" style="display:grid;gap:12px;">
+          <div id="sitesList" style="display:grid; gap:10px;">
             <p class="empty">Loading...</p>
           </div>
         </div>
 
-        <!-- ============================================
-             CARD 2: IMPORT KONTAK MASSAL
-             ============================================ -->
-        <div class="card" style="margin-bottom:24px;">
+        <!-- IMPORT KONTAK -->
+        <div class="card" style="margin-bottom:20px;">
           <h3><i class="fas fa-upload"></i> Import Kontak Massal</h3>
           <form id="importForm">
-            <div class="form-group">
+            <div class="form-field" style="margin-bottom:14px;">
               <label>Pilih Database Tujuan</label>
-              <select id="importSite" class="form-control">
-                <option value="">-- Pilih Database --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Masukkan Nomor (satu per baris)</label>
-              <textarea id="importNumbers" class="form-control" rows="10" placeholder="628123456789&#10;628987654321"></textarea>
-              <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">
-                Format: <b>hanya angka</b>, minimal 5 digit, maksimal 15 digit. Boleh pakai +, spasi, atau tanda hubung — sistem otomatis bersihkan.
+              <div class="input-wrap-app">
+                <i class="fas fa-database"></i>
+                <select id="importSite">
+                  <option value="">-- Pilih Database --</option>
+                </select>
               </div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import Nomor</button>
+            <div class="form-field" style="margin-bottom:14px;">
+              <label>Masukkan Nomor (1 per baris)</label>
+              <textarea id="importNumbers" class="form-control" rows="8" placeholder="628123456789&#10;628987654321"></textarea>
+              <small class="help-text">Hanya angka, 5-15 digit. Max 10.000 sekali import.</small>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
               <button type="button" class="btn btn-secondary" onclick="document.getElementById('importNumbers').value='';updateImportCount();">Kosongkan</button>
-              <span id="importCount" style="font-size:14px;color:var(--text-secondary);margin-left:8px;">0 nomor</span>
+              <span id="importCount" style="font-size:13px; color:#8B97AB; margin-left:8px;">0 nomor</span>
             </div>
           </form>
           <div id="importResult" style="margin-top:12px;"></div>
         </div>
 
-        <!-- ============================================
-             CARD 3: DEVICE ASSIGNMENT
-             ============================================ -->
-        <div class="card" style="margin-bottom:24px;">
+        <!-- ASSIGN DEVICE -->
+        <div class="card" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-mobile-alt"></i> Assign Device ke Database
-            <button class="btn btn-sm btn-info" onclick="loadDevices()" style="margin-left:auto;"><i class="fas fa-sync"></i> Refresh</button>
+            <button class="btn btn-sm btn-info" onclick="loadDevices()" style="margin-left:auto;">
+              <i class="fas fa-sync"></i>
+            </button>
           </h3>
-          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
-            Pilih database mana yang bakal di-blast oleh tiap device. <b>User tidak akan melihat ini.</b>
-          </p>
-          <div id="devicesList" style="display:grid;gap:10px;">
+          <div id="devicesList" style="display:grid; gap:8px;">
             <p class="empty">Loading...</p>
           </div>
         </div>
 
-        <!-- ============================================
-             CARD 4: WITHDRAW PENDING
-             ============================================ -->
-        <div class="card" style="margin-bottom:24px;">
-          <h3><i class="fas fa-clock"></i> Permintaan Withdraw Pending</h3>
-          <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan pending</p></div>
+        <!-- WITHDRAW PENDING -->
+        <div class="card" style="margin-bottom:20px;">
+          <h3><i class="fas fa-clock"></i> Withdraw Pending</h3>
+          <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan</p></div>
         </div>
 
-        <!-- ============================================
-             CARD 5: DAFTAR USER
-             ============================================ -->
+        <!-- DAFTAR USER -->
         <div class="card">
           <h3>
             <i class="fas fa-users"></i> Daftar User
-            <button class="btn btn-sm btn-info" onclick="loadUsers()" style="margin-left:auto;"><i class="fas fa-sync"></i> Refresh</button>
+            <button class="btn btn-sm btn-info" onclick="loadUsers()" style="margin-left:auto;">
+              <i class="fas fa-sync"></i>
+            </button>
           </h3>
           <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
               <thead>
-                <tr style="background:var(--bg-main);text-align:left;">
-                  <th style="padding:10px;">ID</th>
-                  <th style="padding:10px;">Nama / Email</th>
-                  <th style="padding:10px;">Telegram</th>
-                  <th style="padding:10px;">Bank / E-Wallet</th>
-                  <th style="padding:10px;">Saldo</th>
+                <tr style="background:#06080f; text-align:left;">
+                  <th style="padding:8px;">ID</th>
+                  <th style="padding:8px;">Nama / Email</th>
+                  <th style="padding:8px;">Telegram</th>
+                  <th style="padding:8px;">Payment</th>
+                  <th style="padding:8px;">Saldo</th>
                 </tr>
               </thead>
               <tbody id="usersList">
-                <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-muted);">Loading...</td></tr>
+                <tr><td colspan="5" style="padding:16px; text-align:center; color:#64748B;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-      </section>
+      </div>
     </main>
   </div>
 
-  <!-- ============================================
-       MODAL: TAMBAH/EDIT DATABASE
-       ============================================ -->
+  <!-- MODAL SITE -->
   <div class="modal" id="siteModal">
-    <div class="modal-content" style="max-width: 520px;">
+    <div class="modal-content" style="max-width:520px;">
       <div class="modal-header">
         <h3 id="siteModalTitle"><i class="fas fa-plus"></i> Tambah Database</h3>
         <button class="modal-close" onclick="closeModal('siteModal')">&times;</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="siteEditId">
-        <div class="form-group">
-          <label><i class="fas fa-tag"></i> Nama Database</label>
-          <input type="text" id="siteName" class="form-control" placeholder="Contoh: Database 1">
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Nama Database</label>
+          <div class="input-wrap-app">
+            <i class="fas fa-tag"></i>
+            <input type="text" id="siteName" placeholder="Contoh: Promo Akhir Tahun">
+          </div>
         </div>
-        <div class="form-group">
-          <label><i class="fas fa-comment"></i> Template Pesan</label>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Template Pesan</label>
           <textarea id="siteTemplate" class="form-control" rows="4" placeholder="Contoh: assalamualaikum"></textarea>
-          <small style="font-size:12px;color:var(--text-muted);">Pesan ini yang bakal dikirim saat user blast.</small>
         </div>
-        <div class="form-group">
-          <label><i class="fas fa-image"></i> Foto Template</label>
-          <input type="url" id="sitePhoto" class="form-control" placeholder="https://example.com/foto.jpg">
-          <small style="font-size:12px;color:var(--text-muted);">Opsional. Kalau diisi, blast bakal kirim foto + caption.</small>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Foto Template (URL, opsional)</label>
+          <div class="input-wrap-app">
+            <i class="fas fa-image"></i>
+            <input type="url" id="sitePhoto" placeholder="https://example.com/foto.jpg">
+          </div>
         </div>
-        <div id="sitePhotoPreview" style="display:none;margin-top:10px;">
-          <img id="sitePhotoPreviewImg" src="" style="max-width:200px;border-radius:8px;border:1px solid var(--border-glow);">
+        <div id="sitePhotoPreview" style="display:none; margin-top:10px;">
+          <img id="sitePhotoPreviewImg" src="" style="max-width:200px; border-radius:8px; border:1px solid rgba(59,130,246,0.4);">
         </div>
       </div>
       <div class="modal-footer">
@@ -166,120 +174,80 @@
     </div>
   </div>
 
-  <!-- ============================================
-       MODAL: LIHAT NOMOR DATABASE
-       ============================================ -->
+  <!-- MODAL LIHAT NOMOR -->
   <div class="modal" id="contactModal">
-    <div class="modal-content" style="max-width: 720px;">
+    <div class="modal-content" style="max-width:720px;">
       <div class="modal-header">
         <h3 id="contactModalTitle"><i class="fas fa-list"></i> Nomor Database</h3>
         <button class="modal-close" onclick="closeModal('contactModal')">&times;</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="contactSiteId">
+        <div id="contactStats" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;"></div>
 
-        <!-- Stats -->
-        <div id="contactStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;"></div>
-
-        <!-- Filter + Search -->
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
           <button class="btn btn-sm btn-secondary" onclick="loadContacts('all')" id="filterAll">Semua</button>
           <button class="btn btn-sm btn-secondary" onclick="loadContacts('available')" id="filterAvailable">⏳ Tersedia</button>
           <button class="btn btn-sm btn-secondary" onclick="loadContacts('sent')" id="filterSent">✅ Terkirim</button>
-          <input type="text" id="contactSearch" class="form-control" placeholder="Cari nomor..." style="flex:1;min-width:150px;">
+          <input type="text" id="contactSearch" class="form-control" placeholder="Cari nomor..." style="flex:1; min-width:150px; padding:8px 12px; font-size:13px;">
           <button class="btn btn-sm btn-primary" onclick="loadContacts(currentContactFilter)"><i class="fas fa-search"></i></button>
         </div>
 
-        <!-- Action Buttons -->
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
           <button class="btn btn-sm btn-danger" onclick="deleteSelected()"><i class="fas fa-trash"></i> Hapus Terpilih</button>
-          <button class="btn btn-sm btn-warning" onclick="resetSent()"><i class="fas fa-undo"></i> Reset Terkirim → Tersedia</button>
+          <button class="btn btn-sm btn-warning" onclick="resetSent()"><i class="fas fa-undo"></i> Reset Terkirim</button>
           <button class="btn btn-sm btn-danger" onclick="deleteAllSent()"><i class="fas fa-trash"></i> Hapus Semua Terkirim</button>
         </div>
 
-        <!-- Table -->
-        <div style="overflow-x:auto;max-height:400px;">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <thead style="position:sticky;top:0;background:var(--bg-card);">
-              <tr style="background:var(--bg-main);text-align:left;">
-                <th style="padding:8px;width:40px;"><input type="checkbox" id="selectAllContacts" onchange="toggleSelectAll(this)"></th>
-                <th style="padding:8px;">#</th>
-                <th style="padding:8px;">Nomor</th>
-                <th style="padding:8px;">Status</th>
+        <div style="overflow-x:auto; max-height:400px;">
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead style="position:sticky; top:0; background:#0f1420;">
+              <tr style="background:#06080f; text-align:left;">
+                <th style="padding:6px; width:36px;"><input type="checkbox" id="selectAllContacts" onchange="toggleSelectAll(this)"></th>
+                <th style="padding:6px;">#</th>
+                <th style="padding:6px;">Nomor</th>
+                <th style="padding:6px;">Status</th>
               </tr>
             </thead>
             <tbody id="contactsList">
-              <tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-muted);">Pilih database dulu</td></tr>
+              <tr><td colspan="4" style="padding:20px; text-align:center; color:#64748B;">Pilih database</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Pagination -->
-        <div style="display:flex;gap:8px;justify-content:center;margin-top:14px;" id="contactsPagination"></div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:14px;" id="contactsPagination"></div>
       </div>
     </div>
   </div>
 
   <div id="toastContainer" class="toast-container"></div>
   <script src="helpers.js"></script>
+
   <script>
     let allSites = [];
     let currentContactFilter = 'all';
     let currentContactPage = 1;
     let currentContactSiteId = null;
 
-    // ============================================
-    // INIT
-    // ============================================
-    document.addEventListener('DOMContentLoaded', () => {
-      loadSites();
-      loadDevices();
-      loadPendingWithdrawals();
-      loadUsers();
-      updateClock();
-      setInterval(updateClock, 1000);
-      setInterval(loadPendingWithdrawals, 30000);
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
 
-      fetch('/api/me').then(r => r.json()).then(u => {
-        document.getElementById('userName').textContent = u.name || 'Admin';
-      });
-
-      // Photo preview
-      document.getElementById('sitePhoto').addEventListener('input', function() {
-        const p = document.getElementById('sitePhotoPreview');
-        const img = document.getElementById('sitePhotoPreviewImg');
-        if (this.value) { img.src = this.value; p.style.display = 'block'; }
-        else p.style.display = 'none';
-      });
-
-      // Import count
-      document.getElementById('importNumbers').addEventListener('input', updateImportCount);
-
-      // Logout
-      document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!confirm('Yakin logout?')) return;
-        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-        window.location.href = '/';
-      });
-    });
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
     function updateClock() {
       const el = document.getElementById('clock');
       if (el) el.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     }
 
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
     function updateImportCount() {
       const val = document.getElementById('importNumbers').value;
       const lines = val.split('\n').filter(l => l.trim() !== '' && /^[0-9]/.test(l.trim()));
-      document.getElementById('importCount').textContent = `${lines.length} nomor`;
+      document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
-    // ============================================
     // SITES
-    // ============================================
     async function loadSites() {
       try {
         const res = await fetch('/api/admin/sites', { credentials: 'include' });
@@ -290,51 +258,45 @@
     }
 
     function renderSites() {
-      const container = document.getElementById('sitesList');
-      if (!allSites || allSites.length === 0) {
-        container.innerHTML = '<p class="empty">Belum ada database</p>';
-        return;
-      }
-
-      container.innerHTML = allSites.map(s => `
-        <div style="padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border-light);">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:200px;">
-              <div style="font-weight:700;font-size:16px;color:var(--primary);margin-bottom:6px;">
-                <i class="fas fa-database"></i> ${s.name}
-              </div>
-              <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">
-                <b>Template:</b> "${(s.template_text || '').substring(0, 60)}${(s.template_text || '').length > 60 ? '...' : ''}"
-              </div>
-              ${s.template_photo ? `<img src="${s.template_photo}" style="max-width:80px;border-radius:6px;margin-bottom:8px;border:1px solid var(--border-glow);" onerror="this.style.display='none'">` : ''}
-              <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary);">
-                <span><i class="fas fa-list"></i> Total: <b>${(s.total_contacts || 0).toLocaleString('id-ID')}</b></span>
-                <span style="color:var(--success);"><i class="fas fa-check-circle"></i> Terkirim: <b>${(s.sent_contacts || 0).toLocaleString('id-ID')}</b></span>
-                <span style="color:var(--warning);"><i class="fas fa-clock"></i> Tersedia: <b>${(s.available_contacts || 0).toLocaleString('id-ID')}</b></span>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px;min-width:140px;">
-              <button class="btn btn-sm btn-info" onclick="openSiteModal(${s.id})"><i class="fas fa-edit"></i> Edit</button>
-              <button class="btn btn-sm btn-primary" onclick="openContactModal(${s.id})"><i class="fas fa-list"></i> Lihat Nomor</button>
-              ${s.id !== 1 ? `<button class="btn btn-sm btn-danger" onclick="deleteSite(${s.id})"><i class="fas fa-trash"></i> Hapus DB</button>` : ''}
-            </div>
-          </div>
-        </div>
-      `).join('');
+      const c = document.getElementById('sitesList');
+      if (!allSites || allSites.length === 0) { c.innerHTML = '<p class="empty">Belum ada database</p>'; return; }
+      c.innerHTML = allSites.map(s => {
+        const tmpl = (s.template_text || '').substring(0, 50);
+        const tmplTrunc = (s.template_text || '').length > 50 ? '...' : '';
+        return '<div style="padding:14px; background:#06080f; border-radius:12px; border:1px solid rgba(59,130,246,0.15);">' +
+          '<div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">' +
+            '<div style="flex:1; min-width:180px;">' +
+              '<div style="font-weight:700; font-size:14px; color:#3B82F6; margin-bottom:4px;"><i class="fas fa-database"></i> ' + s.name + '</div>' +
+              '<div style="font-size:12px; color:#8B97AB; margin-bottom:6px;"><b>Template:</b> "' + tmpl + tmplTrunc + '"</div>' +
+              (s.template_photo ? '<img src="' + s.template_photo + '" style="max-width:60px; border-radius:6px; margin-bottom:6px; border:1px solid rgba(59,130,246,0.4);" onerror="this.style.display=\'none\'">' : '') +
+              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
+                '<span><i class="fas fa-list"></i> ' + (s.total_contacts || 0).toLocaleString('id-ID') + '</span>' +
+                '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> ' + (s.sent_contacts || 0).toLocaleString('id-ID') + '</span>' +
+                '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex; flex-direction:column; gap:6px; min-width:130px;">' +
+              '<button class="btn btn-sm btn-info" onclick="openSiteModal(' + s.id + ')"><i class="fas fa-edit"></i> Edit</button>' +
+              '<button class="btn btn-sm btn-primary" onclick="openContactModal(' + s.id + ')"><i class="fas fa-list"></i> Lihat Nomor</button>' +
+              (s.id !== 1 ? '<button class="btn btn-sm btn-danger" onclick="deleteSite(' + s.id + ')"><i class="fas fa-trash"></i> Hapus</button>' : '') +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
 
     function populateSiteDropdowns() {
       const sel = document.getElementById('importSite');
       if (!sel) return;
-      const currentVal = sel.value;
+      const cur = sel.value;
       sel.innerHTML = '<option value="">-- Pilih Database --</option>';
       allSites.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = `${s.name} (${(s.available_contacts || 0).toLocaleString('id-ID')} tersedia)`;
-        sel.appendChild(opt);
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name + ' (' + (s.available_contacts || 0).toLocaleString('id-ID') + ' tersedia)';
+        sel.appendChild(o);
       });
-      if (currentVal) sel.value = currentVal;
+      if (cur) sel.value = cur;
     }
 
     function openSiteModal(id = null) {
@@ -344,7 +306,6 @@
       document.getElementById('siteTemplate').value = '';
       document.getElementById('sitePhoto').value = '';
       document.getElementById('sitePhotoPreview').style.display = 'none';
-
       if (id) {
         const s = allSites.find(x => x.id === id);
         if (s) {
@@ -365,11 +326,9 @@
       const name = document.getElementById('siteName').value.trim();
       const template_text = document.getElementById('siteTemplate').value;
       const template_photo = document.getElementById('sitePhoto').value.trim();
-
-      if (!name) return showToast('Nama database wajib diisi', 'error');
-
+      if (!name) return showToast('Nama wajib diisi', 'error');
       try {
-        const url = id ? `/api/admin/sites/${id}` : '/api/admin/sites';
+        const url = id ? '/api/admin/sites/' + id : '/api/admin/sites';
         const method = id ? 'PUT' : 'POST';
         const res = await fetch(url, {
           method, credentials: 'include',
@@ -385,38 +344,29 @@
     }
 
     async function deleteSite(id) {
-      if (!confirm('Hapus database ini? Nomor di dalamnya juga ikut terhapus.')) return;
+      if (!confirm('Hapus database ini?')) return;
       try {
-        const res = await fetch(`/api/admin/sites/${id}`, { method: 'DELETE', credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast('✅ Database dihapus', 'success');
-        loadSites();
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        const res = await fetch('/api/admin/sites/' + id, { method: 'DELETE', credentials: 'include' });
+        if (res.ok) { showToast('✅ Database dihapus', 'success'); loadSites(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
-    // ============================================
     // IMPORT
-    // ============================================
     document.getElementById('importForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const siteId = document.getElementById('importSite').value;
       const raw = document.getElementById('importNumbers').value;
       const resultDiv = document.getElementById('importResult');
-
-      if (!siteId) { resultDiv.innerHTML = '<div class="alert alert-danger">⚠️ Pilih database dulu!</div>'; return; }
-
+      if (!siteId) { resultDiv.innerHTML = '<div class="alert alert-danger">Pilih database dulu</div>'; return; }
       const numbers = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
-      if (numbers.length === 0) { resultDiv.innerHTML = '<div class="alert alert-danger">Tidak ada nomor!</div>'; return; }
-      if (numbers.length > 10000) { resultDiv.innerHTML = '<div class="alert alert-danger">Maksimal 10.000 nomor!</div>'; return; }
-
-      if (!confirm(`Import ${numbers.length} nomor ke database ini?`)) return;
+      if (numbers.length === 0) { resultDiv.innerHTML = '<div class="alert alert-danger">Tidak ada nomor</div>'; return; }
+      if (numbers.length > 10000) { resultDiv.innerHTML = '<div class="alert alert-danger">Max 10.000</div>'; return; }
+      if (!confirm('Import ' + numbers.length + ' nomor?')) return;
 
       const btn = e.target.querySelector('button[type="submit"]');
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
       resultDiv.innerHTML = '';
-
       try {
         const res = await fetch('/api/admin/import-contacts', {
           method: 'POST', credentials: 'include',
@@ -424,28 +374,28 @@
           body: JSON.stringify({ siteId, numbers })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal import');
-        resultDiv.innerHTML = `<div class="alert alert-success">✅ <b>${data.inserted}</b> nomor diimport! ${data.skipped > 0 ? `(${data.skipped} duplikat dilewati)` : ''}</div>`;
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        resultDiv.innerHTML = '<div class="alert alert-success">✅ <b>' + data.inserted + '</b> diimport! ' + (data.skipped > 0 ? '(' + data.skipped + ' duplikat)' : '') + '</div>';
         document.getElementById('importNumbers').value = '';
         updateImportCount();
         loadSites();
       } catch (err) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${err.message}</div>`;
+        resultDiv.innerHTML = '<div class="alert alert-danger">❌ ' + err.message + '</div>';
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-upload"></i> Import Nomor';
+        btn.innerHTML = '<i class="fas fa-upload"></i> Import';
       }
     });
 
-    // ============================================
+    document.getElementById('importNumbers').addEventListener('input', updateImportCount);
+
     // CONTACTS VIEW
-    // ============================================
     function openContactModal(siteId) {
       currentContactSiteId = siteId;
       currentContactFilter = 'all';
       currentContactPage = 1;
-      const site = allSites.find(s => s.id === siteId);
-      document.getElementById('contactModalTitle').innerHTML = `<i class="fas fa-list"></i> ${site ? site.name : 'Nomor Database'}`;
+      const s = allSites.find(x => x.id === siteId);
+      document.getElementById('contactModalTitle').innerHTML = '<i class="fas fa-list"></i> ' + (s ? s.name : 'Nomor');
       document.getElementById('contactSiteId').value = siteId;
       document.getElementById('contactSearch').value = '';
       document.getElementById('contactModal').classList.add('active');
@@ -456,7 +406,6 @@
       if (filter) currentContactFilter = filter;
       currentContactPage = page;
 
-      // Highlight active filter button
       ['filterAll', 'filterAvailable', 'filterSent'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.className = 'btn btn-sm btn-secondary';
@@ -467,61 +416,56 @@
 
       const search = document.getElementById('contactSearch').value.trim();
       const tbody = document.getElementById('contactsList');
-      tbody.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
 
       try {
-        const url = `/api/admin/sites/${currentContactSiteId}/contacts?page=${currentContactPage}&limit=100&status=${currentContactFilter}&search=${encodeURIComponent(search)}`;
+        const url = '/api/admin/sites/' + currentContactSiteId + '/contacts?page=' + currentContactPage + '&limit=100&status=' + currentContactFilter + '&search=' + encodeURIComponent(search);
         const res = await fetch(url, { credentials: 'include' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
 
-        // Stats
-        const site = allSites.find(s => s.id === currentContactSiteId);
-        document.getElementById('contactStats').innerHTML = `
-          <div style="padding:10px;background:rgba(59,130,246,0.1);border-radius:8px;text-align:center;">
-            <div style="font-size:11px;color:var(--text-secondary);">TOTAL</div>
-            <div style="font-size:18px;font-weight:800;color:var(--primary);">${(site?.total_contacts || 0).toLocaleString('id-ID')}</div>
-          </div>
-          <div style="padding:10px;background:rgba(52,211,153,0.1);border-radius:8px;text-align:center;">
-            <div style="font-size:11px;color:var(--text-secondary);">✅ TERKIRIM</div>
-            <div style="font-size:18px;font-weight:800;color:var(--success);">${(site?.sent_contacts || 0).toLocaleString('id-ID')}</div>
-          </div>
-          <div style="padding:10px;background:rgba(251,191,36,0.1);border-radius:8px;text-align:center;">
-            <div style="font-size:11px;color:var(--text-secondary);">⏳ TERSEDIA</div>
-            <div style="font-size:18px;font-weight:800;color:var(--warning);">${(site?.available_contacts || 0).toLocaleString('id-ID')}</div>
-          </div>
-        `;
+        const s = allSites.find(x => x.id === currentContactSiteId);
+        document.getElementById('contactStats').innerHTML =
+          '<div style="padding:10px; background:rgba(59,130,246,0.1); border-radius:8px; text-align:center;">' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TOTAL</div>' +
+            '<div style="font-size:18px; font-weight:800; color:#3B82F6;">' + (s ? (s.total_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
+          '</div>' +
+          '<div style="padding:10px; background:rgba(52,211,153,0.1); border-radius:8px; text-align:center;">' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">✅ TERKIRIM</div>' +
+            '<div style="font-size:18px; font-weight:800; color:#34D399;">' + (s ? (s.sent_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
+          '</div>' +
+          '<div style="padding:10px; background:rgba(251,191,36,0.1); border-radius:8px; text-align:center;">' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">⏳ TERSEDIA</div>' +
+            '<div style="font-size:18px; font-weight:800; color:#FBBF24;">' + (s ? (s.available_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
+          '</div>';
 
         if (!data.data || data.data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-muted);">Tidak ada nomor</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#64748B;">Tidak ada nomor</td></tr>';
           document.getElementById('contactsPagination').innerHTML = '';
           return;
         }
 
         tbody.innerHTML = data.data.map((c, i) => {
           const isSent = c.status === 'sent';
-          const statusBadge = isSent
-            ? '<span style="color:var(--success);font-size:12px;">✅ Terkirim</span>'
-            : '<span style="color:var(--warning);font-size:12px;">⏳ Tersedia</span>';
-          return `
-            <tr style="border-bottom:1px solid var(--border-light);">
-              <td style="padding:6px;"><input type="checkbox" class="contact-checkbox" value="${c.phone}"></td>
-              <td style="padding:6px;">${(data.page - 1) * data.limit + i + 1}</td>
-              <td style="padding:6px;font-family:monospace;">${c.phone}</td>
-              <td style="padding:6px;">${statusBadge}</td>
-            </tr>
-          `;
+          const badge = isSent
+            ? '<span style="color:#34D399; font-size:11px;">✅ Terkirim</span>'
+            : '<span style="color:#FBBF24; font-size:11px;">⏳ Tersedia</span>';
+          return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
+            '<td style="padding:6px;"><input type="checkbox" class="contact-checkbox" value="' + c.phone + '"></td>' +
+            '<td style="padding:6px;">' + ((data.page - 1) * data.limit + i + 1) + '</td>' +
+            '<td style="padding:6px; font-family:monospace;">' + c.phone + '</td>' +
+            '<td style="padding:6px;">' + badge + '</td>' +
+          '</tr>';
         }).join('');
 
-        // Pagination
         const pag = document.getElementById('contactsPagination');
         let html = '';
-        if (data.page > 1) html += `<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ${data.page - 1})">« Prev</button>`;
-        html += `<span style="padding:8px 12px;">Hal ${data.page} / ${data.totalPages}</span>`;
-        if (data.page < data.totalPages) html += `<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ${data.page + 1})">Next »</button>`;
+        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')">« Prev</button>';
+        html += '<span style="padding:8px 12px; font-size:12px;">Hal ' + data.page + ' / ' + data.totalPages + '</span>';
+        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next »</button>';
         pag.innerHTML = html;
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--danger);">Error: ${e.message}</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error: ' + e.message + '</td></tr>';
       }
     }
 
@@ -530,181 +474,180 @@
     }
 
     async function deleteSelected() {
-      const selected = Array.from(document.querySelectorAll('.contact-checkbox:checked')).map(cb => cb.value);
-      if (selected.length === 0) return showToast('Pilih nomor dulu', 'warning');
-      if (!confirm(`Hapus ${selected.length} nomor terpilih?`)) return;
-
+      const sel = Array.from(document.querySelectorAll('.contact-checkbox:checked')).map(cb => cb.value);
+      if (sel.length === 0) return showToast('Pilih nomor dulu', 'warning');
+      if (!confirm('Hapus ' + sel.length + ' nomor?')) return;
       try {
-        const res = await fetch(`/api/admin/sites/${currentContactSiteId}/delete-phones`, {
+        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-phones', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phones: selected })
+          body: JSON.stringify({ phones: sel })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast(`✅ ${data.deleted} nomor dihapus`, 'success');
-        loadContacts(); loadSites();
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        if (res.ok) { showToast('✅ ' + data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
     async function resetSent() {
-      if (!confirm('Reset semua nomor "terkirim" jadi "tersedia"? (untuk blast ulang)')) return;
+      if (!confirm('Reset semua nomor "terkirim" jadi "tersedia"?')) return;
       try {
-        const res = await fetch(`/api/admin/sites/${currentContactSiteId}/reset-sent`, { method: 'POST', credentials: 'include' });
+        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/reset-sent', { method: 'POST', credentials: 'include' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast(`✅ ${data.reset} nomor direset`, 'success');
-        loadContacts(); loadSites();
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        if (res.ok) { showToast('✅ ' + data.reset + ' direset', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
     async function deleteAllSent() {
-      if (!confirm('Hapus SEMUA nomor yang berstatus "terkirim"? Tidak bisa dibatalkan.')) return;
+      if (!confirm('Hapus SEMUA nomor terkirim?')) return;
       try {
-        const res = await fetch(`/api/admin/sites/${currentContactSiteId}/delete-sent`, { method: 'POST', credentials: 'include' });
+        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-sent', { method: 'POST', credentials: 'include' });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast(`✅ ${data.deleted} nomor terkirim dihapus`, 'success');
-        loadContacts(); loadSites();
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        if (res.ok) { showToast('✅ ' + data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
-    // ============================================
     // DEVICES ASSIGNMENT
-    // ============================================
     async function loadDevices() {
       try {
         const res = await fetch('/api/admin/devices', { credentials: 'include' });
         const devices = await res.json();
-        const container = document.getElementById('devicesList');
-
-        if (!devices || devices.length === 0) {
-          container.innerHTML = '<p class="empty">Belum ada device</p>';
-          return;
-        }
-
-        container.innerHTML = devices.map(d => `
-          <div style="padding:14px;background:var(--bg-main);border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:200px;">
-              <div style="font-weight:600;">${d.name} <span style="font-size:11px;color:var(--text-secondary);">(${d.id})</span></div>
-              <div style="font-size:12px;color:var(--text-secondary);">
-                User: ${d.user_name || '-'} ${d.phone ? '· ' + d.phone : ''}
-                <span style="color:${d.status === 'connected' ? 'var(--success)' : 'var(--danger)'};">
-                  · ${d.status}
-                </span>
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <label style="font-size:12px;color:var(--text-secondary);">DB:</label>
-              <select class="form-control" style="min-width:150px;padding:6px 10px;font-size:13px;" onchange="assignDevice('${d.id}', this.value)">
-                ${allSites.map(s => `<option value="${s.id}" ${s.id === d.site_id ? 'selected' : ''}>${s.name}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-        `).join('');
+        const c = document.getElementById('devicesList');
+        if (!devices || devices.length === 0) { c.innerHTML = '<p class="empty">Belum ada device</p>'; return; }
+        c.innerHTML = devices.map(d => {
+          const opts = allSites.map(s => '<option value="' + s.id + '"' + (s.id === d.site_id ? ' selected' : '') + '>' + s.name + '</option>').join('');
+          return '<div style="padding:12px; background:#06080f; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">' +
+            '<div style="flex:1; min-width:180px;">' +
+              '<div style="font-weight:600; font-size:13px;">' + d.name + ' <span style="font-size:10px; color:#64748B;">(' + d.id + ')</span></div>' +
+              '<div style="font-size:11px; color:#8B97AB;">' + (d.user_name || '-') + (d.phone ? ' · ' + d.phone : '') +
+                ' <span style="color:' + (d.status === 'connected' ? '#34D399' : '#F87171') + ';">· ' + d.status + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:6px; align-items:center;">' +
+              '<label style="font-size:11px; color:#8B97AB;">DB:</label>' +
+              '<select class="form-control" style="padding:6px 10px; font-size:12px; min-width:140px;" onchange="assignDevice(\'' + d.id + '\', this.value)">' + opts + '</select>' +
+            '</div>' +
+          '</div>';
+        }).join('');
       } catch (e) { console.error(e); }
     }
 
     async function assignDevice(deviceId, siteId) {
       try {
-        const res = await fetch(`/api/admin/devices/${deviceId}/site`, {
+        const res = await fetch('/api/admin/devices/' + deviceId + '/site', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ siteId })
         });
-        if (!res.ok) throw new Error('Gagal');
-        showToast('✅ Device di-assign', 'success');
-      } catch (e) { showToast('❌ Gagal assign', 'error'); }
+        if (res.ok) showToast('✅ Device di-assign', 'success');
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
-    // ============================================
     // WITHDRAW
-    // ============================================
     async function loadPendingWithdrawals() {
       try {
         const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
         const data = await res.json();
-        const container = document.getElementById('pendingWithdrawList');
-        if (!data || data.length === 0) { container.innerHTML = '<p class="empty">Tidak ada permintaan pending</p>'; return; }
-        container.innerHTML = data.map(w => `
-          <div style="border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:12px;">
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-              <div>
-                <strong>${w.name || w.email}</strong>
-                <span style="color:var(--text-secondary);font-size:13px;margin-left:8px;">
-                  ${(w.method || '').toUpperCase()} - ${w.account_number}
-                </span>
-              </div>
-              <div><span style="font-weight:700;color:#ff9800;">Rp${(w.amount || 0).toLocaleString('id-ID')}</span></div>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:8px;">
-              <button class="btn btn-sm btn-success" onclick="approveWithdraw(${w.id})"><i class="fas fa-check"></i> ACC</button>
-              <button class="btn btn-sm btn-danger" onclick="rejectWithdraw(${w.id})"><i class="fas fa-times"></i> Tolak</button>
-            </div>
-          </div>
-        `).join('');
+        const c = document.getElementById('pendingWithdrawList');
+        if (!data || data.length === 0) { c.innerHTML = '<p class="empty">Tidak ada permintaan</p>'; return; }
+        c.innerHTML = data.map(w => {
+          const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
+          return '<div style="border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:12px; margin-bottom:10px;">' +
+            '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+              '<div>' +
+                '<strong>' + (w.name || w.email) + '</strong>' +
+                '<span style="color:#8B97AB; font-size:12px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
+                '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
+              '</div>' +
+              '<div><span style="font-weight:700; color:#FBBF24;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</span></div>' +
+            '</div>' +
+            '<div style="margin-top:8px; display:flex; gap:6px;">' +
+              '<button class="btn btn-sm btn-success" onclick="approveWithdraw(' + w.id + ')"><i class="fas fa-check"></i> ACC</button>' +
+              '<button class="btn btn-sm btn-danger" onclick="rejectWithdraw(' + w.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
       } catch (e) { console.error(e); }
     }
 
     async function approveWithdraw(id) {
       if (!confirm('ACC withdraw ini?')) return;
       try {
-        const res = await fetch(`/api/admin/withdraw/${id}/approve`, {
+        const res = await fetch('/api/admin/withdraw/' + id + '/approve', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ note: '' })
         });
-        if (res.ok) { showToast('✅ Withdraw di-ACC', 'success'); loadPendingWithdrawals(); }
-        else showToast('❌ Gagal', 'error');
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        if (res.ok) { showToast('✅ Di-ACC', 'success'); loadPendingWithdrawals(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
     async function rejectWithdraw(id) {
-      const reason = prompt('Alasan penolakan:');
+      const reason = prompt('Alasan:');
       if (reason === null) return;
       try {
-        const res = await fetch(`/api/admin/withdraw/${id}/reject`, {
+        const res = await fetch('/api/admin/withdraw/' + id + '/reject', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason })
         });
-        if (res.ok) { showToast('Withdraw ditolak', 'warning'); loadPendingWithdrawals(); }
-        else showToast('❌ Gagal', 'error');
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+        if (res.ok) { showToast('Ditolak', 'warning'); loadPendingWithdrawals(); }
+      } catch (e) { showToast('❌ Gagal', 'error'); }
     }
 
-    // ============================================
     // USERS
-    // ============================================
     async function loadUsers() {
       try {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
         const users = await res.json();
         const tbody = document.getElementById('usersList');
-        if (!users || users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;">Belum ada user</td></tr>';
-          return;
-        }
+        if (!users || users.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="padding:16px; text-align:center;">Belum ada user</td></tr>'; return; }
         tbody.innerHTML = users.map(u => {
-          const wallets = [];
-          if (u.gopay_phone) wallets.push(`GoPay: ${u.gopay_phone}`);
-          if (u.ovo_phone) wallets.push(`OVO: ${u.ovo_phone}`);
-          if (u.dana_phone) wallets.push(`Dana: ${u.dana_phone}`);
-          if (u.bank_name) wallets.push(`Bank ${u.bank_name}`);
-          const walletInfo = wallets.length ? wallets.join('<br>') : '-';
-          const tg = u.telegram_username ? `@${u.telegram_username}` : '-';
-          return `
-            <tr style="border-bottom:1px solid var(--border-light);">
-              <td style="padding:10px;">#${u.id}</td>
-              <td style="padding:10px;"><b>${u.name || '-'}</b><br><span style="color:var(--text-secondary);font-size:12px;">${u.email || '-'}</span></td>
-              <td style="padding:10px;">${tg}</td>
-              <td style="padding:10px;font-size:12px;">${walletInfo}</td>
-              <td style="padding:10px;font-weight:600;color:var(--primary);">Rp${(u.balance || 0).toLocaleString('id-ID')}</td>
-            </tr>
-          `;
+          const tg = u.telegram_username ? '<a href="https://t.me/' + u.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + u.telegram_username + '</a>' : '-';
+          const pay = [];
+          if (u.method) pay.push(String(u.method).toUpperCase());
+          if (u.bank_name) pay.push(u.bank_name);
+          if (u.bank_account) pay.push(u.bank_account);
+          const payInfo = pay.length ? pay.join('<br>') : '-';
+          return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
+            '<td style="padding:8px;">#' + u.id + '</td>' +
+            '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</span></td>' +
+            '<td style="padding:8px; font-size:11px;">' + tg + '</td>' +
+            '<td style="padding:8px; font-size:11px;">' + payInfo + '</td>' +
+            '<td style="padding:8px; font-weight:700; color:#3B82F6;">Rp' + (u.balance || 0).toLocaleString('id-ID') + '</td>' +
+          '</tr>';
         }).join('');
       } catch (e) { console.error(e); }
     }
+
+    // PHOTO PREVIEW
+    document.getElementById('sitePhoto').addEventListener('input', function() {
+      const p = document.getElementById('sitePhotoPreview');
+      const img = document.getElementById('sitePhotoPreviewImg');
+      if (this.value) { img.src = this.value; p.style.display = 'block'; }
+      else p.style.display = 'none';
+    });
+
+    // INIT
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSites();
+      loadDevices();
+      loadPendingWithdrawals();
+      loadUsers();
+      updateClock();
+      setInterval(updateClock, 1000);
+      setInterval(loadPendingWithdrawals, 30000);
+
+      fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(u => {
+        document.getElementById('userName').textContent = u.name || 'Admin';
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!confirm('Yakin logout?')) return;
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/';
+      });
+    });
   </script>
 </body>
 </html>
