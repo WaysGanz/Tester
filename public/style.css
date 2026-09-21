@@ -1782,6 +1782,156 @@ body.login-page {
 }
 
 /* ============================================
+   🔥 BLAST START / STOP BUTTONS (NEW)
+   ============================================ */
+
+/* Container aksi tombol device */
+.device-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-top: 12px;
+}
+
+/* START BLAST — full width, glow biru, uppercase */
+.btn-blast-start {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-family: 'Inter', inherit;
+  white-space: nowrap;
+}
+.btn-blast-start:hover:not(:disabled) {
+  box-shadow: 0 0 32px rgba(59, 130, 246, 0.85);
+  transform: translateY(-1px);
+}
+.btn-blast-start:active { transform: translateY(0); }
+.btn-blast-start:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* STOP BLAST — muncul saat blasting, pulse merah */
+.btn-blast-stop {
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-family: 'Inter', inherit;
+  animation: pulseStop 1.4s infinite;
+  white-space: nowrap;
+}
+@keyframes pulseStop {
+  0%, 100% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.55); }
+  50%      { box-shadow: 0 0 34px rgba(239, 68, 68, 0.95); }
+}
+.btn-blast-stop:hover {
+  transform: translateY(-1px);
+  animation: none;
+  box-shadow: 0 0 42px rgba(239, 68, 68, 1);
+}
+
+/* Speed select versi compact */
+.speed-select-compact {
+  background: rgba(6, 8, 15, 0.7);
+  color: #3B82F6;
+  border: 1.5px solid rgba(59, 130, 246, 0.4);
+  border-radius: 10px;
+  padding: 11px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  min-width: 72px;
+  text-align: center;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3e%3cpath d='M1 1L5 5L9 1' stroke='%233B82F6' stroke-width='2' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+.speed-select-compact:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+.speed-select-compact option {
+  background: #0B1220;
+  color: #fff;
+}
+
+/* Icon button kecil (QR, Hapus) */
+.btn-icon-sm {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 10px;
+  color: #8B97AB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  padding: 0;
+}
+.btn-icon-sm:hover {
+  color: #3B82F6;
+  border-color: #3B82F6;
+  background: rgba(59, 130, 246, 0.1);
+}
+.btn-icon-sm.danger:hover {
+  color: #EF4444;
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Badge status BLASTING — kuning blink */
+.device-status.blasting {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  animation: blinkStatus 1.5s infinite;
+}
+@keyframes blinkStatus {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* ============================================
    RESPONSIVE — Bottom Nav di HP
    ============================================ */
 @media (max-width: 768px) {
@@ -1895,8 +2045,28 @@ body.login-page {
   .device-toolbar .btn-group { flex-wrap: wrap; }
   .device-toolbar .search-box { min-width: unset; }
   .device-card { padding: 14px 16px; }
-  .device-actions .btn { flex: 1; }
-  .device-actions .speed-select { flex: 1; }
+
+  /* Blast button di HP — full width, tetap lega */
+  .device-actions {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .btn-blast-start,
+  .btn-blast-stop {
+    padding: 11px 12px;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+  .speed-select-compact {
+    min-width: 62px;
+    padding: 10px 22px 10px 6px;
+    font-size: 12px;
+  }
+  .btn-icon-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
 
   .balance-value { font-size: 28px; }
   .ref-stat-val { font-size: 20px; }
