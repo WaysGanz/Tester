@@ -20,11 +20,11 @@
     <span></span><span></span><span></span><span></span><span></span>
   </div>
 
-  <!-- Full Screen Register -->
+  <!-- Full Screen Register (SAMA KAYAK LOGIN) -->
   <div class="login-fullscreen">
-    <div class="login-content register-content">
+    <div class="login-content">
 
-      <!-- Logo & Brand -->
+      <!-- Logo & Brand (SAMA KAYAK LOGIN) -->
       <div class="login-header">
         <div class="logo-container">
           <div class="logo-ring"></div>
@@ -117,19 +117,22 @@
         </div>
 
         <!-- Password Strength -->
-        <div class="strength-wrap">
+        <div class="strength-wrap" style="margin-top:-6px;">
           <div class="strength-track">
             <div class="strength-bar" id="strengthBar"></div>
           </div>
           <small id="strengthLabel">Kekuatan password</small>
         </div>
 
-        <!-- Human Check -->
-        <label class="human-check" style="margin:6px 0 4px;">
-          <input type="checkbox" id="humanCheckRegister" checked>
-          <span class="checkmark"></span>
-          <span>Aku manusia</span>
-        </label>
+        <!-- Human Check (SAMA KAYAK LOGIN) -->
+        <div class="form-row-options" style="margin:8px 0 4px;">
+          <label class="human-check">
+            <input type="checkbox" id="humanCheckRegister" checked>
+            <span class="checkmark"></span>
+            <span>Aku manusia</span>
+          </label>
+          <a href="/" class="link-forgot">Sudah punya akun?</a>
+        </div>
 
         <!-- Submit -->
         <button type="submit" class="btn-main" id="registerBtn">
@@ -146,10 +149,10 @@
         <span></span>
       </div>
 
-      <!-- Login Link -->
+      <!-- Login -->
       <a href="/" class="btn-secondary-full">
         <i class="fas fa-sign-in-alt"></i>
-        <span>Sudah Punya Akun? Masuk</span>
+        <span>Masuk ke Akun</span>
       </a>
 
       <!-- Terms -->
@@ -161,7 +164,6 @@
 
     </div>
 
-    <!-- Copyright -->
     <p class="copyright-full">© 2026 SewaWA. All rights reserved.</p>
   </div>
 
@@ -182,7 +184,6 @@
       }
     }
 
-    // Password strength meter
     document.getElementById('registerPassword').addEventListener('input', function() {
       const p = this.value;
       let s = 0;
