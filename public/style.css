@@ -781,14 +781,14 @@ body.login-page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 24px;
+  padding: 16px 24px;
   background: rgba(10, 15, 26, 0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(59, 130, 246, 0.15);
   flex-shrink: 0;
 }
 .header h1 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.3px;
   color: #E8EFFB;
@@ -837,32 +837,48 @@ body.login-page {
   padding: 20px 24px 80px;
 }
 
-/* Hamburger */
+/* ============================================
+   HAMBURGER — Floating Bottom Left
+   ============================================ */
 .hamburger-btn {
+  position: fixed !important;
+  bottom: 24px;
+  left: 20px;
+  z-index: 997;
   display: flex !important;
   align-items: center;
   justify-content: center;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  border: none;
   font-size: 18px;
-  color: #3B82F6;
+  color: #fff;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 10px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 8px 25px rgba(59, 130, 246, 0.5),
+    0 0 40px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .hamburger-btn:hover {
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.15);
-  transform: scale(1.05);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow:
+    0 12px 35px rgba(59, 130, 246, 0.7),
+    0 0 60px rgba(59, 130, 246, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
-.hamburger-btn:active { transform: scale(0.95); }
-.hamburger-btn i { transition: transform 0.3s ease; }
-.hamburger-btn:hover i { transform: rotate(90deg); }
-
+.hamburger-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+.hamburger-btn i {
+  transition: transform 0.3s ease;
+}
+.hamburger-btn:hover i {
+  transform: rotate(90deg);
+}
 .sidebar-overlay {
   display: none;
   position: fixed;
@@ -1528,6 +1544,16 @@ body.login-page {
 }
 
 @media (max-width: 480px) {
+  /* 👇 TAMBAHKAN DI SINI */
+  .hamburger-btn {
+    width: 52px;
+    height: 52px;
+    bottom: 20px;
+    left: 16px;
+    font-size: 17px;
+  }
+
+  /* Kode existing lo di bawah */
   .stats-compact-grid { gap: 10px; }
   .stat-box { padding: 14px; border-radius: 14px; }
   .stat-icon { width: 40px; height: 40px; font-size: 16px; border-radius: 10px; }
