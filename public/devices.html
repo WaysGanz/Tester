@@ -35,10 +35,7 @@
       <header class="header">
         <div style="display:flex; align-items:center; gap:10px;">
           <button class="hamburger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-          <div>
-            <h1 style="margin:0; font-size:18px;">Sender WhatsApp</h1>
-            <small style="font-size:11px; color:#64748B;">Kelola device untuk pengiriman pesan massal</small>
-          </div>
+          <h1>Sender WhatsApp</h1>
         </div>
         <div class="header-actions">
           <span class="clock" id="clock">--:--</span>
@@ -48,23 +45,24 @@
 
       <div class="devices-content">
 
+        <!-- ALERT PROFILE (Compact) -->
         <div class="alert-profile">
           <div class="alert-profile-head">
             <i class="fas fa-exclamation-triangle"></i>
-            <strong>PERHATIAN: ATURAN PROFIL ( TIDAK WAJIB )</strong>
+            <strong>PERHATIAN: ATURAN PROFIL</strong>
           </div>
           <div class="alert-profile-body">
-            <p>Anda tidak wajib menggunakan foto yang telah disediakan dan mengubah nama WhatsApp Anda sesuai dengan nama yang telah ditentukan sebelum mengirim pesan!!</p>
+            <p>Wajib pakai foto yang disediakan & ubah nama WhatsApp sesuai ketentuan sebelum mengirim pesan!</p>
             <div class="profile-template-box">
               <div class="profile-template-preview">
                 <img src="https://cdn.phototourl.com/free/2026-09-20-8c717727-ef32-4847-9272-b9122c016213.png" alt="Foto Profil" class="profile-template-img">
               </div>
               <div class="profile-template-info">
                 <div class="profile-template-title">
-                  <i class="fas fa-image"></i> Foto Profil ( tidak wajib )
+                  <i class="fas fa-image"></i> Foto Profil Wajib
                 </div>
                 <div class="profile-template-desc">
-                  Download foto ini &amp; pasang sebagai foto profil WhatsApp Anda sebelum blast.
+                  Download & pasang sebagai foto profil WhatsApp Anda.
                 </div>
                 <a href="https://cdn.phototourl.com/free/2026-09-20-8c717727-ef32-4847-9272-b9122c016213.png" download="foto-profil-wa.png" class="btn-download-photo">
                   <i class="fas fa-download"></i> Download Foto
@@ -73,17 +71,18 @@
             </div>
             <div class="alert-profile-sub">
               <i class="fas fa-bullhorn"></i>
-              <strong>WAJIB RECORD KE OWNER & BIAR DI KIRIM KE CH ( WAJIB ):</strong>
-              <a href="https://t.me/sewawacld" target="_blank">https://t.me/sewawacld</a>
+              <strong>RECORD & KIRIM KE CH:</strong>
+              <a href="https://t.me/test1212asd" target="_blank">t.me/test1212asd</a>
             </div>
           </div>
         </div>
 
+        <!-- DATA BAR (Compact) -->
         <div class="data-available-bar">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
             <div>
-              <div class="data-label">Data yang tersisa saat ini</div>
+              <div class="data-label">Data tersisa saat ini</div>
               <div class="data-value" id="dataAvailable">0</div>
             </div>
           </div>
@@ -93,56 +92,55 @@
           </button>
         </div>
 
-        <div class="perf-section-title">
-          <i class="fas fa-chart-bar"></i> Ringkasan Performa Blast
+        <!-- PERFORMANCE GRID (Compact 2 Col — Dashboard Style) -->
+        <div class="section-title"><i class="fas fa-chart-bar"></i> Ringkasan Performa Blast</div>
+
+        <div class="stats-compact-grid">
+          <div class="stat-box">
+            <div class="stat-icon neutral"><i class="fas fa-layer-group"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfSlotsActive">0</div>
+              <div class="stat-label">Slot Aktif</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfSuccess">0</div>
+              <div class="stat-label">Sukses</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon offline"><i class="fas fa-times-circle"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfFailed">0</div>
+              <div class="stat-label">Gagal</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon sent"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfCampaigns">0</div>
+              <div class="stat-label">Campaign</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon revenue"><i class="fas fa-address-book"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfUniqueContacts">0</div>
+              <div class="stat-label">Nomor Unik</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-icon balance"><i class="fas fa-bolt"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="perfAvgSpeed">0</div>
+              <div class="stat-label">Speed (dtk)</div>
+            </div>
+          </div>
         </div>
 
-        <div class="perf-grid">
-          <div class="perf-card">
-            <div class="perf-icon neutral"><i class="fas fa-layer-group"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Slot Aktif</div>
-              <div class="perf-value" id="perfSlotsActive">0</div>
-            </div>
-          </div>
-          <div class="perf-card">
-            <div class="perf-icon success"><i class="fas fa-check-circle"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Sukses (All Time)</div>
-              <div class="perf-value text-success" id="perfSuccess">0</div>
-            </div>
-          </div>
-          <div class="perf-card">
-            <div class="perf-icon danger"><i class="fas fa-times-circle"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Gagal (All Time)</div>
-              <div class="perf-value text-danger" id="perfFailed">0</div>
-            </div>
-          </div>
-          <div class="perf-card">
-            <div class="perf-icon info"><i class="fas fa-chart-line"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Partisipasi Blast</div>
-              <div class="perf-value" id="perfCampaigns">0 <small>Campaign</small></div>
-              <div class="perf-sub" id="perfProcessed">0 total pesan diproses</div>
-            </div>
-          </div>
-          <div class="perf-card">
-            <div class="perf-icon purple"><i class="fas fa-address-book"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Nomor Tertaut</div>
-              <div class="perf-value text-purple" id="perfUniqueContacts">0 <small>Unik</small></div>
-            </div>
-          </div>
-          <div class="perf-card">
-            <div class="perf-icon warning"><i class="fas fa-bolt"></i></div>
-            <div class="perf-body">
-              <div class="perf-label">Rata-rata Speed</div>
-              <div class="perf-value" id="perfAvgSpeed">0 <small>detik/pesan</small></div>
-            </div>
-          </div>
-        </div>
-
+        <!-- TOOLBAR -->
         <div class="device-toolbar">
           <div class="btn-group">
             <button class="btn btn-sm btn-secondary" onclick="filterDevices('all')">Semua</button>
@@ -166,7 +164,7 @@
 
   <!-- MODAL QR -->
   <div class="modal" id="qrModal">
-    <div class="modal-content" style="max-width: 460px;">
+    <div class="modal-content" style="max-width:460px;">
       <div class="modal-header">
         <h3><i class="fas fa-qrcode"></i> Scan QR WhatsApp</h3>
         <button class="modal-close" onclick="closeModal('qrModal')">&times;</button>
@@ -177,13 +175,9 @@
         </div>
         <img id="qrImage" src="" alt="QR" style="display:none;max-width:240px;border-radius:12px;border:2px solid rgba(59,130,246,0.4);margin:0 auto;">
         <p id="qrStatus" style="font-size:14px;color:#8B97AB;margin-top:14px;">Menyiapkan device...</p>
-        <div class="alert alert-info" style="text-align:left;font-size:13px;margin-top:16px;">
-          <b>Cara scan di WhatsApp:</b><br>
-          1. Buka WhatsApp di HP<br>
-          2. Menu (⋮) → <b>Linked Devices</b><br>
-          3. Tap <b>Link a Device</b><br>
-          4. Scan QR di atas
-          © blast sewawa - 2026
+        <div class="alert alert-info" style="text-align:left;font-size:12px;margin-top:16px;">
+          <b>Cara scan:</b><br>
+          WhatsApp → Menu (⋮) → Linked Devices → Link a Device → Scan QR
         </div>
       </div>
       <div class="modal-footer">
@@ -194,14 +188,14 @@
 
   <!-- MODAL PAIRING -->
   <div class="modal" id="pairingModal">
-    <div class="modal-content" style="max-width: 460px;">
+    <div class="modal-content" style="max-width:460px;">
       <div class="modal-header">
         <h3><i class="fas fa-link"></i> Pairing Code</h3>
         <button class="modal-close" onclick="closeModal('pairingModal')">&times;</button>
       </div>
       <div class="modal-body">
         <div id="pairingPhoneArea">
-          <div class="alert alert-info" style="font-size:13px;margin-bottom:16px;">
+          <div class="alert alert-info" style="font-size:12px;margin-bottom:14px;">
             <i class="fas fa-info-circle"></i> Masukkan nomor HP yang mau di-pairing.
           </div>
           <div class="form-field">
@@ -211,18 +205,18 @@
               <input type="tel" id="pairingPhone" placeholder="628123456789" maxlength="15">
             </div>
           </div>
-          <button class="btn-main" onclick="startPairingCode()" id="pairingBtn" style="margin-top:16px;">
+          <button class="btn-main" onclick="startPairingCode()" id="pairingBtn" style="margin-top:14px;">
             <i class="fas fa-paper-plane"></i>
             <span>Dapatkan Kode</span>
           </button>
         </div>
 
         <div id="pairingCodeArea" style="display:none;text-align:center;">
-          <p style="font-size:14px;color:#8B97AB;margin-bottom:14px;">Masukkan kode ini di WhatsApp:</p>
-          <div style="background:rgba(6,8,15,0.6);border-radius:14px;padding:24px;border:2px dashed #3B82F6;margin-bottom:14px;box-shadow:0 0 30px rgba(59,130,246,0.4);">
-            <div id="pairingCodeDisplay" style="font-size:36px;font-weight:800;letter-spacing:6px;color:#3B82F6;font-family:'Courier New',monospace;text-shadow:0 0 20px rgba(59,130,246,0.8);">------</div>
+          <p style="font-size:13px;color:#8B97AB;margin-bottom:12px;">Masukkan kode ini di WhatsApp:</p>
+          <div style="background:rgba(6,8,15,0.6);border-radius:14px;padding:22px;border:2px dashed #3B82F6;margin-bottom:12px;box-shadow:0 0 30px rgba(59,130,246,0.4);">
+            <div id="pairingCodeDisplay" style="font-size:34px;font-weight:800;letter-spacing:6px;color:#3B82F6;font-family:'Courier New',monospace;text-shadow:0 0 20px rgba(59,130,246,0.8);">------</div>
           </div>
-          <p id="pairingCodeStatus" style="font-size:13px;color:#64748B;">
+          <p id="pairingCodeStatus" style="font-size:12px;color:#64748B;">
             WhatsApp → Linked Devices → Link with Phone Number
           </p>
         </div>
@@ -243,6 +237,15 @@
     const MAX_SLOTS = 3;
     const devicesGrid = document.getElementById('devicesGrid');
     window._watchers = {};
+
+    // SPEED OPTIONS — 1s, 3s, 5s, 30s, 60s
+    const SPEED_OPTIONS = [
+      { value: 1000, label: '1 detik' },
+      { value: 3000, label: '3 detik' },
+      { value: 5000, label: '5 detik', selected: true },
+      { value: 30000, label: '30 detik' },
+      { value: 60000, label: '60 detik' }
+    ];
 
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -345,7 +348,7 @@
         document.getElementById('qrLoading').style.display = 'none';
         document.getElementById('qrImage').src = qrData.qr;
         document.getElementById('qrImage').style.display = 'block';
-        document.getElementById('qrStatus').textContent = 'Scan QR ini dengan WhatsApp Anda';
+        document.getElementById('qrStatus').textContent = 'Scan QR dengan WhatsApp Anda';
         watchDeviceConnection(createData.id, createData.name, () => {
           document.getElementById('qrStatus').textContent = '✅ Berhasil terhubung!';
           document.getElementById('qrStatus').style.color = '#3B82F6';
@@ -419,10 +422,9 @@
         document.getElementById('perfSlotsActive').textContent = d.devices_connected || 0;
         animateNumber('perfSuccess', d.total_sent || 0);
         animateNumber('perfFailed', d.total_failed || 0);
-        document.getElementById('perfCampaigns').innerHTML = (d.total_campaigns || 0) + ' <small>Campaign</small>';
-        document.getElementById('perfProcessed').textContent = (d.total_recipients || 0).toLocaleString('id-ID') + ' total pesan diproses';
-        document.getElementById('perfUniqueContacts').innerHTML = (d.unique_contacts || 0).toLocaleString('id-ID') + ' <small>Unik</small>';
-        document.getElementById('perfAvgSpeed').innerHTML = (d.avg_speed || 0) + ' <small>detik/pesan</small>';
+        document.getElementById('perfCampaigns').textContent = d.total_campaigns || 0;
+        animateNumber('perfUniqueContacts', d.unique_contacts || 0);
+        document.getElementById('perfAvgSpeed').textContent = d.avg_speed || 0;
       } catch (e) { console.error(e); }
     }
 
@@ -460,8 +462,10 @@
       devicesGrid.innerHTML = filtered.map(d => {
         let actionButtons = '';
         if (d.real_status === 'connected') {
-          actionButtons = '<button class="btn btn-sm btn-danger" onclick="stopDevice(\'' + d.id + '\')"><i class="fas fa-stop"></i> Stop</button>' +
-            '<select id="speed-' + d.id + '" class="speed-select"><option value="1000">Fast (1s)</option><option value="6000" selected>Normal (6s)</option><option value="12000">Slow (12s)</option></select>' +
+          const speedOpts = SPEED_OPTIONS.map(o => '<option value="' + o.value + '"' + (o.selected ? ' selected' : '') + '>' + o.label + '</option>').join('');
+          actionButtons =
+            '<button class="btn btn-sm btn-danger" onclick="stopDevice(\'' + d.id + '\')"><i class="fas fa-stop"></i> Stop</button>' +
+            '<select id="speed-' + d.id + '" class="speed-select">' + speedOpts + '</select>' +
             '<button class="btn btn-sm btn-start" onclick="blastAll(\'' + d.id + '\')"><i class="fas fa-play"></i> Start</button>';
         } else if (d.real_status === 'qr_scanned') {
           actionButtons = '<button class="btn btn-sm btn-warning" onclick="stopDevice(\'' + d.id + '\')"><i class="fas fa-times"></i> Batal</button>';
@@ -512,16 +516,20 @@
       } catch (e) { showToast('Gagal ambil QR', 'error'); }
     }
 
-    // BLAST
+    // 🔥 BLAST — LANGSUNG, TANPA KONFIRMASI
     async function blastAll(deviceId) {
       const device = allDevices.find(d => d.id === deviceId);
       if (!device || device.real_status !== 'connected') return showToast('Device offline', 'error');
+
       const speedSelect = document.getElementById('speed-' + deviceId);
-      const speed = speedSelect ? parseInt(speedSelect.value) : 6000;
+      const speed = speedSelect ? parseInt(speedSelect.value) : 5000;
+
       const btn = document.querySelector('#speed-' + deviceId)?.parentElement?.querySelector('.btn-start');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Blasting...'; }
+
       try {
-        if (!confirm('Mulai blast?\nSpeed: ' + speed + 'ms/pesan')) return;
+        showToast('🚀 Blast dimulai...', 'info');
+
         const blastRes = await fetch('/api/broadcast', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -529,6 +537,7 @@
         });
         const data = await blastRes.json();
         if (!blastRes.ok) throw new Error(data.error || 'Gagal mengirim');
+
         showToast('✅ ' + (data.sent || 0) + ' sukses, ' + (data.failed || 0) + ' gagal', (data.failed || 0) > 0 ? 'warning' : 'success');
         loadDevices();
         loadSummary();
