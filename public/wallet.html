@@ -44,16 +44,39 @@
 
       <div class="wallet-content">
 
-        <div class="balance-hero">
-          <div class="balance-label">Saldo Tersedia</div>
-          <div class="balance-value" id="balanceDisplay">Rp 0</div>
-          <div class="balance-note">Setiap pesan sukses = Rp 700p</div>
+        <!-- WALLET HERO BARU -->
+        <div class="wallet-hero fade-in">
+          <div class="wallet-hero-head">
+            <div class="wallet-hero-label">
+              <i class="fas fa-wallet"></i> Saldo Tersedia
+            </div>
+            <button class="wallet-hero-refresh" onclick="loadWallet()" title="Refresh">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          <div class="wallet-hero-value" id="balanceDisplay">Rp 0</div>
+          <div class="wallet-hero-stats">
+            <div class="wallet-hero-stat">
+              <i class="fas fa-coins"></i>
+              <div>
+                <small>Per Pesan</small>
+                <b>Rp 700</b>
+              </div>
+            </div>
+            <div class="wallet-hero-stat">
+              <i class="fas fa-hand-holding-usd"></i>
+              <div>
+                <small>Minimal WD</small>
+                <b id="minWdLabel">Rp 50.000</b>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- STEP 1: PAYMENT -->
         <div class="section-title"><i class="fas fa-id-card"></i> Data Payment & Telegram</div>
 
-        <div class="card">
+        <div class="card fade-in">
           <div class="alert alert-info" style="font-size:12px; margin-bottom:16px;">
             <i class="fas fa-info-circle"></i>
             Isi data ini dulu sebelum bisa withdraw. Data disimpan otomatis.
@@ -127,7 +150,7 @@
         <!-- STEP 2: WITHDRAW -->
         <div class="section-title"><i class="fas fa-hand-holding-usd"></i> Tarik Saldo</div>
 
-        <div class="card">
+        <div class="card fade-in">
           <div id="withdrawLocked" style="padding:20px; text-align:center; color:#64748B;">
             <i class="fas fa-lock" style="font-size:32px; margin-bottom:12px; display:block; color:#FBBF24;"></i>
             <p style="font-size:13px;">Simpan data payment dulu di atas</p>
@@ -135,7 +158,7 @@
 
           <form id="withdrawForm" style="display:none;">
             <div class="alert alert-info" style="font-size:12px; margin-bottom:16px;">
-              <b>Minimal WD:</b> <span id="minWdLabel">Rp 20.000</span>
+              <b>Minimal WD:</b> <span id="minWdLabelInline">Rp 50.000</span>
             </div>
 
             <div class="form-field" style="margin-bottom:14px;">
@@ -147,7 +170,7 @@
             </div>
 
             <div class="quick-nominal">
-              <button type="button" onclick="setAmount(50000)">20rb</button>
+              <button type="button" onclick="setAmount(50000)">50rb</button>
               <button type="button" onclick="setAmount(100000)">100rb</button>
               <button type="button" onclick="setAmount(500000)">500rb</button>
               <button type="button" onclick="setAmountAll()">Semua</button>
@@ -166,7 +189,7 @@
 
         <div class="section-title"><i class="fas fa-history"></i> Riwayat Penarikan</div>
 
-        <div class="card">
+        <div class="card fade-in">
           <div id="withdrawHistory"><p class="empty">Belum ada riwayat</p></div>
         </div>
 
@@ -203,6 +226,7 @@
         const d = await res.json();
         minWithdraw = parseInt(d.min_withdraw) || 50000;
         document.getElementById('minWdLabel').textContent = rupiah(minWithdraw);
+        document.getElementById('minWdLabelInline').textContent = rupiah(minWithdraw);
         document.getElementById('withdrawAmount').placeholder = 'Minimal ' + minWithdraw.toLocaleString('id-ID');
       } catch (e) { console.error(e); }
     }
@@ -248,7 +272,7 @@
         c.innerHTML = data.map(w => {
           const statusClass = w.status === 'approved' ? 'success' : (w.status === 'rejected' ? 'error' : 'pending');
           const statusIcon = w.status === 'approved' ? '✅' : (w.status === 'rejected' ? '❌' : '⏳');
-          return '<div class="wd-history-item">' +
+          return '<div class="wd-history-item fade-in">' +
             '<div class="wd-h-left">' +
               '<div class="wd-h-method">' + String(w.method || '').toUpperCase() + '</div>' +
               '<div class="wd-h-acc">' + (w.account_number || '-') + '</div>' +
