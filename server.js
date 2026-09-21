@@ -727,6 +727,39 @@ app.put('/api/settings', requireAuth, requireAdmin, (req, res) => {
 });
 
 // ============================================
+// ADMIN SETTINGS — ALIAS buat admin.html
+// ============================================
+app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
+  db.all('SELECT key, value FROM settings', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const out = {};
+    (rows || []).forEach(r => { out[r.key] = r.value; });
+    res.json(out);
+  });
+});
+
+app.post('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
+  const { price_per_chat, min_withdraw } = req.body || {};
+  const updates = [];
+  if (price_per_chat !== undefined) updates.push(['price_per_chat', String(price_per_chat)]);
+  if (min_withdraw !== undefined) updates.push(['min_withdraw', String(min_withdraw)]);
+  if (updates.length === 0) return res.status(400).json({ error: 'Tidak ada data' });
+
+  let done = 0;
+  let errored = null;
+  for (const [k, v] of updates) {
+    db.run('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [k, v], (e) => {
+      if (e) errored = e;
+      done++;
+      if (done === updates.length) {
+        if (errored) return res.status(500).json({ error: errored.message });
+        res.json({ success: true });
+      }
+    });
+  }
+});
+
+// ============================================
 // WALLET & PAYMENT
 // ============================================
 app.get('/api/wallet', requireAuth, (req, res) => {
