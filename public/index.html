@@ -163,7 +163,7 @@
         if (!res.ok) throw new Error(data.error || 'Login gagal');
 
         showToast('✅ Login berhasil!', 'success');
-        setTimeout(() => window.location.href = '/dashboard', 600);
+        setTimeout(() => window.location.replace('/dashboard'), 400);
       } catch (err) {
         if (err.name === 'AbortError') {
           showToast('⏱️ Server timeout. Coba lagi.', 'error');

@@ -25,7 +25,7 @@ function isDarkMode() { return window.matchMedia('(prefers-color-scheme: dark)')
 function injectTelegramChat() {
   if (document.querySelector('.telegram-chat')) return;
   const chat = document.createElement('a');
-  chat.className = 'telegram-chat'; chat.href = 'https://t.me/test1212asd'; chat.target = '_blank'; chat.rel = 'noopener noreferrer';
+  chat.className = 'telegram-chat'; chat.href = 'https://t.me/Yianglin1'; chat.target = '_blank'; chat.rel = 'noopener noreferrer';
   chat.setAttribute('aria-label', 'Chat via Telegram'); chat.innerHTML = '<i class="fab fa-telegram-plane"></i><span>Chat via Telegram</span>';
   document.body.appendChild(chat);
 }

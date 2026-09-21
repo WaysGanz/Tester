@@ -278,8 +278,8 @@ class WhatsAppManager {
       const batch = cp.slice(i, i + BS);
       const ph = batch.map(() => '?').join(',');
       const res = await new Promise((r) => {
-        db.run(`UPDATE contacts SET is_group = 2 WHERE phone IN (${ph}) AND device_id = ? AND site_id = ? AND is_group = 0`,
-          [...batch, deviceId, siteId], function (err) { if (err) r(0); else r(this.changes); });
+        db.run(`UPDATE master_contacts SET status = "processing" WHERE phone IN (${ph}) AND site_id = ? AND (status = "available" OR status IS NULL)`,
+          [...batch, siteId], function (err) { if (err) r(0); else r(this.changes); });
       });
       total += res;
     }
@@ -287,10 +287,10 @@ class WhatsAppManager {
   }
 
   async getLockedNumbers(deviceId, siteId = 1) {
-    return new Promise((r) => db.all('SELECT phone FROM contacts WHERE device_id = ? AND site_id = ? AND is_group = 2', [deviceId, siteId], (err, rows) => r(rows || [])));
+    return new Promise((r) => db.all('SELECT phone FROM master_contacts WHERE site_id = ? AND status = "processing"', [siteId], (err, rows) => r(rows || [])));
   }
   async unlockNumbers(deviceId, siteId = 1) {
-    return new Promise((r) => db.run('UPDATE contacts SET is_group = 0 WHERE device_id = ? AND site_id = ? AND is_group = 2', [deviceId, siteId], () => r()));
+    return new Promise((r) => db.run('UPDATE master_contacts SET status = "available" WHERE site_id = ? AND status = "processing"', [siteId], () => r()));
   }
 
   // MARK AS SENT
@@ -302,7 +302,7 @@ class WhatsAppManager {
       const batch = cp.slice(i, i + BS);
       const ph = batch.map(() => '?').join(',');
       const r = await new Promise((res) => {
-        db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone IN (${ph}) AND site_id = ? AND (status = 'available' OR status IS NULL)`,
+        db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone IN (${ph}) AND site_id = ? AND status IN ("available", "processing")`,
           [...batch, siteId], function (err) { if (err) res(0); else res(this.changes); });
       });
       total += r;
