@@ -243,7 +243,33 @@
         <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
           <button class="btn btn-sm btn-danger" onclick="deleteSelected()"><i class="fas fa-trash"></i> Hapus Terpilih</button>
           <button class="btn btn-sm btn-warning" onclick="resetSent()"><i class="fas fa-undo"></i> Reset Terkirim</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteAllSent()"><i class="fas fa-trash"></i> Hapus Semua Terkirim</button>
+        </div>
+
+        <!-- HAPUS MASSAL -->
+        <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:11px; color:#F87171; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+            <i class="fas fa-exclamation-triangle"></i> Hapus Massal
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+            <select id="bulkDeleteLimit" class="form-control" style="padding:6px 10px; font-size:12px; min-width:100px;">
+              <option value="100">100 nomor</option>
+              <option value="500">500 nomor</option>
+              <option value="1000" selected>1000 nomor</option>
+              <option value="5000">5000 nomor</option>
+              <option value="10000">10.000 nomor</option>
+              <option value="50000">50.000 nomor</option>
+            </select>
+            <select id="bulkDeleteOrder" class="form-control" style="padding:6px 10px; font-size:12px; min-width:100px;">
+              <option value="DESC" selected>Terbaru dulu</option>
+              <option value="ASC">Terlama dulu</option>
+            </select>
+            <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
+              <i class="fas fa-trash"></i> Hapus <span id="bulkDeleteLabel">1000</span> Nomor
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="deleteAllFilter()" style="background:linear-gradient(135deg,#B91C1C,#7F1D1D);">
+              <i class="fas fa-bomb"></i> Hapus SEMUA (Filter)
+            </button>
+          </div>
         </div>
 
         <div style="overflow-x:auto; max-height:400px;">
@@ -540,9 +566,11 @@
 
         tbody.innerHTML = data.data.map((c, i) => {
           const isSent = c.status === 'sent';
-          const badge = isSent
-            ? '<span style="color:#34D399; font-size:11px;"><i class="fas fa-check-circle"></i> Terkirim</span>'
-            : '<span style="color:#FBBF24; font-size:11px;"><i class="fas fa-clock"></i> Tersedia</span>';
+          const isProcessing = c.status === 'processing';
+          let badge;
+          if (isSent) badge = '<span style="color:#34D399; font-size:11px;"><i class="fas fa-check-circle"></i> Terkirim</span>';
+          else if (isProcessing) badge = '<span style="color:#F87171; font-size:11px;"><i class="fas fa-spinner"></i> Processing</span>';
+          else badge = '<span style="color:#FBBF24; font-size:11px;"><i class="fas fa-clock"></i> Tersedia</span>';
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:6px;"><input type="checkbox" class="contact-checkbox" value="' + c.phone + '"></td>' +
             '<td style="padding:6px;">' + ((data.page - 1) * data.limit + i + 1) + '</td>' +
@@ -590,13 +618,52 @@
       } catch (e) { showToast('Gagal reset', 'error'); }
     }
 
-    async function deleteAllSent() {
-      if (!confirm('Hapus SEMUA nomor terkirim?')) return;
+    // ============================================
+    // HAPUS MASSAL
+    // ============================================
+    async function bulkDelete() {
+      const limit = parseInt(document.getElementById('bulkDeleteLimit').value) || 1000;
+      const order = document.getElementById('bulkDeleteOrder').value || 'DESC';
+      const status = currentContactFilter || 'all';
+
+      const statusLabel = status === 'all' ? 'semua status' : status;
+      const orderLabel = order === 'DESC' ? 'terbaru' : 'terlama';
+      if (!confirm('Hapus ' + limit + ' nomor (' + statusLabel + ', ' + orderLabel + ' dulu)?\n\nTindakan ini tidak bisa dibatalkan!')) return;
+
       try {
-        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-sent', { method: 'POST', credentials: 'include' });
+        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-bulk', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, limit, order })
+        });
         const data = await res.json();
-        if (res.ok) { showToast(data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('Gagal hapus', 'error'); }
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        showToast(data.deleted + ' nomor dihapus', 'success');
+        loadContacts(); loadSites();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
+    async function deleteAllFilter() {
+      const status = currentContactFilter || 'all';
+      const statusLabel = status === 'all' ? 'SEMUA STATUS' : status.toUpperCase();
+
+      if (!confirm('⚠️ HAPUS SEMUA nomor (' + statusLabel + ')?\n\nTindakan ini tidak bisa dibatalkan!')) return;
+      if (!confirm('Beneran yakin? Ini bakal hapus SEMUA nomor ' + statusLabel + '.')) return;
+
+      const verify = prompt('Ketik "HAPUS" untuk konfirmasi:');
+      if (verify !== 'HAPUS') return showToast('Dibatalkan', 'warning');
+
+      try {
+        const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-all', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        showToast(data.deleted + ' nomor dihapus', 'success');
+        loadContacts(); loadSites();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
     // DEVICES ASSIGNMENT
@@ -730,6 +797,13 @@
       updateClock();
       setInterval(updateClock, 1000);
       setInterval(loadPendingWithdrawals, 30000);
+
+      const bulkLimit = document.getElementById('bulkDeleteLimit');
+      if (bulkLimit) {
+        bulkLimit.addEventListener('change', function() {
+          document.getElementById('bulkDeleteLabel').textContent = parseInt(this.value).toLocaleString('id-ID');
+        });
+      }
 
       fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(u => {
         document.getElementById('userName').textContent = u.name || 'Admin';
