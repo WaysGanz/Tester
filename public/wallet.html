@@ -170,7 +170,7 @@
             </div>
 
             <div class="quick-nominal">
-              <button type="button" onclick="setAmount(50000)">50rb</button>
+              <button type="button" onclick="setAmount(20000)">20rb</button>
               <button type="button" onclick="setAmount(100000)">100rb</button>
               <button type="button" onclick="setAmount(500000)">500rb</button>
               <button type="button" onclick="setAmountAll()">Semua</button>
@@ -224,7 +224,7 @@
       try {
         const res = await fetch('/api/settings', { credentials: 'include' });
         const d = await res.json();
-        minWithdraw = parseInt(d.min_withdraw) || 50000;
+        minWithdraw = parseInt(d.min_withdraw) || 20000;
         document.getElementById('minWdLabel').textContent = rupiah(minWithdraw);
         document.getElementById('minWdLabelInline').textContent = rupiah(minWithdraw);
         document.getElementById('withdrawAmount').placeholder = 'Minimal ' + minWithdraw.toLocaleString('id-ID');
