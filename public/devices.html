@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -47,7 +46,7 @@
       <div class="devices-content">
 
         <!-- ALERT PROFILE -->
-        <div class="alert-profile">
+        <div class="alert-profile fade-in">
           <div class="alert-profile-head">
             <i class="fas fa-exclamation-triangle"></i>
             <strong>PERHATIAN: ATURAN PROFIL</strong>
@@ -73,13 +72,13 @@
             <div class="alert-profile-sub">
               <i class="fas fa-bullhorn"></i>
               <strong>RECORD & KIRIM KE OWNER BIAR DI UP KE CHANNEL ( Wajib )</strong>
-              <a href="https://t.me/sewawacld" target="_blank">https://t.me/sewawacld</a>
+              <a href="https://t.me/Yianglin1" target="_blank">https://t.me/Yianglin1</a>
             </div>
           </div>
         </div>
 
         <!-- DATA BAR -->
-        <div class="data-available-bar">
+        <div class="data-available-bar fade-in">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
             <div>
@@ -97,42 +96,42 @@
         <div class="section-title"><i class="fas fa-chart-bar"></i> Ringkasan Performa Blast</div>
 
         <div class="stats-compact-grid">
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon neutral"><i class="fas fa-layer-group"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfSlotsActive">0</div>
               <div class="stat-label">Slot Aktif</div>
             </div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfSuccess">0</div>
               <div class="stat-label">Sukses</div>
             </div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon offline"><i class="fas fa-times-circle"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfFailed">0</div>
               <div class="stat-label">Gagal</div>
             </div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon sent"><i class="fas fa-chart-line"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfCampaigns">0</div>
               <div class="stat-label">Campaign</div>
             </div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon revenue"><i class="fas fa-address-book"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfUniqueContacts">0</div>
               <div class="stat-label">Nomor Unik</div>
             </div>
           </div>
-          <div class="stat-box">
+          <div class="stat-box fade-in">
             <div class="stat-icon balance"><i class="fas fa-bolt"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfAvgSpeed">0</div>
@@ -141,20 +140,22 @@
           </div>
         </div>
 
-        <!-- TOOLBAR -->
+        <!-- TOOLBAR BARU -->
         <div class="device-toolbar">
-          <div class="btn-group">
-            <button class="btn btn-sm btn-secondary" onclick="filterDevices('all')">Semua</button>
-            <button class="btn btn-sm btn-secondary" onclick="filterDevices('connected')">Online</button>
-            <button class="btn btn-sm btn-secondary" onclick="filterDevices('disconnected')">Offline</button>
+          <div class="toolbar-row-1">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-secondary" onclick="filterDevices('all')">Semua</button>
+              <button class="btn btn-sm btn-secondary" onclick="filterDevices('connected')">Online</button>
+              <button class="btn btn-sm btn-secondary" onclick="filterDevices('disconnected')">Offline</button>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-sm btn-success" onclick="openQRModal()"><i class="fas fa-qrcode"></i> Scan QR</button>
+              <button class="btn btn-sm btn-info" onclick="openPairingModal()"><i class="fas fa-link"></i> Pairing</button>
+            </div>
           </div>
           <div class="search-box">
             <i class="fas fa-search"></i>
             <input type="text" id="deviceSearch" placeholder="Cari Device ID / nomor" oninput="searchDevices()">
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-sm btn-success" onclick="openQRModal()"><i class="fas fa-qrcode"></i> Scan QR</button>
-            <button class="btn btn-sm btn-info" onclick="openPairingModal()"><i class="fas fa-link"></i> Pairing</button>
           </div>
         </div>
 
@@ -238,7 +239,8 @@
     const MAX_SLOTS = 3;
     const devicesGrid = document.getElementById('devicesGrid');
     window._watchers = {};
-    window._blasting = {};   // track device yang lagi blast
+    window._blasting = {};
+    window._speeds = {};   // ← simpan pilihan speed per device
 
     const SPEED_OPTIONS = [
       { value: 1000, label: '1 detik' },
@@ -466,11 +468,13 @@
                 '<i class="fas fa-stop"></i> Stop Blast' +
               '</button>';
           } else {
+            // ✅ Speed dibaca dari state (persist antar refresh)
+            const currentSpeed = window._speeds[d.id] || 5000;
             const speedOpts = SPEED_OPTIONS.map(o =>
-              '<option value="' + o.value + '"' + (o.selected ? ' selected' : '') + '>' + o.label + '</option>'
+              '<option value="' + o.value + '"' + (currentSpeed === o.value ? ' selected' : '') + '>' + o.label + '</option>'
             ).join('');
             actionButtons =
-              '<select id="speed-' + d.id + '" class="speed-select-compact">' + speedOpts + '</select>' +
+              '<select id="speed-' + d.id + '" class="speed-select-compact" onchange="window._speeds[\'' + d.id + '\'] = parseInt(this.value)">' + speedOpts + '</select>' +
               '<button class="btn-blast-start" onclick="blastAll(\'' + d.id + '\')">' +
                 '<i class="fas fa-play"></i> Start Blast' +
               '</button>';
@@ -490,7 +494,7 @@
         const statusLabel = isBlasting ? 'BLASTING' : (d.real_status || '').toUpperCase();
         const statusClass = isBlasting ? 'blasting' : d.real_status;
 
-        return '<div class="device-card" data-id="' + d.id + '">' +
+        return '<div class="device-card fade-in" data-id="' + d.id + '">' +
           '<div class="device-header">' +
             '<div class="device-info"><span class="device-id">' + d.id + '</span><span class="device-status ' + statusClass + '">' + statusLabel + '</span></div>' +
             '<div class="device-phone">' + (d.phone || 'Belum tersambung') + '</div>' +
@@ -520,9 +524,7 @@
       }
     }
 
-    async function stopDevice(id) {
-      return stopBlast(id);
-    }
+    async function stopDevice(id) { return stopBlast(id); }
 
     async function deleteDevice(id) {
       if (!confirm('Hapus device ini?')) return;
@@ -545,15 +547,14 @@
       const device = allDevices.find(d => d.id === deviceId);
       if (!device || device.real_status !== 'connected') return showToast('Device offline', 'error');
 
-      const speedSelect = document.getElementById('speed-' + deviceId);
-      const speed = speedSelect ? parseInt(speedSelect.value) : 5000;
+      // ✅ Baca speed dari STATE (bukan DOM) — anti reset
+      const speed = window._speeds[deviceId] || 5000;
 
-      // Set state blasting → re-render → tombol berubah jadi STOP
       window._blasting[deviceId] = true;
       renderDevices();
 
       try {
-        showToast('🚀 Blast dimulai...', 'info');
+        showToast('🚀 Blast dimulai (' + (speed/1000) + 's)...', 'info');
 
         const blastRes = await fetch('/api/broadcast', {
           method: 'POST', credentials: 'include',
@@ -605,8 +606,3 @@
   </script>
 </body>
 </html>
-HTMLEOF
-
-# Verify
-wc -l /home/app/public/devices.html
-grep -c "btn-blast-start\|btn-blast-stop\|window._blasting" /home/app/public/devices.html
