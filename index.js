@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 
-console.log('x MarketingCuan - WhatsApp Broadcast Platform');
+console.log('x SewaWa - WhatsApp Broadcast Platform');
 console.log('x Dengan Monetisasi Rp600/chat');
 
 const server = spawn('node', ['server.js'], {
