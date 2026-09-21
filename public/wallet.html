@@ -2,283 +2,442 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MarketingCuan - Wallet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050810">
+  <title>Wallet — SewaWA</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="app-body">
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <div class="app-layout">
-    <aside class="sidebar">
-      <div class="logo"><i class="fab fa-whatsapp"></i><span>Marketing<span class="highlight">Cuan</span></span></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <i class="fab fa-whatsapp"></i>
+        <span>Sewa<span class="highlight">WA</span></span>
+      </div>
       <nav class="nav-menu">
-        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> Devices</a>
-        <a href="/wallet" class="nav-item active"><i class="fas fa-wallet"></i> Wallet</a>
-        <a href="/admin" class="nav-item" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> Admin</a>
-        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <a href="/dashboard" class="nav-item"><i class="fas fa-home"></i> <span>Dashboard</span></a>
+        <a href="/devices" class="nav-item"><i class="fas fa-mobile-alt"></i> <span>Devices</span></a>
+        <a href="/wallet" class="nav-item active"><i class="fas fa-wallet"></i> <span>Wallet</span></a>
+        <a href="/referral" class="nav-item"><i class="fas fa-gift"></i> <span>Referral</span></a>
+        <a href="/admin" class="nav-item" id="adminLink" style="display:none;"><i class="fas fa-cog"></i> <span>Admin</span></a>
+        <a href="#" class="nav-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
       </nav>
       <div class="sidebar-footer">
         <span class="user-badge"><i class="fas fa-user"></i> <span id="userName">User</span></span>
       </div>
     </aside>
+
     <main class="main-content">
       <header class="header">
-        <h1>Wallet & Withdraw</h1>
-        <div class="header-actions"><span class="clock" id="clock"></span></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="hamburger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+          <h1>Wallet & Withdraw</h1>
+        </div>
+        <div class="header-actions">
+          <span class="clock" id="clock">--:--</span>
+        </div>
       </header>
-      <section class="wallet-content" style="padding:24px 30px;overflow-y:auto;">
 
-        <div class="card" style="text-align:center;margin-bottom:24px;background:linear-gradient(135deg,#075E54,#128C7E);color:#fff;">
-          <div style="font-size:14px;opacity:0.8;">Saldo Anda</div>
-          <div style="font-size:48px;font-weight:700;" id="balanceDisplay">Rp0</div>
-          <div style="font-size:13px;opacity:0.7;">Setiap 1 chat terkirim / Rp1.100</div>
+      <div class="wallet-content">
+
+        <!-- SALDO CARD -->
+        <div class="balance-hero">
+          <div class="balance-label">Saldo Tersedia</div>
+          <div class="balance-value" id="balanceDisplay">Rp 0</div>
+          <div class="balance-note">Setiap pesan sukses = Rp 1.100</div>
         </div>
 
-        <div class="card" style="margin-bottom:24px;">
-          <h3><i class="fas fa-user-circle"></i> Profil Anda</h3>
-          <div style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
-            <div style="display:flex;align-items:center;gap:10px;font-size:16px;">
-              <i class="fas fa-user" style="color:var(--primary);width:20px;"></i>
-              <span style="font-weight:500;" id="profileUsername">Memuat...</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;font-size:16px;">
-              <i class="fas fa-envelope" style="color:var(--primary);width:20px;"></i>
-              <span id="profileEmail">memuat@email.com</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;font-size:16px;">
-              <i class="fab fa-telegram" style="color:#229ED9;width:20px;"></i>
-              <span id="profileTelegram" style="color:var(--text-secondary);">Belum diisi</span>
-              <button class="btn btn-sm btn-info" onclick="editTelegram()" style="margin-left:auto;">
-                <i class="fas fa-edit"></i> Edit
-              </button>
-            </div>
-          </div>
-          <div id="telegramEditBox" style="display:none;margin-top:12px;">
-            <div class="form-group">
-              <label><i class="fab fa-telegram"></i> Username Telegram (tanpa @)</label>
-              <input type="text" id="telegramInput" class="form-control" placeholder="username_kamu">
-              <small style="font-size:12px;color:var(--text-muted);">Wajib untuk notifikasi withdraw.</small>
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn btn-sm btn-success" onclick="saveTelegram()"><i class="fas fa-save"></i> Simpan</button>
-              <button class="btn btn-sm btn-secondary" onclick="cancelEditTelegram()">Batal</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom:24px;">
-          <h3><i class="fas fa-hand-holding-usd"></i> Tarik Saldo (Withdraw)</h3>
-          <div style="background:#FFF3CD;border-left:4px solid #FFC107;padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:13px;color:#856404;">
-            <i class="fas fa-clock"></i> <strong>Informasi:</strong> Withdraw otomatis <b>PENDING</b> dan diverifikasi admin. Pastikan username Telegram & data benar.
-          </div>
-          <form id="withdrawForm">
-            <div class="form-group">
-              <label>Jumlah (Rp)</label>
-              <input type="number" id="withdrawAmount" class="form-control" placeholder="Minimal 10.000">
-              <small id="minWithdrawLabel" style="font-size:12px;color:var(--text-muted);">Minimal: Rp10.000</small>
-            </div>
-            <div class="form-group">
-              <label>Metode Penarikan</label>
-              <select id="withdrawMethod" class="form-control">
-                <option value="gopay">GoPay</option>
-                <option value="ovo">OVO</option>
-                <option value="dana">Dana</option>
-                <option value="bank">Transfer Bank</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Nomor Akun / HP</label>
-              <input type="text" id="withdrawAccount" class="form-control" placeholder="08123456789">
-            </div>
-            <div class="form-group">
-              <label>Nama Pemilik</label>
-              <input type="text" id="withdrawName" class="form-control" placeholder="Nama lengkap">
-            </div>
-            <div class="form-group">
-              <label><i class="fab fa-telegram"></i> Username Telegram <span style="color:var(--danger);">*</span></label>
-              <input type="text" id="withdrawTelegram" class="form-control" placeholder="username_kamu (tanpa @)" required>
-            </div>
-            <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane"></i> Ajukan Penarikan</button>
-          </form>
-          <div id="withdrawResult" style="margin-top:12px;"></div>
+        <!-- STEP 1: DATA PAYMENT -->
+        <div class="section-title">
+          <i class="fas fa-id-card"></i> Data Payment & Telegram
         </div>
 
         <div class="card">
-          <h3><i class="fas fa-history"></i> Riwayat Penarikan</h3>
-          <div id="withdrawHistory"><p class="empty">Belum ada riwayat</p></div>
+          <div class="alert alert-info" style="font-size:12px; margin-bottom:16px;">
+            <i class="fas fa-info-circle"></i>
+            Isi data ini dulu sebelum bisa withdraw. Data disimpan otomatis.
+          </div>
+
+          <form id="paymentForm">
+            <div class="form-group">
+              <label>Username Telegram (tanpa @)</label>
+              <div class="input-wrap-app">
+                <i class="fab fa-telegram" style="color:#229ED9;"></i>
+                <input type="text" id="telegramUsername" placeholder="username_kamu" required>
+              </div>
+              <small class="help-text">Untuk notifikasi WD</small>
+            </div>
+
+            <div class="form-group">
+              <label>Telegram ID / Chat ID</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-hashtag"></i>
+                <input type="text" id="telegramId" placeholder="Contoh: 8526009498" required>
+              </div>
+              <small class="help-text">Chat @userinfobot untuk dapat ID</small>
+            </div>
+
+            <div class="form-group">
+              <label>Metode Pembayaran</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-credit-card"></i>
+                <select id="paymentMethod" required>
+                  <option value="">-- Pilih Metode --</option>
+                  <option value="gopay">GoPay</option>
+                  <option value="ovo">OVO</option>
+                  <option value="dana">Dana</option>
+                  <option value="bank">Transfer Bank</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group" id="bankNameGroup" style="display:none;">
+              <label>Nama Bank</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-university"></i>
+                <input type="text" id="bankName" placeholder="BCA / BNI / Mandiri / dll">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Nomor Akun / No. HP</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-phone"></i>
+                <input type="text" id="accountNumber" placeholder="08123456789 / 1234567890" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Nama Pemilik Akun</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-user"></i>
+                <input type="text" id="accountName" placeholder="Sesuai buku tabungan" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-main" id="savePaymentBtn">
+              <i class="fas fa-save"></i>
+              <span>Simpan Data Payment</span>
+            </button>
+          </form>
+
+          <div id="paymentStatus" style="margin-top:12px;"></div>
         </div>
-      </section>
+
+        <!-- STEP 2: WITHDRAW -->
+        <div class="section-title">
+          <i class="fas fa-hand-holding-usd"></i> Tarik Saldo
+        </div>
+
+        <div class="card">
+          <div id="withdrawLocked" style="padding:20px; text-align:center; color:#64748B;">
+            <i class="fas fa-lock" style="font-size:32px; margin-bottom:12px; display:block; color:#FBBF24;"></i>
+            <p style="font-size:13px;">Simpan data payment dulu di atas</p>
+          </div>
+
+          <form id="withdrawForm" style="display:none;">
+            <div class="alert alert-info" style="font-size:12px; margin-bottom:16px;">
+              <b>Minimal WD:</b> <span id="minWdLabel">Rp 50.000</span>
+            </div>
+
+            <div class="form-group">
+              <label>Jumlah Withdraw (Rp)</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-money-bill"></i>
+                <input type="number" id="withdrawAmount" placeholder="Minimal 50.000">
+              </div>
+            </div>
+
+            <div class="quick-nominal">
+              <button type="button" onclick="setAmount(50000)">50rb</button>
+              <button type="button" onclick="setAmount(100000)">100rb</button>
+              <button type="button" onclick="setAmount(500000)">500rb</button>
+              <button type="button" onclick="setAmountAll()">Semua</button>
+            </div>
+
+            <div class="payment-preview" id="paymentPreview"></div>
+
+            <button type="submit" class="btn-main" id="withdrawBtn">
+              <i class="fas fa-paper-plane"></i>
+              <span>Ajukan Withdraw</span>
+            </button>
+          </form>
+
+          <div id="withdrawResult" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- RIWAYAT -->
+        <div class="section-title">
+          <i class="fas fa-history"></i> Riwayat Penarikan
+        </div>
+
+        <div class="card">
+          <div id="withdrawHistory">
+            <p class="empty">Belum ada riwayat</p>
+          </div>
+        </div>
+
+      </div>
     </main>
   </div>
-  <div id="toastContainer" class="toast-container"></div>
-  <script src="app.js"></script>
-  <script>
-    let minWithdraw = 10000;
-    let currentTelegram = '';
 
+  <div id="toastContainer" class="toast-container"></div>
+
+  <a href="https://t.me/test1212asd" target="_blank" class="telegram-chat">
+    <i class="fab fa-telegram"></i>
+    <span>Support</span>
+  </a>
+
+  <script src="helpers.js"></script>
+  <script>
+    let minWithdraw = 50000;
+    let currentBalance = 0;
+    let paymentSaved = false;
+
+    function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+
+    function setAmount(v) {
+      document.getElementById('withdrawAmount').value = v;
+    }
+    function setAmountAll() {
+      document.getElementById('withdrawAmount').value = currentBalance;
+    }
+
+    // ============================================
+    // LOAD DATA
+    // ============================================
     async function loadSettings() {
       try {
-        const res = await fetch('/api/settings');
-        const data = await res.json();
-        minWithdraw = parseInt(data.min_withdraw) || 10000;
-        document.getElementById('withdrawAmount').placeholder = `Minimal ${minWithdraw.toLocaleString()}`;
-        document.getElementById('minWithdrawLabel').textContent = `Minimal: Rp${minWithdraw.toLocaleString()}`;
+        const res = await fetch('/api/settings', { credentials: 'include' });
+        const d = await res.json();
+        minWithdraw = parseInt(d.min_withdraw) || 50000;
+        document.getElementById('minWdLabel').textContent = rupiah(minWithdraw);
+        document.getElementById('withdrawAmount').placeholder = 'Minimal ' + minWithdraw.toLocaleString('id-ID');
       } catch (e) { console.error(e); }
     }
 
     async function loadWallet() {
       try {
-        const res = await fetch('/api/wallet');
-        const data = await res.json();
-        document.getElementById('balanceDisplay').textContent = 'Rp' + (data.balance || 0).toLocaleString();
+        const res = await fetch('/api/wallet', { credentials: 'include' });
+        const d = await res.json();
+        currentBalance = d.balance || 0;
+        document.getElementById('balanceDisplay').textContent = rupiah(currentBalance);
       } catch (e) { console.error(e); }
     }
 
-    async function loadProfile() {
+    async function loadPaymentData() {
       try {
-        const res = await fetch('/api/me');
-        const user = await res.json();
-        document.getElementById('profileUsername').textContent = user.name || '-';
-        document.getElementById('profileEmail').textContent = user.email || '-';
-        currentTelegram = user.telegram_username || '';
-        const tgEl = document.getElementById('profileTelegram');
-        if (currentTelegram) {
-          tgEl.textContent = '@' + currentTelegram;
-          tgEl.style.color = 'var(--primary)';
-          document.getElementById('withdrawTelegram').value = currentTelegram;
+        const res = await fetch('/api/wallet/payment', { credentials: 'include' });
+        if (!res.ok) return;
+        const d = await res.json();
+
+        if (d && d.telegram_username) {
+          document.getElementById('telegramUsername').value = d.telegram_username || '';
+          document.getElementById('telegramId').value = d.telegram_id || '';
+          document.getElementById('paymentMethod').value = d.method || '';
+          document.getElementById('accountNumber').value = d.account_number || '';
+          document.getElementById('accountName').value = d.account_name || '';
+          if (d.bank_name) {
+            document.getElementById('bankName').value = d.bank_name;
+            document.getElementById('bankNameGroup').style.display = 'block';
+          }
+          paymentSaved = true;
+          unlockWithdraw(d);
         } else {
-          tgEl.textContent = 'Belum diisi';
-          tgEl.style.color = 'var(--text-secondary)';
+          lockWithdraw();
         }
       } catch (e) { console.error(e); }
     }
-
-    function editTelegram() {
-      document.getElementById('telegramEditBox').style.display = 'block';
-      document.getElementById('telegramInput').value = currentTelegram;
-    }
-    function cancelEditTelegram() {
-      document.getElementById('telegramEditBox').style.display = 'none';
-    }
-    async function saveTelegram() {
-      const tg = document.getElementById('telegramInput').value.trim().replace('@', '');
-      if (!tg) return showToast('Username Telegram wajib diisi', 'error');
-      const res = await fetch('/api/user/telegram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegram_username: tg })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast('✅ Username Telegram disimpan', 'success');
-        document.getElementById('telegramEditBox').style.display = 'none';
-        loadProfile();
-      } else {
-        showToast('❌ ' + (data.error || 'Gagal'), 'error');
-      }
-    }
-
-    document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const amount = parseInt(document.getElementById('withdrawAmount').value);
-      const method = document.getElementById('withdrawMethod').value;
-      const account = document.getElementById('withdrawAccount').value.trim();
-      const name = document.getElementById('withdrawName').value.trim();
-      const telegram_username = document.getElementById('withdrawTelegram').value.trim().replace('@', '');
-      const resultDiv = document.getElementById('withdrawResult');
-      resultDiv.innerHTML = '';
-
-      if (!telegram_username) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ Username Telegram wajib diisi!</div>`;
-        return;
-      }
-      if (!amount || amount < minWithdraw) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ Minimal withdraw Rp${minWithdraw.toLocaleString()}</div>`;
-        return;
-      }
-      const balance = parseInt(document.getElementById('balanceDisplay').textContent.replace(/\D/g, '')) || 0;
-      if (amount > balance) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ Saldo tidak cukup. Saldo: Rp${balance.toLocaleString()}</div>`;
-        return;
-      }
-      if (!account || !name) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ Nomor akun dan nama pemilik wajib diisi</div>`;
-        return;
-      }
-
-      const btn = e.target.querySelector('button[type="submit"]');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
-
-      try {
-        const res = await fetch('/api/withdraw', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, method, account_number: account, account_name: name, telegram_username })
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          resultDiv.innerHTML = `<div class="alert alert-success">✅ Permintaan withdraw dikirim! Status: <b>PENDING</b>. Tunggu ACC admin.</div>`;
-          showToast('✅ Withdraw diajukan! Status: PENDING', 'success');
-          loadWallet();
-          loadWithdrawHistory();
-          document.getElementById('withdrawAmount').value = '';
-          document.getElementById('withdrawAccount').value = '';
-          document.getElementById('withdrawName').value = '';
-        } else {
-          resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${data.error || 'Gagal'}</div>`;
-        }
-      } catch (err) {
-        resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${err.message}</div>`;
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Ajukan Penarikan';
-      }
-    });
 
     async function loadWithdrawHistory() {
       try {
-        const res = await fetch('/api/withdraw/history');
+        const res = await fetch('/api/withdraw/history', { credentials: 'include' });
         const data = await res.json();
-        const container = document.getElementById('withdrawHistory');
-        if (!data || data.length === 0) { container.innerHTML = '<p class="empty">Belum ada riwayat</p>'; return; }
-        container.innerHTML = data.map(w => `
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;">
-            <div>
-              <span>${w.method.toUpperCase()}</span>
-              <span style="color:var(--text-secondary);font-size:13px;margin-left:8px;">${w.account_number}</span>
-            </div>
-            <div>
-              <span style="font-weight:600;">Rp${w.amount.toLocaleString()}</span>
-              <span class="status-badge-sm ${w.status}" style="margin-left:8px;">${w.status}</span>
-            </div>
-          </div>
-        `).join('');
+        const c = document.getElementById('withdrawHistory');
+        if (!data || data.length === 0) { c.innerHTML = '<p class="empty">Belum ada riwayat</p>'; return; }
+        c.innerHTML = data.map(w => {
+          const statusClass = w.status === 'approved' ? 'success' : (w.status === 'rejected' ? 'error' : 'pending');
+          const statusIcon = w.status === 'approved' ? '✅' : (w.status === 'rejected' ? '❌' : '⏳');
+          return '<div class="wd-history-item">' +
+            '<div class="wd-h-left">' +
+              '<div class="wd-h-method">' + String(w.method || '').toUpperCase() + '</div>' +
+              '<div class="wd-h-acc">' + (w.account_number || '-') + '</div>' +
+              '<div class="wd-h-date">' + new Date(w.created_at).toLocaleString('id-ID') + '</div>' +
+            '</div>' +
+            '<div class="wd-h-right">' +
+              '<div class="wd-h-amount">' + rupiah(w.amount) + '</div>' +
+              '<div class="wd-h-status ' + statusClass + '">' + statusIcon + ' ' + w.status + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
       } catch (e) { console.error(e); }
     }
 
-    function showToast(msg, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = msg;
-      container.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+    // ============================================
+    // PAYMENT FORM
+    // ============================================
+    document.getElementById('paymentMethod').addEventListener('change', function() {
+      const g = document.getElementById('bankNameGroup');
+      if (this.value === 'bank') g.style.display = 'block';
+      else g.style.display = 'none';
+    });
+
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const telegramUsername = document.getElementById('telegramUsername').value.trim().replace('@', '');
+      const telegramId = document.getElementById('telegramId').value.trim();
+      const method = document.getElementById('paymentMethod').value;
+      const accountNumber = document.getElementById('accountNumber').value.trim();
+      const accountName = document.getElementById('accountName').value.trim();
+      const bankName = document.getElementById('bankName').value.trim();
+
+      if (!telegramUsername) return showToast('Username Telegram wajib diisi', 'error');
+      if (!telegramId) return showToast('Telegram ID wajib diisi', 'error');
+      if (!method) return showToast('Pilih metode pembayaran', 'error');
+      if (!accountNumber) return showToast('Nomor akun wajib diisi', 'error');
+      if (!accountName) return showToast('Nama pemilik wajib diisi', 'error');
+      if (method === 'bank' && !bankName) return showToast('Nama bank wajib diisi', 'error');
+
+      const btn = document.getElementById('savePaymentBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Menyimpan...</span>';
+
+      try {
+        const res = await fetch('/api/wallet/payment', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegram_username: telegramUsername,
+            telegram_id: telegramId,
+            method, bank_name: bankName,
+            account_number: accountNumber,
+            account_name: accountName
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal simpan');
+
+        showToast('✅ Data payment tersimpan!', 'success');
+        paymentSaved = true;
+        unlockWithdraw({
+          telegram_username: telegramUsername,
+          telegram_id: telegramId,
+          method, bank_name: bankName,
+          account_number: accountNumber,
+          account_name: accountName
+        });
+      } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> <span>Simpan Data Payment</span>';
+      }
+    });
+
+    // ============================================
+    // UNLOCK WITHDRAW FORM
+    // ============================================
+    function unlockWithdraw(payment) {
+      document.getElementById('withdrawLocked').style.display = 'none';
+      document.getElementById('withdrawForm').style.display = 'block';
+      renderPaymentPreview(payment);
     }
 
+    function lockWithdraw() {
+      document.getElementById('withdrawLocked').style.display = 'block';
+      document.getElementById('withdrawForm').style.display = 'none';
+    }
+
+    function renderPaymentPreview(p) {
+      const methodLabel = p.method === 'bank' ? ('Bank ' + (p.bank_name || '')) : String(p.method || '').toUpperCase();
+      document.getElementById('paymentPreview').innerHTML =
+        '<div class="pay-prev-box">' +
+          '<div class="pay-prev-lbl">💳 Data Payment</div>' +
+          '<div class="pay-prev-row"><span>Metode:</span><b>' + methodLabel + '</b></div>' +
+          '<div class="pay-prev-row"><span>No. Akun:</span><b>' + (p.account_number || '-') + '</b></div>' +
+          '<div class="pay-prev-row"><span>Atas Nama:</span><b>' + (p.account_name || '-') + '</b></div>' +
+          '<div class="pay-prev-row"><span>Telegram:</span><b>@' + (p.telegram_username || '-') + '</b></div>' +
+          '<div class="pay-prev-row"><span>Telegram ID:</span><b>' + (p.telegram_id || '-') + '</b></div>' +
+        '</div>';
+    }
+
+    // ============================================
+    // WITHDRAW SUBMIT
+    // ============================================
+    document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!paymentSaved) return showToast('Simpan data payment dulu', 'error');
+
+      const amount = parseInt(document.getElementById('withdrawAmount').value);
+      const resultDiv = document.getElementById('withdrawResult');
+      resultDiv.innerHTML = '';
+
+      if (!amount || amount < minWithdraw) {
+        return showToast('Minimal withdraw ' + rupiah(minWithdraw), 'error');
+      }
+      if (amount > currentBalance) {
+        return showToast('Saldo tidak cukup', 'error');
+      }
+
+      if (!confirm('Ajukan withdraw ' + rupiah(amount) + '?')) return;
+
+      const btn = document.getElementById('withdrawBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Memproses...</span>';
+
+      try {
+        const res = await fetch('/api/withdraw', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+
+        showToast('✅ Withdraw diajukan! Tunggu verifikasi admin.', 'success');
+        document.getElementById('withdrawAmount').value = '';
+        loadWallet();
+        loadWithdrawHistory();
+      } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
+      }
+    });
+
+    // ============================================
+    // INIT
+    // ============================================
     document.addEventListener('DOMContentLoaded', async () => {
       await loadSettings();
       await loadWallet();
-      await loadProfile();
+      await loadPaymentData();
       await loadWithdrawHistory();
-      setInterval(loadWallet, 15000);
-      setInterval(loadWithdrawHistory, 30000);
-      fetch('/api/me').then(r => r.json()).then(u => {
+
+      fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(u => {
         document.getElementById('userName').textContent = u.name || u.email;
         if (u.role === 'admin') document.getElementById('adminLink').style.display = 'flex';
       });
+
+      document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!confirm('Yakin logout?')) return;
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        window.location.href = '/';
+      });
+
+      setInterval(loadWallet, 15000);
     });
   </script>
 </body>
