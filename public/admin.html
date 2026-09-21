@@ -7,6 +7,16 @@
   <title>Admin Panel — SewaWA</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 600px) {
+      .settings-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
 <body class="app-body">
 
@@ -44,7 +54,7 @@
 
       <div class="admin-content">
 
-        <!-- PENGATURAN GLOBAL -->
+        <!-- PENGATURAN RATE & MINIMUM WD -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD
@@ -52,7 +62,7 @@
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
             Atur harga per pesan sukses & minimal withdraw untuk semua user.
           </p>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="settings-grid">
             <div class="form-field">
               <label>Rate per Pesan Sukses (Rp)</label>
               <div class="input-wrap-app">
@@ -70,14 +80,14 @@
               <small class="help-text">Minimal saldo yang bisa ditarik user</small>
             </div>
           </div>
-          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center;">
             <button class="btn btn-primary" onclick="saveSettings()">
               <i class="fas fa-save"></i> Simpan Pengaturan
             </button>
             <button class="btn btn-secondary" onclick="loadSettings()">
               <i class="fas fa-sync"></i> Reload
             </button>
-            <span id="settingsStatus" style="font-size:13px; color:#8B97AB; align-self:center; margin-left:auto;"></span>
+            <span id="settingsStatus" style="font-size:13px; color:#8B97AB;"></span>
           </div>
         </div>
 
@@ -290,7 +300,7 @@
     async function loadSettings() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
-        if (!res.ok) throw new Error('Gagal load settings');
+        if (!res.ok) throw new Error('Gagal load');
         const d = await res.json();
         document.getElementById('setPricePerChat').value = d.price_per_chat || 1100;
         document.getElementById('setMinWithdraw').value = d.min_withdraw || 50000;
@@ -321,12 +331,12 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal simpan');
-        status.innerHTML = '<span style="color:#34D399;">✅ Tersimpan</span>';
-        showToast('✅ Pengaturan tersimpan!', 'success');
+        status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
+        showToast('Pengaturan tersimpan!', 'success');
         setTimeout(() => { status.innerHTML = ''; }, 3000);
       } catch (e) {
-        status.innerHTML = '<span style="color:#F87171;">❌ Gagal</span>';
-        showToast('❌ ' + e.message, 'error');
+        status.innerHTML = '<span style="color:#F87171;"><i class="fas fa-times-circle"></i> Gagal</span>';
+        showToast('Gagal: ' + e.message, 'error');
       }
     }
 
@@ -420,18 +430,18 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast(id ? '✅ Database diupdate' : '✅ Database dibuat', 'success');
+        showToast(id ? 'Database diupdate' : 'Database dibuat', 'success');
         closeModal('siteModal');
         loadSites();
-      } catch (e) { showToast('❌ ' + e.message, 'error'); }
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
     async function deleteSite(id) {
       if (!confirm('Hapus database ini?')) return;
       try {
         const res = await fetch('/api/admin/sites/' + id, { method: 'DELETE', credentials: 'include' });
-        if (res.ok) { showToast('✅ Database dihapus', 'success'); loadSites(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) { showToast('Database dihapus', 'success'); loadSites(); }
+      } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
     // IMPORT
@@ -458,12 +468,12 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        resultDiv.innerHTML = '<div class="alert alert-success">✅ <b>' + data.inserted + '</b> diimport! ' + (data.skipped > 0 ? '(' + data.skipped + ' duplikat)' : '') + '</div>';
+        resultDiv.innerHTML = '<div class="alert alert-success"><b>' + data.inserted + '</b> diimport! ' + (data.skipped > 0 ? '(' + data.skipped + ' duplikat)' : '') + '</div>';
         document.getElementById('importNumbers').value = '';
         updateImportCount();
         loadSites();
       } catch (err) {
-        resultDiv.innerHTML = '<div class="alert alert-danger">❌ ' + err.message + '</div>';
+        resultDiv.innerHTML = '<div class="alert alert-danger">Gagal: ' + err.message + '</div>';
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-upload"></i> Import';
@@ -514,11 +524,11 @@
             '<div style="font-size:18px; font-weight:800; color:#3B82F6;">' + (s ? (s.total_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(52,211,153,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERKIRIM</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;"><i class="fas fa-check-circle"></i> TERKIRIM</div>' +
             '<div style="font-size:18px; font-weight:800; color:#34D399;">' + (s ? (s.sent_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(251,191,36,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERSEDIA</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;"><i class="fas fa-clock"></i> TERSEDIA</div>' +
             '<div style="font-size:18px; font-weight:800; color:#FBBF24;">' + (s ? (s.available_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>';
 
@@ -543,9 +553,9 @@
 
         const pag = document.getElementById('contactsPagination');
         let html = '';
-        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')">« Prev</button>';
+        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')"><i class="fas fa-chevron-left"></i> Prev</button>';
         html += '<span style="padding:8px 12px; font-size:12px;">Hal ' + data.page + ' / ' + data.totalPages + '</span>';
-        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next »</button>';
+        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next <i class="fas fa-chevron-right"></i></button>';
         pag.innerHTML = html;
       } catch (e) {
         tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error: ' + e.message + '</td></tr>';
@@ -567,8 +577,8 @@
           body: JSON.stringify({ phones: sel })
         });
         const data = await res.json();
-        if (res.ok) { showToast('✅ ' + data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) { showToast(data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
     async function resetSent() {
@@ -576,8 +586,8 @@
       try {
         const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/reset-sent', { method: 'POST', credentials: 'include' });
         const data = await res.json();
-        if (res.ok) { showToast('✅ ' + data.reset + ' direset', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) { showToast(data.reset + ' direset', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('Gagal reset', 'error'); }
     }
 
     async function deleteAllSent() {
@@ -585,8 +595,8 @@
       try {
         const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-sent', { method: 'POST', credentials: 'include' });
         const data = await res.json();
-        if (res.ok) { showToast('✅ ' + data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) { showToast(data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
+      } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
     // DEVICES ASSIGNMENT
@@ -621,8 +631,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ siteId })
         });
-        if (res.ok) showToast('✅ Device di-assign', 'success');
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) showToast('Device di-assign', 'success');
+      } catch (e) { showToast('Gagal assign', 'error'); }
     }
 
     // WITHDRAW
@@ -660,8 +670,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ note: '' })
         });
-        if (res.ok) { showToast('✅ Di-ACC', 'success'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+        if (res.ok) { showToast('Di-ACC', 'success'); loadPendingWithdrawals(); }
+      } catch (e) { showToast('Gagal ACC', 'error'); }
     }
 
     async function rejectWithdraw(id) {
@@ -674,7 +684,7 @@
           body: JSON.stringify({ reason })
         });
         if (res.ok) { showToast('Ditolak', 'warning'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('❌ Gagal', 'error'); }
+      } catch (e) { showToast('Gagal tolak', 'error'); }
     }
 
     // USERS
