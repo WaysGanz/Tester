@@ -3,111 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#06080f">
+  <meta name="theme-color" content="#050810">
   <title>SewaWA — Platform Broadcast WhatsApp #1</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="login-page">
 
-  <!-- Background Glow Orbs -->
-  <div class="glow-orb orb-1"></div>
-  <div class="glow-orb orb-2"></div>
-  <div class="glow-orb orb-3"></div>
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+  <div class="bg-particles">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
 
-  <div class="login-wrapper">
-    <!-- Sisi Kiri: Branding (Desktop Only) -->
-    <div class="login-side">
-      <div class="login-side-content">
-        <div class="brand-logo-big">
-          <i class="fab fa-whatsapp"></i>
-        </div>
-        <h1>Sewa<span>WA</span></h1>
-        <p class="brand-tagline">Platform Broadcast WhatsApp #1</p>
-        <ul class="login-side-features">
-          <li><i class="fas fa-bolt"></i> <span>Broadcast cepat & massal</span></li>
-          <li><i class="fas fa-shield-alt"></i> <span>Aman, stabil & terpercaya</span></li>
-          <li><i class="fas fa-coins"></i> <span>Penghasilan dari setiap chat</span></li>
-          <li><i class="fas fa-wallet"></i> <span>Withdraw ke e-wallet & bank</span></li>
-        </ul>
-      </div>
-    </div>
+  <!-- Full Screen Login -->
+  <div class="login-fullscreen">
+    <div class="login-content">
 
-    <!-- Sisi Kanan: Form Login -->
-    <div class="login-main">
-      <div class="login-container">
-        <div class="login-box">
-          <!-- Brand Header -->
-          <div class="login-brand">
-            <div class="brand-logo">
-              <i class="fab fa-whatsapp"></i>
-            </div>
-            <h1 class="brand-title">Sewa<span>WA</span></h1>
-            <p class="brand-subtitle">Platform Broadcast WhatsApp #1</p>
+      <!-- Logo & Brand -->
+      <div class="login-header">
+        <div class="logo-container">
+          <div class="logo-ring"></div>
+          <div class="logo-ring logo-ring-2"></div>
+          <div class="logo-core">
+            <i class="fab fa-whatsapp"></i>
           </div>
+        </div>
+        <h1 class="login-title">Sewa<span>WA</span></h1>
+        <p class="login-tagline">Platform Broadcast WhatsApp #1</p>
+      </div>
 
-          <!-- Form -->
-          <form id="loginForm" class="login-form">
-            <div class="form-group">
-              <label for="loginEmail">Email</label>
-              <div class="input-wrap">
-                <i class="fas fa-envelope"></i>
-                <input 
-                  type="email" 
-                  id="loginEmail" 
-                  placeholder="nama@domain.com" 
-                  autocomplete="email"
-                  required
-                >
-              </div>
-            </div>
+      <!-- Form -->
+      <form id="loginForm" class="login-form-full">
 
-            <div class="form-group">
-              <label for="loginPassword">Password</label>
-              <div class="input-wrap">
-                <i class="fas fa-lock"></i>
-                <input 
-                  type="password" 
-                  id="loginPassword" 
-                  placeholder="Masukkan password" 
-                  autocomplete="current-password"
-                  required
-                >
-                <button type="button" class="toggle-password" onclick="togglePassword()">
-                  <i class="fas fa-eye" id="eyeIcon"></i>
-                </button>
-              </div>
-            </div>
-
-            <div class="form-options">
-              <label class="checkbox-label">
-                <input type="checkbox" id="humanCheck"> 
-                <span>Aku manusia</span>
-              </label>
-              <a href="/forgot-password" class="forgot-link">Lupa password?</a>
-            </div>
-
-            <button type="submit" class="btn-login" id="loginBtn">
-              <span>Masuk</span>
-              <i class="fas fa-arrow-right"></i>
-            </button>
-
-            <a href="/register" class="btn-register-outline">
-              <i class="fas fa-user-plus"></i>
-              Daftar Akun Baru
-            </a>
-
-            <p class="footer-terms">
-              Dengan masuk, Anda menyetujui 
-              <a href="#">Ketentuan</a> & 
-              <a href="#">Kebijakan Privasi</a>.
-            </p>
-          </form>
+        <div class="form-field">
+          <label>Email</label>
+          <div class="field-input">
+            <i class="fas fa-envelope"></i>
+            <input 
+              type="email" 
+              id="loginEmail" 
+              placeholder="nama@domain.com" 
+              autocomplete="email"
+              required
+            >
+          </div>
         </div>
 
-        <p class="copyright-footer">© 2026 SewaWA. All rights reserved.</p>
+        <div class="form-field">
+          <label>Password</label>
+          <div class="field-input">
+            <i class="fas fa-lock"></i>
+            <input 
+              type="password" 
+              id="loginPassword" 
+              placeholder="Masukkan password" 
+              autocomplete="current-password"
+              required
+            >
+            <button type="button" class="toggle-pwd" onclick="togglePassword()">
+              <i class="fas fa-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-row-options">
+          <label class="human-check">
+            <input type="checkbox" id="humanCheck">
+            <span class="checkmark"></span>
+            <span>Aku manusia</span>
+          </label>
+          <a href="/forgot-password" class="link-forgot">Lupa password?</a>
+        </div>
+
+        <button type="submit" class="btn-main" id="loginBtn">
+          <span>Masuk</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span></span>
+        <small>atau</small>
+        <span></span>
       </div>
+
+      <!-- Register -->
+      <a href="/register" class="btn-secondary-full">
+        <i class="fas fa-user-plus"></i>
+        <span>Daftar Akun Baru</span>
+      </a>
+
+      <!-- Terms -->
+      <p class="terms-text">
+        Dengan masuk, Anda menyetujui 
+        <a href="#">Ketentuan</a> & 
+        <a href="#">Kebijakan Privasi</a>
+      </p>
+
     </div>
+
+    <!-- Copyright -->
+    <p class="copyright-full">© 2026 SewaWA. All rights reserved.</p>
   </div>
 
   <div id="toastContainer" class="toast-container"></div>
@@ -131,19 +134,14 @@
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const humanCheck = document.getElementById('humanCheck');
-      if (!humanCheck.checked) {
-        showToast('Centang "Aku manusia" untuk melanjutkan.', 'error');
-        return;
+      if (!document.getElementById('humanCheck').checked) {
+        return showToast('Centang "Aku manusia" dulu', 'error');
       }
 
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value.trim();
 
-      if (!email || !password) {
-        showToast('Email dan password wajib diisi', 'error');
-        return;
-      }
+      if (!email || !password) return showToast('Email & password wajib diisi', 'error');
 
       loginBtn.disabled = true;
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Memproses...</span>';
@@ -165,9 +163,7 @@
         if (!res.ok) throw new Error(data.error || 'Login gagal');
 
         showToast('✅ Login berhasil!', 'success');
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 800);
+        setTimeout(() => window.location.href = '/dashboard', 600);
       } catch (err) {
         if (err.name === 'AbortError') {
           showToast('⏱️ Server timeout. Coba lagi.', 'error');
@@ -180,16 +176,16 @@
     });
 
     function showToast(msg, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = msg;
-      container.appendChild(toast);
-      requestAnimationFrame(() => toast.classList.add('show'));
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
       setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+      }, 3500);
     }
   </script>
 </body>
