@@ -312,7 +312,7 @@ class WhatsAppManager {
     return { marked: total };
   }
 
-  // SEND BROADCAST
+  // SEND BROADCAST — FIXED: try/finally supaya stats selalu ke-update
   async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null) {
     const sock = this.sockets.get(deviceId);
     if (!sock) throw new Error('Device not connected');
@@ -328,38 +328,52 @@ class WhatsAppManager {
     const broadcastId = await this.saveBroadcast(deviceId, message, final.length, siteId);
 
     let sent = 0, failed = 0;
-    const sentPhones = [];
     const actualDelay = Math.max(500, delay);
+    let fatalError = null;
 
-    for (const phone of final) {
-      try {
-        const jid = phone + '@s.whatsapp.net';
-        if (templatePhoto) {
-          await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
-        } else {
-          await sock.sendMessage(jid, { text: message });
+    try {
+      for (const phone of final) {
+        try {
+          const jid = phone + '@s.whatsapp.net';
+          if (templatePhoto) {
+            await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
+          } else {
+            await sock.sendMessage(jid, { text: message });
+          }
+          sent++;
+          await this.updateRecipientStatus(broadcastId, phone, 'sent');
+          await this.addProfit(deviceId, userId, 1);
+          await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone = ? AND site_id = ?`, [phone, siteId], () => r()));
+          console.log('✅ Sent ' + sent + '/' + final.length + ': ' + phone);
+        } catch (e) {
+          failed++;
+          await this.updateRecipientStatus(broadcastId, phone, 'failed', e.message).catch(() => {});
+          await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'available' WHERE phone = ? AND site_id = ? AND status = 'processing'`, [phone, siteId], () => r()));
+          console.error('❌ Failed ' + phone + ':', e.message);
         }
-        sent++;
-        sentPhones.push(phone);
-        await this.updateRecipientStatus(broadcastId, phone, 'sent');
-        await this.addProfit(deviceId, userId, 1);
-        await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone = ? AND site_id = ?`, [phone, siteId], () => r()));
-        console.log('✅ Sent ' + sent + '/' + final.length + ': ' + phone);
-      } catch (e) {
-        failed++;
-        await this.updateRecipientStatus(broadcastId, phone, 'failed', e.message);
-        await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'available' WHERE phone = ? AND site_id = ? AND status = 'processing'`, [phone, siteId], () => r()));
-        console.error('❌ Failed ' + phone + ':', e.message);
+        await new Promise(r => setTimeout(r, actualDelay));
       }
-      await new Promise(r => setTimeout(r, actualDelay));
+    } catch (fatalErr) {
+      fatalError = fatalErr;
+      console.error('💥 Fatal error di blast loop:', fatalErr.message);
+    } finally {
+      // === SELALU UPDATE STATS & STATUS, apapun yang terjadi ===
+      try {
+        await this.updateBroadcastStatus(broadcastId, sent, failed, fatalError ? 'failed' : 'completed');
+      } catch (e) { console.error('updateBroadcastStatus err:', e.message); }
+
+      try {
+        await this.updateDeviceStats(deviceId, sent);
+      } catch (e) { console.error('updateDeviceStats err:', e.message); }
+
+      // Release nomor yang masih 'processing' (belum sempet diproses karena error)
+      try {
+        await this.unlockNumbers(deviceId, siteId);
+      } catch (e) { console.error('unlockNumbers err:', e.message); }
     }
 
-    await this.updateBroadcastStatus(broadcastId, sent, failed, 'completed');
-    await this.updateDeviceStats(deviceId, sent);
-    if (failed > 0) await this.unlockNumbers(deviceId, siteId);
-
     console.log('📊 Selesai: sent=' + sent + ', failed=' + failed);
-    return { sent, failed, total: final.length };
+    return { sent, failed, total: final.length, fatal: fatalError ? fatalError.message : null };
   }
 
   async addProfit(deviceId, userId, count) {
