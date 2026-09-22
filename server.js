@@ -1000,8 +1000,9 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     const wallet = await new Promise((resolve) => {
       db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, row) => resolve(row));
     });
-    if (!wallet || !wallet.method || !wallet.account_number || !wallet.account_name) {
-      return res.status(400).json({ error: 'Data payment belum lengkap.' });
+    if (!wallet || !wallet.method || !wallet.bank_account || !wallet.bank_holder) {
+  return res.status(400).json({ error: 'Data payment belum lengkap. Isi metode, nomor akun, dan nama pemilik.' });
+}
     }
     if (!wallet.telegram_id) return res.status(400).json({ error: 'Telegram ID wajib diisi.' });
 
@@ -1019,7 +1020,7 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
 
     const wdId = await new Promise((resolve, reject) => {
       db.run('INSERT INTO withdrawals (user_id, amount, method, account_number, account_name, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, amount, wallet.method, wallet.account_number, wallet.account_name, 'pending'],
+  [userId, amount, wallet.method, wallet.bank_account, wallet.bank_holder, 'pending'],
         function (err) {
           if (err) { wa.updateUserBalance(userId, amount); reject(err); }
           else resolve(this.lastID);
@@ -1027,13 +1028,13 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     });
 
     telegram.notifyAdminWithdraw({
-      id: wdId, user_name: userFull.name, user_email: userFull.email,
-      telegram_username: userFull.telegram_username,
-      telegram_id: wallet.telegram_id,
-      amount, method: wallet.method,
-      account_number: wallet.account_number,
-      account_name: wallet.account_name
-    }).catch(() => {});
+  id: wdId, user_name: userFull.name, user_email: userFull.email,
+  telegram_username: userFull.telegram_username,
+  telegram_id: wallet.telegram_id,
+  amount, method: wallet.method,
+  account_number: wallet.bank_account,
+  account_name: wallet.bank_holder
+}).catch(() => {});
 
     res.json({ success: true, id: wdId, status: 'pending' });
   } catch (e) { res.status(400).json({ error: e.message }); }
