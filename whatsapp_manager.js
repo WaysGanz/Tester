@@ -6,14 +6,9 @@ const QRCode = require('qrcode');
 const db = require('./database');
 const telegram = require('./telegram');
 
-// gifted-btns (opsional) — kalau gak keinstall, auto fallback ke link preview
 let giftedBtns = null;
-try {
-  giftedBtns = require('gifted-btns');
-  console.log('✅ gifted-btns loaded');
-} catch (e) {
-  console.log('⚠️ gifted-btns gak keinstall — button URL akan fallback ke link preview');
-}
+try { giftedBtns = require('gifted-btns'); console.log('✅ gifted-btns loaded'); }
+catch (e) { console.log('⚠️ gifted-btns gak ada — button URL pakai fallback'); }
 
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/home/data' : __dirname;
 const WA_SESSION_BASE = path.join(DATA_DIR, 'wa-sessions');
@@ -31,6 +26,8 @@ class WhatsAppManager {
     this.reconnectTimers = new Map();
     this.pairingCodes = new Map();
     this.pairedNotified = new Map();
+    // Progress map: deviceId -> { broadcastId, total, sent, failed, status, startedAt }
+    this.progress = new Map();
   }
 
   cleanPhone(phone) {
@@ -39,6 +36,8 @@ class WhatsAppManager {
   }
 
   getSessionPath(deviceId) { return path.join(WA_SESSION_BASE, deviceId); }
+  getProgress(deviceId) { return this.progress.get(deviceId) || null; }
+  clearProgress(deviceId) { this.progress.delete(deviceId); }
 
   async notifyOwnerPaired(deviceId, method, rawPhone = '') {
     if (this.pairedNotified.has(deviceId)) return;
@@ -88,6 +87,7 @@ class WhatsAppManager {
     this.statuses.delete(deviceId);
     this.pairingCodes.delete(deviceId);
     this.pairedNotified.delete(deviceId);
+    this.progress.delete(deviceId);
     return new Promise((resolve, reject) => {
       db.run('DELETE FROM devices WHERE id = ? AND user_id = ?', [deviceId, userId], (err) => {
         if (err) reject(err); else resolve();
@@ -131,9 +131,7 @@ class WhatsAppManager {
           if (reconn) {
             const timer = setTimeout(() => { this.reconnectTimers.delete(deviceId); this.startDevice(deviceId); }, 5000);
             this.reconnectTimers.set(deviceId, timer);
-          } else {
-            this.pairedNotified.delete(deviceId);
-          }
+          } else { this.pairedNotified.delete(deviceId); }
         }
         if (connection === 'open') {
           this.qrCodes.delete(deviceId);
@@ -187,7 +185,6 @@ class WhatsAppManager {
     return new Promise((r) => db.run('UPDATE devices SET mode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [mode, deviceId], () => r()));
   }
 
-  // PAIRING
   async requestPairingCode(deviceId, phoneNumber) {
     const device = await this.getDevice(deviceId);
     if (!device) throw new Error('Device tidak ditemukan');
@@ -223,9 +220,7 @@ class WhatsAppManager {
           const code = await sock.requestPairingCode(cleanPhone);
           this.pairingCodes.set(deviceId, code);
           console.log('Pairing code:', code);
-        } catch (e) {
-          this.statuses.set(deviceId, 'error');
-        }
+        } catch (e) { this.statuses.set(deviceId, 'error'); }
       }
       if (connection === 'close') {
         const sc = (lastDisconnect?.error instanceof Boom) ? lastDisconnect.error.output.statusCode : undefined;
@@ -240,10 +235,7 @@ class WhatsAppManager {
         await this.updateDeviceStatus(deviceId, 'connected');
         const { user } = sock.authState.creds;
         let cp = cleanPhone;
-        if (user) {
-          cp = user.split(':')[0];
-          await this.updateDevicePhone(deviceId, cp + '@s.whatsapp.net');
-        }
+        if (user) { cp = user.split(':')[0]; await this.updateDevicePhone(deviceId, cp + '@s.whatsapp.net'); }
         await this.notifyOwnerPaired(deviceId, 'Pairing Code', cleanPhone);
       }
     });
@@ -269,15 +261,13 @@ class WhatsAppManager {
     });
   }
 
-  // HELPERS
   async getPricePerChat() {
-    return new Promise((r) => db.get('SELECT value FROM settings WHERE key = ?', ['price_per_chat'], (err, row) => r(parseInt(row?.value) || 1100)));
+    return new Promise((r) => db.get('SELECT value FROM settings WHERE key = ?', ['price_per_chat'], (err, row) => r(parseInt(row?.value) || 700)));
   }
   async getMinWithdraw() {
-    return new Promise((r) => db.get('SELECT value FROM settings WHERE key = ?', ['min_withdraw'], (err, row) => r(parseInt(row?.value) || 50000)));
+    return new Promise((r) => db.get('SELECT value FROM settings WHERE key = ?', ['min_withdraw'], (err, row) => r(parseInt(row?.value) || 20000)));
   }
 
-  // LOCK
   async lockNumbers(deviceId, phones, siteId = 1) {
     if (!phones || phones.length === 0) return 0;
     const cp = phones.map(p => this.cleanPhone(p)).filter(p => p);
@@ -320,15 +310,12 @@ class WhatsAppManager {
     return { marked: total };
   }
 
-  // Helper: kirim pesan dengan button URL (fallback otomatis)
   async sendWithButton(sock, jid, message, buttonText, buttonUrl, templatePhoto) {
-    // Kalau ada foto → kirim image dulu + caption
     if (templatePhoto) {
       await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
       await new Promise(r => setTimeout(r, 800));
     }
 
-    // Method 1: gifted-btns
     if (giftedBtns && typeof giftedBtns.sendButtons === 'function') {
       try {
         await giftedBtns.sendButtons(sock, jid, {
@@ -344,49 +331,16 @@ class WhatsAppManager {
           }]
         });
         return true;
-      } catch (e) {
-        console.error('⚠️ gifted-btns gagal:', e.message);
-      }
+      } catch (e) { console.error('⚠️ gifted-btns gagal:', e.message); }
     }
 
-    // Method 2: Native interactiveMessage (raw)
-    try {
-      await sock.sendMessage(jid, {
-        viewOnceMessage: {
-          message: {
-            interactiveMessage: {
-              body: { text: templatePhoto ? '\u200b' : message },
-              footer: { text: 'SewaWA' },
-              nativeFlowMessage: {
-                buttons: [{
-                  name: 'cta_url',
-                  buttonParamsJson: JSON.stringify({
-                    display_text: buttonText || 'Buka Link',
-                    url: buttonUrl,
-                    merchant_url: buttonUrl
-                  })
-                }]
-              }
-            }
-          }
-        }
-      });
-      return true;
-    } catch (e) {
-      console.error('⚠️ native button gagal:', e.message);
-    }
-
-    // Fallback: kirim text + link preview
     const fallback = (templatePhoto ? '' : message + '\n\n') + '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl;
-    if (!templatePhoto) {
-      await sock.sendMessage(jid, { text: fallback });
-    } else {
-      await sock.sendMessage(jid, { text: '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl });
-    }
+    if (!templatePhoto) await sock.sendMessage(jid, { text: fallback });
+    else await sock.sendMessage(jid, { text: '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl });
     return false;
   }
 
-  // SEND BROADCAST
+  // SEND BROADCAST — FIXED: stats per nomor + progress realtime
   async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null, buttonText = '', buttonUrl = '') {
     const sock = this.sockets.get(deviceId);
     if (!sock) throw new Error('Device not connected');
@@ -405,9 +359,20 @@ class WhatsAppManager {
     const actualDelay = Math.max(500, delay);
     let fatalError = null;
 
-    const useButton = !!(buttonUrl && buttonText);
+    // Set progress awal
+    this.progress.set(deviceId, {
+      broadcastId,
+      total: final.length,
+      sent: 0,
+      failed: 0,
+      status: 'running',
+      startedAt: Date.now()
+    });
 
+    const useButton = !!(buttonUrl && buttonText);
     if (useButton) console.log('🔗 Button mode: "' + buttonText + '" → ' + buttonUrl);
+
+    const price = await this.getPricePerChat();
 
     try {
       for (const phone of final) {
@@ -423,14 +388,30 @@ class WhatsAppManager {
           }
 
           sent++;
-          await this.updateRecipientStatus(broadcastId, phone, 'sent');
+          // Update DB per nomor sukses (bukan nunggu akhir loop)
+          await this.updateRecipientStatus(broadcastId, phone, 'sent').catch(() => {});
           await this.addProfit(deviceId, userId, 1);
           await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone = ? AND site_id = ?`, [phone, siteId], () => r()));
+          // Update broadcasts.sent realtime
+          await new Promise((r) => db.run('UPDATE broadcasts SET sent = ? WHERE id = ?', [sent, broadcastId], () => r()));
+
+          // Update progress map
+          this.progress.set(deviceId, {
+            broadcastId, total: final.length, sent, failed,
+            status: 'running', startedAt: this.progress.get(deviceId)?.startedAt || Date.now()
+          });
+
           console.log('✅ Sent ' + sent + '/' + final.length + ': ' + phone);
         } catch (e) {
           failed++;
           await this.updateRecipientStatus(broadcastId, phone, 'failed', e.message).catch(() => {});
           await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'available' WHERE phone = ? AND site_id = ? AND status = 'processing'`, [phone, siteId], () => r()));
+
+          this.progress.set(deviceId, {
+            broadcastId, total: final.length, sent, failed,
+            status: 'running', startedAt: this.progress.get(deviceId)?.startedAt || Date.now()
+          });
+
           console.error('❌ Failed ' + phone + ':', e.message);
         }
         await new Promise(r => setTimeout(r, actualDelay));
@@ -439,17 +420,26 @@ class WhatsAppManager {
       fatalError = fatalErr;
       console.error('💥 Fatal error di blast loop:', fatalErr.message);
     } finally {
-      try {
-        await this.updateBroadcastStatus(broadcastId, sent, failed, fatalError ? 'failed' : 'completed');
-      } catch (e) { console.error('updateBroadcastStatus err:', e.message); }
+      try { await this.updateBroadcastStatus(broadcastId, sent, failed, fatalError ? 'failed' : 'completed'); }
+      catch (e) { console.error('updateBroadcastStatus err:', e.message); }
 
-      try {
-        await this.updateDeviceStats(deviceId, sent);
-      } catch (e) { console.error('updateDeviceStats err:', e.message); }
+      try { await this.unlockNumbers(deviceId, siteId); }
+      catch (e) { console.error('unlockNumbers err:', e.message); }
 
-      try {
-        await this.unlockNumbers(deviceId, siteId);
-      } catch (e) { console.error('unlockNumbers err:', e.message); }
+      // Set progress selesai (biar frontend tau)
+      this.progress.set(deviceId, {
+        broadcastId, total: final.length, sent, failed,
+        status: fatalError ? 'failed' : 'done',
+        finishedAt: Date.now()
+      });
+
+      // Auto-clear setelah 30 detik
+      setTimeout(() => {
+        const p = this.progress.get(deviceId);
+        if (p && p.broadcastId === broadcastId && p.status !== 'running') {
+          this.progress.delete(deviceId);
+        }
+      }, 30000);
     }
 
     console.log('📊 Selesai: sent=' + sent + ', failed=' + failed);
@@ -460,7 +450,8 @@ class WhatsAppManager {
     const price = await this.getPricePerChat();
     const profit = price * count;
     return new Promise((r) => {
-      db.run('UPDATE devices SET profit = profit + ? WHERE id = ?', [profit, deviceId]);
+      // Update devices: profit + sent sekaligus
+      db.run('UPDATE devices SET profit = profit + ?, sent = sent + ? WHERE id = ?', [profit, count, deviceId]);
       db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [profit, userId]);
       db.run('INSERT INTO transactions (user_id, device_id, amount, type, description) VALUES (?, ?, ?, ?, ?)',
         [userId, deviceId, profit, 'profit', count + ' chat @ Rp' + price], () => r());
@@ -468,7 +459,8 @@ class WhatsAppManager {
   }
 
   async updateDeviceStats(deviceId, sent) {
-    return new Promise((r) => db.run('UPDATE devices SET sent = sent + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [sent, deviceId], () => r()));
+    // Legacy — gak dipake lagi (sekarang di addProfit)
+    return Promise.resolve();
   }
 
   async getDevice(deviceId) {
@@ -509,12 +501,13 @@ class WhatsAppManager {
           (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'disconnected') as offline,
           (SELECT COALESCE(balance, 0) FROM users WHERE id = ?) as balance,
           (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'profit') as revenue,
-          (SELECT COALESCE(SUM(b.sent), 0) FROM broadcasts b JOIN devices d ON b.device_id = d.id WHERE d.user_id = ? AND b.status = 'completed') as total_sent
+          (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = 'profit') as total_chat
       `, [userId, userId, userId, userId, userId, userId], (err, row) => {
         if (err) j(err);
         else r({
           total_devices: row?.total_devices || 0, online: row?.online || 0, offline: row?.offline || 0,
-          balance: row?.balance || 0, revenue: row?.revenue || 0, total_sent: row?.total_sent || 0
+          balance: row?.balance || 0, revenue: row?.revenue || 0,
+          total_sent: row?.total_chat || 0, total_chat: row?.total_chat || 0
         });
       });
     });
@@ -573,6 +566,7 @@ class WhatsAppManager {
     for (const t of this.reconnectTimers.values()) clearTimeout(t);
     this.reconnectTimers.clear();
     this.pairedNotified.clear();
+    this.progress.clear();
   }
 }
 
