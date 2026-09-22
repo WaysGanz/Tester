@@ -309,6 +309,7 @@
       document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
+    // SETTINGS
     async function loadSettings() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
@@ -348,6 +349,7 @@
       }
     }
 
+    // SITES
     async function loadSites() {
       try {
         const res = await fetch('/api/admin/sites', { credentials: 'include' });
@@ -363,6 +365,7 @@
       c.innerHTML = allSites.map(s => {
         const tmpl = (s.template_text || '').substring(0, 50);
         const tmplTrunc = (s.template_text || '').length > 50 ? '...' : '';
+        const safeName = (s.name || '').replace(/'/g, "\\'");
         return '<div style="padding:14px; background:#06080f; border-radius:12px; border:1px solid rgba(59,130,246,0.15);">' +
           '<div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">' +
             '<div style="flex:1; min-width:180px;">' +
@@ -370,15 +373,20 @@
               '<div style="font-size:12px; color:#8B97AB; margin-bottom:6px;"><b>Template:</b> "' + tmpl + tmplTrunc + '"</div>' +
               (s.button_text && s.button_url ? '<div style="font-size:11px; color:#60A5FA; margin-bottom:4px;"><i class="fas fa-mouse-pointer"></i> Button: <b>' + s.button_text + '</b> → ' + s.button_url + '</div>' : '') +
               (s.template_photo ? '<img src="' + s.template_photo + '" style="max-width:60px; border-radius:6px; margin-bottom:6px; border:1px solid rgba(59,130,246,0.4);" onerror="this.style.display=\'none\'">' : '') +
-              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
-                '<span><i class="fas fa-list"></i> ' + (s.total_contacts || 0).toLocaleString('id-ID') + '</span>' +
-                '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> ' + (s.sent_contacts || 0).toLocaleString('id-ID') + '</span>' +
-                '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + '</span>' +
+              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB; margin-bottom:6px;">' +
+                '<span><i class="fas fa-list"></i> ' + (s.total_contacts || 0).toLocaleString('id-ID') + ' nomor</span>' +
+                '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> ' + (s.sent_contacts || 0).toLocaleString('id-ID') + ' sent</span>' +
+                '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + ' sisa</span>' +
+              '</div>' +
+              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB; padding-top:6px; border-top:1px dashed rgba(59,130,246,0.15);">' +
+                '<span style="color:#60A5FA;"><i class="fas fa-comments"></i> <b>' + (s.total_chat || 0).toLocaleString('id-ID') + '</b> chat</span>' +
+                '<span style="color:#FBBF24;"><i class="fas fa-coins"></i> Rp' + (s.total_profit || 0).toLocaleString('id-ID') + '</span>' +
               '</div>' +
             '</div>' +
             '<div style="display:flex; flex-direction:column; gap:6px; min-width:130px;">' +
               '<button class="btn btn-sm btn-info" onclick="openSiteModal(' + s.id + ')"><i class="fas fa-edit"></i> Edit</button>' +
               '<button class="btn btn-sm btn-primary" onclick="openContactModal(' + s.id + ')"><i class="fas fa-list"></i> Lihat Nomor</button>' +
+              '<button class="btn btn-sm btn-info" onclick="openSiteUsersModal(' + s.id + ', \'' + safeName + '\')"><i class="fas fa-users"></i> User Chat</button>' +
               (s.id !== 1 ? '<button class="btn btn-sm btn-danger" onclick="deleteSite(' + s.id + ')"><i class="fas fa-trash"></i> Hapus</button>' : '') +
             '</div>' +
           '</div>' +
@@ -455,6 +463,7 @@
       } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
+    // IMPORT
     document.getElementById('importForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const siteId = document.getElementById('importSite').value;
@@ -492,6 +501,7 @@
 
     document.getElementById('importNumbers').addEventListener('input', updateImportCount);
 
+    // CONTACTS
     function openContactModal(siteId) {
       currentContactSiteId = siteId;
       currentContactFilter = 'all';
@@ -641,6 +651,62 @@
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
+    // USER CHAT PER DB
+    async function openSiteUsersModal(siteId, siteName) {
+      const existing = document.getElementById('siteUsersModal');
+      if (existing) existing.remove();
+
+      const html = '<div class="modal active" id="siteUsersModal" style="display:flex;">' +
+        '<div class="modal-content" style="max-width:560px;">' +
+          '<div class="modal-header">' +
+            '<h3><i class="fas fa-users"></i> User Chat — ' + siteName + '</h3>' +
+            '<button class="modal-close" onclick="document.getElementById(\'siteUsersModal\').remove()">&times;</button>' +
+          '</div>' +
+          '<div class="modal-body" id="siteUsersBody">' +
+            '<p style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading...</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+
+      try {
+        const res = await fetch('/api/admin/sites/' + siteId + '/users-chat', { credentials: 'include' });
+        const data = await res.json();
+        const body = document.getElementById('siteUsersBody');
+        if (!data || data.length === 0) {
+          body.innerHTML = '<p class="empty" style="text-align:center; padding:20px;">Belum ada user yang chat di DB ini (yang terekam).</p>';
+          return;
+        }
+        const total = data.reduce((sum, u) => sum + (u.total_chat || 0), 0);
+        body.innerHTML =
+          '<div style="padding:10px; background:rgba(59,130,246,0.1); border-radius:8px; margin-bottom:12px; text-align:center;">' +
+            '<div style="font-size:11px; color:#8B97AB; text-transform:uppercase;">Total Chat Terekam di DB Ini</div>' +
+            '<div style="font-size:20px; font-weight:800; color:#3B82F6;">' + total.toLocaleString('id-ID') + '</div>' +
+          '</div>' +
+          '<table style="width:100%; border-collapse:collapse; font-size:12px;">' +
+            '<thead><tr style="background:#06080f; text-align:left;">' +
+              '<th style="padding:8px;">#</th>' +
+              '<th style="padding:8px;">User</th>' +
+              '<th style="padding:8px;">💬 Chat</th>' +
+              '<th style="padding:8px;">Profit</th>' +
+            '</tr></thead>' +
+            '<tbody>' +
+              data.map((u, i) =>
+                '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
+                  '<td style="padding:8px;">' + (i + 1) + '</td>' +
+                  '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:10px;">' + (u.email || '-') + '</span></td>' +
+                  '<td style="padding:8px; color:#34D399; font-weight:700;">' + (u.total_chat || 0).toLocaleString('id-ID') + '</td>' +
+                  '<td style="padding:8px; color:#FBBF24; font-weight:600;">Rp' + (u.total_profit || 0).toLocaleString('id-ID') + '</td>' +
+                '</tr>'
+              ).join('') +
+            '</tbody>' +
+          '</table>';
+      } catch (e) {
+        document.getElementById('siteUsersBody').innerHTML = '<p style="color:#F87171; text-align:center;">Error: ' + e.message + '</p>';
+      }
+    }
+
+    // WITHDRAW
     async function loadPendingWithdrawals() {
       try {
         const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
@@ -692,6 +758,7 @@
       } catch (e) { showToast('Gagal', 'error'); }
     }
 
+    // USERS
     async function loadUsers() {
       try {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
