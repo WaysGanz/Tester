@@ -26,7 +26,6 @@ class WhatsAppManager {
     this.reconnectTimers = new Map();
     this.pairingCodes = new Map();
     this.pairedNotified = new Map();
-    // Progress map: deviceId -> { broadcastId, total, sent, failed, status, startedAt }
     this.progress = new Map();
   }
 
@@ -315,7 +314,6 @@ class WhatsAppManager {
       await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
       await new Promise(r => setTimeout(r, 800));
     }
-
     if (giftedBtns && typeof giftedBtns.sendButtons === 'function') {
       try {
         await giftedBtns.sendButtons(sock, jid, {
@@ -333,14 +331,12 @@ class WhatsAppManager {
         return true;
       } catch (e) { console.error('⚠️ gifted-btns gagal:', e.message); }
     }
-
     const fallback = (templatePhoto ? '' : message + '\n\n') + '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl;
     if (!templatePhoto) await sock.sendMessage(jid, { text: fallback });
     else await sock.sendMessage(jid, { text: '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl });
     return false;
   }
 
-  // SEND BROADCAST — FIXED: stats per nomor + progress realtime
   async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null, buttonText = '', buttonUrl = '') {
     const sock = this.sockets.get(deviceId);
     if (!sock) throw new Error('Device not connected');
@@ -359,20 +355,13 @@ class WhatsAppManager {
     const actualDelay = Math.max(500, delay);
     let fatalError = null;
 
-    // Set progress awal
     this.progress.set(deviceId, {
-      broadcastId,
-      total: final.length,
-      sent: 0,
-      failed: 0,
-      status: 'running',
-      startedAt: Date.now()
+      broadcastId, total: final.length, sent: 0, failed: 0,
+      status: 'running', startedAt: Date.now()
     });
 
     const useButton = !!(buttonUrl && buttonText);
     if (useButton) console.log('🔗 Button mode: "' + buttonText + '" → ' + buttonUrl);
-
-    const price = await this.getPricePerChat();
 
     try {
       for (const phone of final) {
@@ -388,14 +377,11 @@ class WhatsAppManager {
           }
 
           sent++;
-          // Update DB per nomor sukses (bukan nunggu akhir loop)
           await this.updateRecipientStatus(broadcastId, phone, 'sent').catch(() => {});
-          await this.addProfit(deviceId, userId, 1);
+          await this.addProfit(deviceId, userId, 1, siteId);
           await new Promise((r) => db.run(`UPDATE master_contacts SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE phone = ? AND site_id = ?`, [phone, siteId], () => r()));
-          // Update broadcasts.sent realtime
           await new Promise((r) => db.run('UPDATE broadcasts SET sent = ? WHERE id = ?', [sent, broadcastId], () => r()));
 
-          // Update progress map
           this.progress.set(deviceId, {
             broadcastId, total: final.length, sent, failed,
             status: 'running', startedAt: this.progress.get(deviceId)?.startedAt || Date.now()
@@ -426,14 +412,12 @@ class WhatsAppManager {
       try { await this.unlockNumbers(deviceId, siteId); }
       catch (e) { console.error('unlockNumbers err:', e.message); }
 
-      // Set progress selesai (biar frontend tau)
       this.progress.set(deviceId, {
         broadcastId, total: final.length, sent, failed,
         status: fatalError ? 'failed' : 'done',
         finishedAt: Date.now()
       });
 
-      // Auto-clear setelah 30 detik
       setTimeout(() => {
         const p = this.progress.get(deviceId);
         if (p && p.broadcastId === broadcastId && p.status !== 'running') {
@@ -446,20 +430,19 @@ class WhatsAppManager {
     return { sent, failed, total: final.length, fatal: fatalError ? fatalError.message : null };
   }
 
-  async addProfit(deviceId, userId, count) {
+  // ✅ ADD PROFIT — sekarang terima siteId
+  async addProfit(deviceId, userId, count, siteId = null) {
     const price = await this.getPricePerChat();
     const profit = price * count;
     return new Promise((r) => {
-      // Update devices: profit + sent sekaligus
       db.run('UPDATE devices SET profit = profit + ?, sent = sent + ? WHERE id = ?', [profit, count, deviceId]);
       db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [profit, userId]);
-      db.run('INSERT INTO transactions (user_id, device_id, amount, type, description) VALUES (?, ?, ?, ?, ?)',
-        [userId, deviceId, profit, 'profit', count + ' chat @ Rp' + price], () => r());
+      db.run('INSERT INTO transactions (user_id, device_id, site_id, amount, type, description) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, deviceId, siteId, profit, 'profit', count + ' chat @ Rp' + price], () => r());
     });
   }
 
   async updateDeviceStats(deviceId, sent) {
-    // Legacy — gak dipake lagi (sekarang di addProfit)
     return Promise.resolve();
   }
 
