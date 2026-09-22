@@ -44,7 +44,7 @@
 
       <div class="wallet-content">
 
-        <!-- WALLET HERO BARU -->
+        <!-- WALLET HERO -->
         <div class="wallet-hero fade-in">
           <div class="wallet-hero-head">
             <div class="wallet-hero-label">
@@ -60,7 +60,7 @@
               <i class="fas fa-coins"></i>
               <div>
                 <small>Per Pesan</small>
-                <b>Rp 700</b>
+                <b id="ratePerChat">Rp 700</b>
               </div>
             </div>
             <div class="wallet-hero-stat">
@@ -71,6 +71,27 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- JADWAL WITHDRAW -->
+        <div class="card fade-in" id="scheduleCard" style="margin-bottom:20px;">
+          <h3><i class="fas fa-clock"></i> Jadwal Proses Withdraw</h3>
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:12px;">
+            Withdraw hanya bisa diajukan pada jam operasional berikut (WIB):
+          </p>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:140px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:12px; text-align:center;">
+              <i class="fas fa-sun" style="color:#FBBF24; font-size:20px; margin-bottom:6px; display:block;"></i>
+              <div style="font-size:11px; color:#8B97AB; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Sesi 1</div>
+              <div style="font-size:15px; font-weight:800; color:#E8EFFB; font-family:'Courier New',monospace;">10.30 - 13.00</div>
+            </div>
+            <div style="flex:1; min-width:140px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:12px; text-align:center;">
+              <i class="fas fa-moon" style="color:#60A5FA; font-size:20px; margin-bottom:6px; display:block;"></i>
+              <div style="font-size:11px; color:#8B97AB; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Sesi 2</div>
+              <div style="font-size:15px; font-weight:800; color:#E8EFFB; font-family:'Courier New',monospace;">22.00 - 01.00</div>
+            </div>
+          </div>
+          <div id="scheduleStatus" style="margin-top:14px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; text-align:center;"></div>
         </div>
 
         <!-- STEP 1: PAYMENT -->
@@ -158,19 +179,19 @@
 
           <form id="withdrawForm" style="display:none;">
             <div class="alert alert-info" style="font-size:12px; margin-bottom:16px;">
-              <b>Minimal WD:</b> <span id="minWdLabelInline">Rp 50.000</span>
+              <b>Minimal WD:</b> <span id="minWdLabelInline">Rp 20.000</span>
             </div>
 
             <div class="form-field" style="margin-bottom:14px;">
               <label>Jumlah Withdraw (Rp)</label>
               <div class="input-wrap-app">
                 <i class="fas fa-money-bill"></i>
-                <input type="number" id="withdrawAmount" placeholder="Minimal 50.000">
+                <input type="number" id="withdrawAmount" placeholder="Minimal 20.000">
               </div>
             </div>
 
             <div class="quick-nominal">
-              <button type="button" onclick="setAmount(20000)">20rb</button>
+              <button type="button" onclick="setAmount(50000)">50rb</button>
               <button type="button" onclick="setAmount(100000)">100rb</button>
               <button type="button" onclick="setAmount(500000)">500rb</button>
               <button type="button" onclick="setAmountAll()">Semua</button>
@@ -206,9 +227,10 @@
 
   <script src="helpers.js"></script>
   <script>
-    let minWithdraw = 50000;
+    let minWithdraw = 20000;
     let currentBalance = 0;
     let paymentSaved = false;
+    let withdrawOpen = false;
 
     function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
 
@@ -225,10 +247,37 @@
         const res = await fetch('/api/settings', { credentials: 'include' });
         const d = await res.json();
         minWithdraw = parseInt(d.min_withdraw) || 20000;
+        const rate = parseInt(d.price_per_chat) || 700;
         document.getElementById('minWdLabel').textContent = rupiah(minWithdraw);
         document.getElementById('minWdLabelInline').textContent = rupiah(minWithdraw);
+        document.getElementById('ratePerChat').textContent = rupiah(rate);
         document.getElementById('withdrawAmount').placeholder = 'Minimal ' + minWithdraw.toLocaleString('id-ID');
       } catch (e) { console.error(e); }
+    }
+
+    async function loadSchedule() {
+      try {
+        const res = await fetch('/api/withdraw/schedule', { credentials: 'include' });
+        const d = await res.json();
+        withdrawOpen = !!d.open;
+        const status = document.getElementById('scheduleStatus');
+        const btn = document.getElementById('withdrawBtn');
+        
+        if (d.open) {
+          status.innerHTML = '<i class="fas fa-check-circle"></i> SEDANG DIBUKA — WD bisa diajukan sekarang (' + (d.serverTimeWIB || '') + ' WIB)';
+          status.style.background = 'rgba(52,211,153,0.15)';
+          status.style.color = '#34D399';
+          status.style.border = '1px solid rgba(52,211,153,0.4)';
+          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>'; }
+        } else {
+          const next = d.next || {};
+          status.innerHTML = '<i class="fas fa-lock"></i> WD DITUTUP — Buka lagi ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>. Sekarang ' + (d.serverTimeWIB || '') + ' WIB.';
+          status.style.background = 'rgba(251,191,36,0.12)';
+          status.style.color = '#FBBF24';
+          status.style.border = '1px solid rgba(251,191,36,0.4)';
+          if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-lock"></i> <span>WD Ditutup</span>'; }
+        }
+      } catch (e) { console.error('Schedule:', e); }
     }
 
     async function loadWallet() {
@@ -271,7 +320,7 @@
         if (!data || data.length === 0) { c.innerHTML = '<p class="empty">Belum ada riwayat</p>'; return; }
         c.innerHTML = data.map(w => {
           const statusClass = w.status === 'approved' ? 'success' : (w.status === 'rejected' ? 'error' : 'pending');
-          const statusIcon = w.status === 'approved' ? '✅' : (w.status === 'rejected' ? '❌' : '⏳');
+          const statusIcon = w.status === 'approved' ? 'fa-check-circle' : (w.status === 'rejected' ? 'fa-times-circle' : 'fa-clock');
           return '<div class="wd-history-item fade-in">' +
             '<div class="wd-h-left">' +
               '<div class="wd-h-method">' + String(w.method || '').toUpperCase() + '</div>' +
@@ -280,7 +329,7 @@
             '</div>' +
             '<div class="wd-h-right">' +
               '<div class="wd-h-amount">' + rupiah(w.amount) + '</div>' +
-              '<div class="wd-h-status ' + statusClass + '">' + statusIcon + ' ' + w.status + '</div>' +
+              '<div class="wd-h-status ' + statusClass + '"><i class="fas ' + statusIcon + '"></i> ' + w.status + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -327,7 +376,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal simpan');
-        showToast('✅ Data payment tersimpan!', 'success');
+        showToast('Data payment tersimpan!', 'success');
         paymentSaved = true;
         unlockWithdraw({
           telegram_username: telegramUsername,
@@ -336,8 +385,9 @@
           account_number: accountNumber,
           account_name: accountName
         });
+        loadSchedule();
       } catch (err) {
-        showToast('❌ ' + err.message, 'error');
+        showToast('Gagal: ' + err.message, 'error');
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save"></i> <span>Simpan Data Payment</span>';
@@ -359,18 +409,19 @@
       const m = p.method === 'bank' ? ('Bank ' + (p.bank_name || '')) : String(p.method || '').toUpperCase();
       document.getElementById('paymentPreview').innerHTML =
         '<div class="pay-prev-box">' +
-          '<div class="pay-prev-lbl">💳 Data Payment</div>' +
+          '<div class="pay-prev-lbl"><i class="fas fa-credit-card"></i> Data Payment</div>' +
           '<div class="pay-prev-row"><span>Metode:</span><b>' + m + '</b></div>' +
           '<div class="pay-prev-row"><span>No. Akun:</span><b>' + (p.account_number || '-') + '</b></div>' +
           '<div class="pay-prev-row"><span>Atas Nama:</span><b>' + (p.account_name || '-') + '</b></div>' +
           '<div class="pay-prev-row"><span>Telegram:</span><b>@' + (p.telegram_username || '-') + '</b></div>' +
-          '<div class="pay-prev-row"><span>Telegram ID:</span><b>' + (p.telegram_id || '-') + '</b></div>' +
         '</div>';
     }
 
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!paymentSaved) return showToast('Simpan data payment dulu', 'error');
+      if (!withdrawOpen) return showToast('WD ditutup. Tunggu jam operasional.', 'error');
+
       const amount = parseInt(document.getElementById('withdrawAmount').value);
       const resultDiv = document.getElementById('withdrawResult');
       resultDiv.innerHTML = '';
@@ -390,15 +441,15 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast('✅ Withdraw diajukan! Tunggu verifikasi admin.', 'success');
+        showToast('Withdraw diajukan! Tunggu verifikasi admin.', 'success');
         document.getElementById('withdrawAmount').value = '';
         loadWallet();
         loadWithdrawHistory();
       } catch (err) {
-        showToast('❌ ' + err.message, 'error');
+        showToast('Gagal: ' + err.message, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
+        loadSchedule();
       }
     });
 
@@ -407,6 +458,7 @@
       await loadWallet();
       await loadPaymentData();
       await loadWithdrawHistory();
+      await loadSchedule();
 
       fetch('/api/me', { credentials: 'include' }).then(r => r.json()).then(u => {
         document.getElementById('userName').textContent = u.name || u.email;
@@ -421,6 +473,7 @@
       });
 
       setInterval(loadWallet, 15000);
+      setInterval(loadSchedule, 60000); // refresh jadwal tiap 1 menit
     });
   </script>
 </body>
