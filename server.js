@@ -124,8 +124,8 @@ function getWIBMinutes() {
 
 function isWithdrawOpen() {
   const total = getWIBMinutes();
-  if (total >= 630 && total < 780) return true;   // 10:30 - 13:00
-  if (total >= 1320 || total < 60) return true;    // 22:00 - 01:00
+  if (total >= 630 && total < 780) return true;
+  if (total >= 1320 || total < 60) return true;
   return false;
 }
 
@@ -382,6 +382,7 @@ app.get('/api/sites', requireAuth, (req, res) => {
   });
 });
 
+// ✅ UPDATED: tambah total_chat & total_profit per DB
 app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   db.all(
     'SELECT s.*, ' +
@@ -389,10 +390,31 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
     '(SELECT COUNT(*) FROM master_contacts WHERE site_id = s.id AND status = "sent") as sent_contacts, ' +
     '(SELECT COUNT(*) FROM master_contacts WHERE site_id = s.id AND (status = "available" OR status IS NULL)) as available_contacts, ' +
     '(SELECT COUNT(*) FROM broadcasts WHERE site_id = s.id AND status = "completed") as total_campaigns, ' +
-    '(SELECT COUNT(*) FROM devices WHERE site_id = s.id) as total_devices ' +
+    '(SELECT COUNT(*) FROM devices WHERE site_id = s.id) as total_devices, ' +
+    '(SELECT COUNT(*) FROM transactions WHERE site_id = s.id AND type = "profit") as total_chat, ' +
+    '(SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE site_id = s.id AND type = "profit") as total_profit ' +
     'FROM sites s WHERE s.is_active = 1 ORDER BY s.id ASC',
     (err, rows) => { if (err) return res.status(500).json({ error: err.message }); res.json(rows || []); }
   );
+});
+
+// ✅ NEW: breakdown user chat per DB
+app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, (req, res) => {
+  const siteId = req.params.id;
+  db.all(`
+    SELECT u.id, u.name, u.email,
+      COUNT(t.id) as total_chat,
+      COALESCE(SUM(t.amount), 0) as total_profit
+    FROM users u
+    LEFT JOIN transactions t ON t.user_id = u.id AND t.type = 'profit' AND t.site_id = ?
+    WHERE u.role != 'admin'
+    GROUP BY u.id
+    HAVING total_chat > 0
+    ORDER BY total_chat DESC
+  `, [siteId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows || []);
+  });
 });
 
 app.post('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
@@ -518,7 +540,7 @@ app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res
 });
 
 // ============================================
-// IMPORT CONTACTS — batch 500
+// IMPORT CONTACTS
 // ============================================
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -563,9 +585,7 @@ app.get('/api/devices/summary', requireAuth, (req, res) => {
 
     db.get('SELECT COUNT(*) as total FROM master_contacts WHERE status = "available" OR status IS NULL', (err2, masterRow) => {
       db.get(`
-        SELECT
-          COUNT(*) as total_chat,
-          COALESCE(SUM(amount), 0) as total_profit
+        SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit
         FROM transactions WHERE user_id = ? AND type = 'profit'
       `, [userId], (err3, trx) => {
         db.get(`
@@ -577,7 +597,6 @@ app.get('/api/devices/summary', requireAuth, (req, res) => {
             [userId], (err5, contactRow) => {
               const totalChat = trx ? trx.total_chat : 0;
               const totalProfit = trx ? trx.total_profit : 0;
-
               res.json({
                 master_total: masterRow ? masterRow.total : 0,
                 devices_total: totalDevices,
@@ -682,7 +701,7 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// BROADCAST — fire-and-forget + progress
+// BROADCAST
 // ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
@@ -695,7 +714,6 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     const status = wa.getStatus(deviceId);
     if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
 
-    // Cek udah ada blast jalan?
     const existing = wa.getProgress(deviceId);
     if (existing && existing.running) {
       return res.status(400).json({ error: 'Blast sedang berjalan untuk device ini' });
@@ -754,10 +772,8 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
       console.log('🔗 Button: "' + site.button_text + '" → ' + site.button_url);
     }
 
-    // === FIRE-AND-FORGET: balas dulu, blast di background ===
     res.json({ status: 'started', total: recipients.length, site_id: siteId, site_name: site.name });
 
-    // Background blast
     const startTime = Date.now();
     wa.sendBroadcast(
       deviceId, site.template_text, recipients, req.session.userId,
@@ -784,7 +800,6 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
   } catch (error) { console.error('❌ Broadcast:', error); res.status(500).json({ error: error.message }); }
 });
 
-// Progress realtime
 app.get('/api/broadcast/progress/:deviceId', requireAuth, (req, res) => {
   const p = wa.getProgress(req.params.deviceId);
   if (!p) return res.json({ running: false });
@@ -798,7 +813,7 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// STATS — pakai transactions (paling akurat)
+// STATS
 // ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
@@ -866,7 +881,6 @@ app.put('/api/settings', requireAuth, requireAdmin, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ADMIN SETTINGS — alias buat admin.html
 app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   db.all('SELECT key, value FROM settings', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -1078,7 +1092,7 @@ app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req,
 });
 
 // ============================================
-// ADMIN — USERS (total chat dari transactions)
+// ADMIN — USERS
 // ============================================
 app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
   db.all(`
@@ -1099,7 +1113,6 @@ app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
   });
 });
 
-// Detail chat per user
 app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res) => {
   const userId = req.params.id;
   db.get('SELECT id, name, email, balance FROM users WHERE id = ?', [userId], (err, user) => {
@@ -1126,7 +1139,6 @@ app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res)
   });
 });
 
-// ADMIN — PROFIT RESET
 app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, (req, res) => {
   db.run('UPDATE devices SET profit = 0 WHERE id = ?', [req.params.deviceId], function (err) {
     if (err) return res.status(500).json({ error: err.message });
