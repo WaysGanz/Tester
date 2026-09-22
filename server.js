@@ -19,9 +19,6 @@ const PORT = process.env.PORT || 1901;
 
 app.set('trust proxy', 1);
 
-// ============================================
-// FOLDER DATA & SESSION
-// ============================================
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/home/data' : __dirname;
 const SESSION_DIR = path.join(DATA_DIR, 'sessions-store');
 
@@ -39,9 +36,6 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASS || '' }
 });
 
-// ============================================
-// MIDDLEWARE
-// ============================================
 app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
@@ -73,9 +67,6 @@ if (useFileStore) {
 app.use(session(sessionOptions));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ============================================
-// HELPERS
-// ============================================
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   next();
@@ -118,9 +109,7 @@ function dbGetAsync(sql, params = []) {
   });
 }
 
-// ============================================
-// FEE ADMIN — TIER-BASED
-// ============================================
+// FEE TIERS
 const FEE_TIERS = [
   { min: 20000,     max: 49999,     fee: 500,   label: 'Rp 20rb - 49rb' },
   { min: 50000,     max: 99999,     fee: 750,   label: 'Rp 50rb - 99rb' },
@@ -139,9 +128,7 @@ function calculateFee(amount) {
   return 500;
 }
 
-// ============================================
 // WITHDRAW SCHEDULE
-// ============================================
 const WITHDRAW_WINDOWS = [
   { start: '10:30', end: '13:00', label: '10.30 - 13.00 Siang' },
   { start: '22:00', end: '01:00', label: '22.00 - 01.00 Malam' }
@@ -176,9 +163,7 @@ function getNextWithdrawWindow() {
   return { start: '10:30', when: 'besok' };
 }
 
-// ============================================
 // TELEGRAM WEBHOOK
-// ============================================
 app.post('/api/telegram/webhook', async (req, res) => {
   res.json({ ok: true });
   try {
@@ -218,8 +203,7 @@ async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
       '💸 Fee: ' + telegram.rp(wdInfo.fee || 0) + '\n' +
       '✅ Diterima: ' + telegram.rp(netAmount) + '\n' +
       '💳 ' + String(wdInfo.method || '').toUpperCase() + '\n\n' +
-      '✅ APPROVED — Silakan TF lalu tandai "Sudah TF" di admin\n' +
-      '🕐 ' + new Date().toLocaleString('id-ID');
+      '✅ APPROVED\n🕐 ' + new Date().toLocaleString('id-ID');
     await telegram.editMessageText(chatId, messageId, newText);
     await telegram.notifyChannelWithdrawSuccess(wdInfo);
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
@@ -240,9 +224,7 @@ async function handleRejectFromTelegram(wdId, chatId, messageId, callbackId) {
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
 }
 
-// ============================================
 // AUTH
-// ============================================
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -334,9 +316,7 @@ app.post('/api/user/telegram', requireAuth, (req, res) => {
   });
 });
 
-// ============================================
 // REFERRAL
-// ============================================
 app.get('/api/referral', requireAuth, (req, res) => {
   db.get('SELECT referral_code, total_referral FROM users WHERE id = ?', [req.session.userId], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -360,9 +340,7 @@ app.get('/api/referral/history', requireAuth, (req, res) => {
   );
 });
 
-// ============================================
 // FORGOT / RESET PASSWORD
-// ============================================
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -419,9 +397,7 @@ app.post('/api/reset-password', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// ============================================
-// SITES / DATABASES
-// ============================================
+// SITES
 app.get('/api/sites', requireAuth, (req, res) => {
   db.all('SELECT * FROM sites WHERE is_active = 1 ORDER BY id ASC', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -444,22 +420,46 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   );
 });
 
-app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, (req, res) => {
-  const siteId = req.params.id;
-  db.all(`
-    SELECT u.id, u.name, u.email,
-      COUNT(t.id) as total_chat,
-      COALESCE(SUM(t.amount), 0) as total_profit
-    FROM users u
-    LEFT JOIN transactions t ON t.user_id = u.id AND t.type = 'profit' AND t.site_id = ?
-    WHERE u.role != 'admin'
-    GROUP BY u.id
-    HAVING total_chat > 0
-    ORDER BY total_chat DESC
-  `, [siteId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+// USERS CHAT PER DB — pakai outstanding
+app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const siteId = req.params.id;
+    const rateRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'price_per_chat'");
+    const rate = parseInt(rateRow?.value) || 700;
+
+    db.all(`
+      SELECT
+        u.id, u.name, u.email,
+        COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_chat_all,
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_income,
+        COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done
+      FROM users u
+      WHERE u.role != 'admin'
+    `, [siteId, siteId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const result = (rows || []).map(u => {
+        const income = u.total_income || 0;
+        const wdDone = u.total_wd_done || 0;
+        const outstandingRp = Math.max(0, income - wdDone);
+        const chatOutstanding = Math.floor(outstandingRp / rate);
+
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          total_chat: chatOutstanding,
+          total_chat_all: u.total_chat_all || 0,
+          total_profit: income,
+          outstanding_rp: outstandingRp,
+          paid_rp: wdDone
+        };
+      }).filter(u => u.total_chat_all > 0 || u.paid_rp > 0)
+        .sort((a, b) => b.total_chat - a.total_chat);
+
+      res.json(result);
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
@@ -584,9 +584,7 @@ app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res
   });
 });
 
-// ============================================
-// IMPORT CONTACTS
-// ============================================
+// IMPORT
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { siteId, numbers } = req.body;
@@ -617,12 +615,9 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// ============================================
 // DEVICES
-// ============================================
 app.get('/api/devices/summary', requireAuth, (req, res) => {
   const userId = req.session.userId;
-
   db.all('SELECT id, status FROM devices WHERE user_id = ?', [userId], (err, devices) => {
     if (err) return res.status(500).json({ error: err.message });
     const totalDevices = (devices || []).length;
@@ -745,9 +740,7 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
 // BROADCAST
-// ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, speed } = req.body;
@@ -854,13 +847,10 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
 // STATS
-// ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
-
     const stats = await new Promise((resolve) => {
       db.get(`
         SELECT
@@ -897,9 +887,7 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   }
 });
 
-// ============================================
 // SETTINGS
-// ============================================
 app.get('/api/settings', requireAuth, (req, res) => {
   db.all('SELECT * FROM settings', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -953,9 +941,7 @@ app.post('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   }
 });
 
-// ============================================
 // WALLET & PAYMENT
-// ============================================
 app.get('/api/wallet', requireAuth, (req, res) => {
   const userId = req.session.userId;
   db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, wallet) => {
@@ -1008,9 +994,7 @@ app.post('/api/wallet/payment', requireAuth, (req, res) => {
   );
 });
 
-// ============================================
-// WITHDRAW + FEE
-// ============================================
+// WITHDRAW
 app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
   const open = isWithdrawOpen();
   const next = getNextWithdrawWindow();
@@ -1030,7 +1014,6 @@ app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
   });
 });
 
-// Cek fee untuk amount tertentu
 app.post('/api/withdraw/check-fee', requireAuth, (req, res) => {
   const amount = parseInt(req.body.amount) || 0;
   const fee = calculateFee(amount);
@@ -1042,7 +1025,6 @@ app.post('/api/withdraw/check-fee', requireAuth, (req, res) => {
   });
 });
 
-// USER SUBMIT WD — dengan FEE
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -1077,9 +1059,7 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
         'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?',
         [amount, userId, amount]
       );
-      if (updateRes.changes === 0) {
-        throw new Error('Saldo tidak cukup (race condition)');
-      }
+      if (updateRes.changes === 0) throw new Error('Saldo tidak cukup (race condition)');
 
       const wdRes = await dbRunAsync(
         'INSERT INTO withdrawals (user_id, amount, fee, amount_received, method, account_number, account_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1120,8 +1100,8 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
         success: true,
         id: wdId,
         status: 'pending',
-        amount: amount,
-        fee: fee,
+        amount,
+        fee,
         net: amountReceived,
         processingNote: open
           ? 'WD akan segera diproses admin.'
@@ -1142,9 +1122,7 @@ app.get('/api/withdraw/history', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
-// ADMIN — DEVICES
-// ============================================
+// ADMIN DEVICES
 app.get('/api/admin/devices', requireAuth, requireAdmin, (req, res) => {
   db.all(
     'SELECT d.*, u.name as user_name, u.email as user_email, s.name as site_name ' +
@@ -1164,9 +1142,7 @@ app.put('/api/admin/devices/:id/site', requireAuth, requireAdmin, (req, res) => 
     });
 });
 
-// ============================================
-// ADMIN — WITHDRAW
-// ============================================
+// ADMIN WITHDRAW
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
   try {
     const pending = await new Promise((resolve) => {
@@ -1198,7 +1174,6 @@ app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, re
       `, (err, rows) => resolve(rows || []));
     });
 
-    // Total fee yang udah masuk dari WD approved/completed
     const feeStats = await new Promise((resolve) => {
       db.get(`
         SELECT
@@ -1213,10 +1188,10 @@ app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, re
     const wibTime = String(Math.floor(wib / 60)).padStart(2, '0') + ':' + String(wib % 60).padStart(2, '0');
 
     res.json({
-      pending: pending,
-      approved: approved,
-      history: history,
-      feeStats: feeStats,
+      pending,
+      approved,
+      history,
+      feeStats,
       canApprove: isWithdrawOpen(),
       serverTimeWIB: wibTime,
       next: getNextWithdrawWindow(),
@@ -1235,7 +1210,6 @@ app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req
         next
       });
     }
-
     const { note } = req.body || {};
     const wdId = req.params.id;
     const wdInfo = await getWithdrawWithUser(wdId);
@@ -1343,26 +1317,45 @@ app.put('/api/admin/withdraw/:id/refund', requireAuth, requireAdmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
-// ADMIN — USERS + RECALC
-// ============================================
-app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
-  db.all(`
-    SELECT
-      u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
-      u.total_referral, u.created_at,
-      w.bank_name, w.bank_account, w.bank_holder, w.telegram_id,
-      COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_profit,
-      (SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit') as total_chat,
-      (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as total_devices
-    FROM users u
-    LEFT JOIN user_wallets w ON w.user_id = u.id
-    WHERE u.role != 'admin'
-    ORDER BY u.created_at DESC
-  `, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows || []);
-  });
+// ADMIN USERS — CHAT OUTSTANDING
+app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rateRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'price_per_chat'");
+    const rate = parseInt(rateRow?.value) || 700;
+
+    db.all(`
+      SELECT
+        u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
+        u.total_referral, u.created_at,
+        w.bank_name, w.bank_account, w.bank_holder, w.telegram_id,
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_profit,
+        COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_chat_all,
+        COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done,
+        (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as total_devices
+      FROM users u
+      LEFT JOIN user_wallets w ON w.user_id = u.id
+      WHERE u.role != 'admin'
+      ORDER BY u.created_at DESC
+    `, (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const users = (rows || []).map(u => {
+        const income = u.total_profit || 0;
+        const wdDone = u.total_wd_done || 0;
+        const outstandingRp = Math.max(0, income - wdDone);
+        const chatOutstanding = Math.floor(outstandingRp / rate);
+
+        return {
+          ...u,
+          total_chat: chatOutstanding,
+          total_chat_all: u.total_chat_all || 0,
+          outstanding_rp: outstandingRp,
+          paid_rp: wdDone
+        };
+      });
+      res.json(users);
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res) => {
@@ -1380,7 +1373,7 @@ app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res)
         WHERE d.user_id = ? AND b.status = 'completed'
       `, [userId], (err3, bc) => {
         res.json({
-          user: user,
+          user,
           total_chat: trx ? trx.total_chat : 0,
           total_profit: trx ? trx.total_profit : 0,
           total_campaign: bc ? bc.total_campaign : 0,
@@ -1394,7 +1387,6 @@ app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res)
 app.post('/api/admin/users/:id/recalc-balance', requireAuth, requireAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
-
     const row = await dbGetAsync(`
       SELECT
         COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type IN ('profit','bonus','refund')), 0) as total_income,
@@ -1427,9 +1419,7 @@ app.post('/api/admin/users/:id/apply-balance', requireAuth, requireAdmin, async 
     const userId = req.params.id;
     const { new_balance } = req.body;
     if (new_balance === undefined || new_balance < 0) return res.status(400).json({ error: 'Saldo tidak valid' });
-
     await dbRunAsync('UPDATE users SET balance = ? WHERE id = ?', [parseInt(new_balance), userId]);
-
     console.log('✅ Recalc balance user ' + userId + ' → Rp' + new_balance);
     res.json({ success: true, new_balance: parseInt(new_balance) });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1449,9 +1439,7 @@ app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, (req, res) =>
   });
 });
 
-// ============================================
 // TELEGRAM
-// ============================================
 app.get('/api/telegram/test', requireAuth, requireAdmin, async (req, res) => {
   res.json(await telegram.testBot());
 });
@@ -1460,9 +1448,7 @@ app.get('/api/telegram/webhook-info', requireAuth, requireAdmin, async (req, res
   try { res.json(await telegram.getWebhookInfo()); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
 // PAGES
-// ============================================
 app.get('/', (req, res) => {
   if (req.session.userId) res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
   else res.sendFile(path.join(__dirname, 'public', 'index.html'));
