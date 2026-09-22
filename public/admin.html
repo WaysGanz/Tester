@@ -708,42 +708,75 @@
 
     // WITHDRAW
     async function loadPendingWithdrawals() {
-      try {
-        const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
-        const data = await res.json();
-        const c = document.getElementById('pendingWithdrawList');
-        if (!data || data.length === 0) { c.innerHTML = '<p class="empty">Tidak ada permintaan</p>'; return; }
-        c.innerHTML = data.map(w => {
-          const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
-          return '<div style="border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:12px; margin-bottom:10px;">' +
-            '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
-              '<div>' +
-                '<strong>' + (w.name || w.email) + '</strong>' +
-                '<span style="color:#8B97AB; font-size:12px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
-                '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
-              '</div>' +
-              '<div><span style="font-weight:700; color:#FBBF24;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</span></div>' +
-            '</div>' +
-            '<div style="margin-top:8px; display:flex; gap:6px;">' +
-              '<button class="btn btn-sm btn-success" onclick="approveWithdraw(' + w.id + ')"><i class="fas fa-check"></i> ACC</button>' +
-              '<button class="btn btn-sm btn-danger" onclick="rejectWithdraw(' + w.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-      } catch (e) { console.error(e); }
+  try {
+    const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
+    const resp = await res.json();
+    const data = resp.data || [];
+    const canApprove = resp.canApprove;
+    const wibTime = resp.serverTimeWIB || '';
+    const next = resp.next || {};
+    const c = document.getElementById('pendingWithdrawList');
+
+    // Kasih info header
+    let headerInfo = '';
+    if (canApprove) {
+      headerInfo = '<div style="padding:8px 12px; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.4); border-radius:8px; margin-bottom:12px; font-size:12px; color:#34D399;">' +
+        '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> (' + wibTime + ' WIB) — Bisa ACC WD' +
+      '</div>';
+    } else {
+      headerInfo = '<div style="padding:8px 12px; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.4); border-radius:8px; margin-bottom:12px; font-size:12px; color:#FBBF24;">' +
+        '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> (' + wibTime + ' WIB) — ACC WD cuma bisa ' + next.when + ' jam <b>' + next.start + ' WIB</b>. Tombol ACC di-disable.' +
+      '</div>';
     }
 
-    async function approveWithdraw(id) {
-      if (!confirm('ACC withdraw ini?')) return;
-      try {
-        const res = await fetch('/api/admin/withdraw/' + id + '/approve', {
-          method: 'PUT', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ note: '' })
-        });
-        if (res.ok) { showToast('Di-ACC', 'success'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('Gagal', 'error'); }
+    if (!data || data.length === 0) {
+      c.innerHTML = headerInfo + '<p class="empty">Tidak ada permintaan</p>';
+      return;
     }
+
+    c.innerHTML = headerInfo + data.map(w => {
+      const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
+      const accDisabled = !canApprove ? 'disabled style="opacity:0.45; cursor:not-allowed;"' : '';
+      const accTitle = !canApprove ? 'title="Di luar jam proses"' : '';
+      return '<div style="border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:12px; margin-bottom:10px;">' +
+        '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+          '<div>' +
+            '<strong>' + (w.name || w.email) + '</strong>' +
+            '<span style="color:#8B97AB; font-size:12px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
+            '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
+          '</div>' +
+          '<div><span style="font-weight:700; color:#FBBF24;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</span></div>' +
+        '</div>' +
+        '<div style="margin-top:8px; display:flex; gap:6px;">' +
+          '<button class="btn btn-sm btn-success" onclick="approveWithdraw(' + w.id + ')" ' + accDisabled + ' ' + accTitle + '><i class="fas fa-check"></i> ACC</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="rejectWithdraw(' + w.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) { console.error(e); }
+}
+
+    async function approveWithdraw(id) {
+  if (!confirm('ACC withdraw ini?')) return;
+  try {
+    const res = await fetch('/api/admin/withdraw/' + id + '/approve', {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: '' })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.outsideHours) {
+        showToast('⚠️ ' + data.error, 'warning');
+      } else {
+        showToast('Gagal: ' + (data.error || 'Error'), 'error');
+      }
+      return;
+    }
+    showToast('Di-ACC', 'success');
+    loadPendingWithdrawals();
+  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+}
 
     async function rejectWithdraw(id) {
       const reason = prompt('Alasan:');
