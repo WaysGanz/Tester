@@ -6,6 +6,15 @@ const QRCode = require('qrcode');
 const db = require('./database');
 const telegram = require('./telegram');
 
+// gifted-btns (opsional) — kalau gak keinstall, auto fallback ke link preview
+let giftedBtns = null;
+try {
+  giftedBtns = require('gifted-btns');
+  console.log('✅ gifted-btns loaded');
+} catch (e) {
+  console.log('⚠️ gifted-btns gak keinstall — button URL akan fallback ke link preview');
+}
+
 const DATA_DIR = process.env.NODE_ENV === 'production' ? '/home/data' : __dirname;
 const WA_SESSION_BASE = path.join(DATA_DIR, 'wa-sessions');
 
@@ -293,7 +302,6 @@ class WhatsAppManager {
     return new Promise((r) => db.run('UPDATE master_contacts SET status = "available" WHERE site_id = ? AND status = "processing"', [siteId], () => r()));
   }
 
-  // MARK AS SENT
   async markAsSent(phones, siteId = 1) {
     if (!phones || phones.length === 0) return { marked: 0 };
     const cp = phones.map(p => this.cleanPhone(p)).filter(p => p);
@@ -312,8 +320,74 @@ class WhatsAppManager {
     return { marked: total };
   }
 
-  // SEND BROADCAST — FIXED: try/finally supaya stats selalu ke-update
-  async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null) {
+  // Helper: kirim pesan dengan button URL (fallback otomatis)
+  async sendWithButton(sock, jid, message, buttonText, buttonUrl, templatePhoto) {
+    // Kalau ada foto → kirim image dulu + caption
+    if (templatePhoto) {
+      await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    // Method 1: gifted-btns
+    if (giftedBtns && typeof giftedBtns.sendButtons === 'function') {
+      try {
+        await giftedBtns.sendButtons(sock, jid, {
+          text: templatePhoto ? '\u200b' : message,
+          footer: 'SewaWA',
+          buttons: [{
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({
+              display_text: buttonText || 'Buka Link',
+              url: buttonUrl,
+              merchant_url: buttonUrl
+            })
+          }]
+        });
+        return true;
+      } catch (e) {
+        console.error('⚠️ gifted-btns gagal:', e.message);
+      }
+    }
+
+    // Method 2: Native interactiveMessage (raw)
+    try {
+      await sock.sendMessage(jid, {
+        viewOnceMessage: {
+          message: {
+            interactiveMessage: {
+              body: { text: templatePhoto ? '\u200b' : message },
+              footer: { text: 'SewaWA' },
+              nativeFlowMessage: {
+                buttons: [{
+                  name: 'cta_url',
+                  buttonParamsJson: JSON.stringify({
+                    display_text: buttonText || 'Buka Link',
+                    url: buttonUrl,
+                    merchant_url: buttonUrl
+                  })
+                }]
+              }
+            }
+          }
+        }
+      });
+      return true;
+    } catch (e) {
+      console.error('⚠️ native button gagal:', e.message);
+    }
+
+    // Fallback: kirim text + link preview
+    const fallback = (templatePhoto ? '' : message + '\n\n') + '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl;
+    if (!templatePhoto) {
+      await sock.sendMessage(jid, { text: fallback });
+    } else {
+      await sock.sendMessage(jid, { text: '🔗 ' + (buttonText || 'Buka') + ': ' + buttonUrl });
+    }
+    return false;
+  }
+
+  // SEND BROADCAST
+  async sendBroadcast(deviceId, message, recipients, userId, delay = 1000, siteId = 1, templatePhoto = null, buttonText = '', buttonUrl = '') {
     const sock = this.sockets.get(deviceId);
     if (!sock) throw new Error('Device not connected');
     if (!recipients || recipients.length === 0) throw new Error('Tidak ada recipient');
@@ -331,15 +405,23 @@ class WhatsAppManager {
     const actualDelay = Math.max(500, delay);
     let fatalError = null;
 
+    const useButton = !!(buttonUrl && buttonText);
+
+    if (useButton) console.log('🔗 Button mode: "' + buttonText + '" → ' + buttonUrl);
+
     try {
       for (const phone of final) {
         try {
           const jid = phone + '@s.whatsapp.net';
-          if (templatePhoto) {
+
+          if (useButton) {
+            await this.sendWithButton(sock, jid, message, buttonText, buttonUrl, templatePhoto);
+          } else if (templatePhoto) {
             await sock.sendMessage(jid, { image: { url: templatePhoto }, caption: message });
           } else {
             await sock.sendMessage(jid, { text: message });
           }
+
           sent++;
           await this.updateRecipientStatus(broadcastId, phone, 'sent');
           await this.addProfit(deviceId, userId, 1);
@@ -357,7 +439,6 @@ class WhatsAppManager {
       fatalError = fatalErr;
       console.error('💥 Fatal error di blast loop:', fatalErr.message);
     } finally {
-      // === SELALU UPDATE STATS & STATUS, apapun yang terjadi ===
       try {
         await this.updateBroadcastStatus(broadcastId, sent, failed, fatalError ? 'failed' : 'completed');
       } catch (e) { console.error('updateBroadcastStatus err:', e.message); }
@@ -366,7 +447,6 @@ class WhatsAppManager {
         await this.updateDeviceStats(deviceId, sent);
       } catch (e) { console.error('updateDeviceStats err:', e.message); }
 
-      // Release nomor yang masih 'processing' (belum sempet diproses karena error)
       try {
         await this.unlockNumbers(deviceId, siteId);
       } catch (e) { console.error('unlockNumbers err:', e.message); }
