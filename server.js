@@ -100,8 +100,47 @@ function getWithdrawWithUser(wdId) {
   });
 }
 
+function dbRunAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+function dbGetAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
 // ============================================
-// WITHDRAW SCHEDULE — WIB (UTC+7)
+// FEE ADMIN — TIER-BASED
+// ============================================
+const FEE_TIERS = [
+  { min: 20000,     max: 49999,     fee: 500,   label: 'Rp 20rb - 49rb' },
+  { min: 50000,     max: 99999,     fee: 750,   label: 'Rp 50rb - 99rb' },
+  { min: 100000,    max: 249999,    fee: 1000,  label: 'Rp 100rb - 249rb' },
+  { min: 250000,    max: 499999,    fee: 2000,  label: 'Rp 250rb - 499rb' },
+  { min: 500000,    max: 999999,    fee: 3500,  label: 'Rp 500rb - 999rb' },
+  { min: 1000000,   max: 1999999,   fee: 6000,  label: 'Rp 1jt - 1.9jt' },
+  { min: 2000000,   max: Infinity,  fee: 10000, label: 'Rp 2jt ke atas' }
+];
+
+function calculateFee(amount) {
+  const amt = parseInt(amount) || 0;
+  for (const tier of FEE_TIERS) {
+    if (amt >= tier.min && amt <= tier.max) return tier.fee;
+  }
+  return 500;
+}
+
+// ============================================
+// WITHDRAW SCHEDULE
 // ============================================
 const WITHDRAW_WINDOWS = [
   { start: '10:30', end: '13:00', label: '10.30 - 13.00 Siang' },
@@ -124,8 +163,8 @@ function getWIBMinutes() {
 
 function isWithdrawOpen() {
   const total = getWIBMinutes();
-  if (total >= 630 && total < 780) return true;   // 10:30 - 13:00
-  if (total >= 1320 || total < 60) return true;    // 22:00 - 01:00
+  if (total >= 630 && total < 780) return true;
+  if (total >= 1320 || total < 60) return true;
   return false;
 }
 
@@ -172,11 +211,15 @@ async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
     if (wdInfo.status !== 'pending') return telegram.answerCallbackQuery(callbackId, 'WD sudah di-' + wdInfo.status, true);
     await wa.approveWithdraw(wdId, 'Approved via Telegram');
     await telegram.answerCallbackQuery(callbackId, 'Withdraw di-ACC!');
+    const netAmount = (wdInfo.amount || 0) - (wdInfo.fee || 0);
     const newText = '<b>WITHDRAW DI-ACC</b>\n\n' +
       '👤 ' + (wdInfo.user_name || 'Unknown') + '\n' +
-      '💰 ' + telegram.rp(wdInfo.amount) + '\n' +
+      '💰 Bruto: ' + telegram.rp(wdInfo.amount) + '\n' +
+      '💸 Fee: ' + telegram.rp(wdInfo.fee || 0) + '\n' +
+      '✅ Diterima: ' + telegram.rp(netAmount) + '\n' +
       '💳 ' + String(wdInfo.method || '').toUpperCase() + '\n\n' +
-      '✅ APPROVED\n🕐 ' + new Date().toLocaleString('id-ID');
+      '✅ APPROVED — Silakan TF lalu tandai "Sudah TF" di admin\n' +
+      '🕐 ' + new Date().toLocaleString('id-ID');
     await telegram.editMessageText(chatId, messageId, newText);
     await telegram.notifyChannelWithdrawSuccess(wdInfo);
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
@@ -192,7 +235,7 @@ async function handleRejectFromTelegram(wdId, chatId, messageId, callbackId) {
     const newText = '<b>WITHDRAW DITOLAK</b>\n\n' +
       '👤 ' + (wdInfo.user_name || 'Unknown') + '\n' +
       '💰 ' + telegram.rp(wdInfo.amount) + '\n\n' +
-      '❌ REJECTED\n🕐 ' + new Date().toLocaleString('id-ID');
+      '❌ REJECTED (saldo dibalikin)\n🕐 ' + new Date().toLocaleString('id-ID');
     await telegram.editMessageText(chatId, messageId, newText);
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
 }
@@ -966,7 +1009,7 @@ app.post('/api/wallet/payment', requireAuth, (req, res) => {
 });
 
 // ============================================
-// WITHDRAW + SCHEDULE
+// WITHDRAW + FEE
 // ============================================
 app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
   const open = isWithdrawOpen();
@@ -980,24 +1023,34 @@ app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
     windows: WITHDRAW_WINDOWS,
     next,
     canSubmit: true,
-    note: open 
-      ? 'Jam proses WD sedang buka. WD akan langsung diproses admin.' 
+    feeTiers: FEE_TIERS.map(t => ({ min: t.min, max: t.max === Infinity ? null : t.max, fee: t.fee, label: t.label })),
+    note: open
+      ? 'Jam proses WD sedang buka. WD akan langsung diproses admin.'
       : 'WD bisa diajukan kapan aja, tapi DIPROSES admin ' + next.when + ' jam ' + next.start + ' WIB.'
   });
 });
 
-// ✅ USER: bisa ajuin WD KAPAN AJA (24 jam)
+// Cek fee untuk amount tertentu
+app.post('/api/withdraw/check-fee', requireAuth, (req, res) => {
+  const amount = parseInt(req.body.amount) || 0;
+  const fee = calculateFee(amount);
+  res.json({
+    amount,
+    fee,
+    net: amount - fee,
+    percent: amount > 0 ? ((fee / amount) * 100).toFixed(2) : '0'
+  });
+});
+
+// USER SUBMIT WD — dengan FEE
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { amount } = req.body;
+
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
 
-    // VALIDASI JAM DIHAPUS — user bisa ajuin 24 jam
-
-    const wallet = await new Promise((resolve) => {
-      db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, row) => resolve(row));
-    });
+    const wallet = await dbGetAsync('SELECT * FROM user_wallets WHERE user_id = ?', [userId]);
     if (!wallet || !wallet.method || !wallet.bank_account || !wallet.bank_holder) {
       return res.status(400).json({ error: 'Data payment belum lengkap. Isi metode, nomor akun, dan nama pemilik.' });
     }
@@ -1006,47 +1059,82 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     const min = await wa.getMinWithdraw();
     if (amount < min) return res.status(400).json({ error: 'Minimal withdraw Rp' + min.toLocaleString('id-ID') });
 
-    const user = await wa.getUser(userId);
-    if (!user || user.balance < amount) return res.status(400).json({ error: 'Saldo tidak mencukupi' });
+    const fee = calculateFee(amount);
+    const amountReceived = amount - fee;
 
-    const userFull = await new Promise((resolve) => {
-      db.get('SELECT name, email, telegram_username FROM users WHERE id = ?', [userId], (err, row) => resolve(row));
-    });
+    if (amountReceived <= 0) {
+      return res.status(400).json({ error: 'Nominal terlalu kecil setelah fee' });
+    }
 
-    await wa.updateUserBalance(userId, -amount);
+    const user = await dbGetAsync('SELECT id, balance FROM users WHERE id = ?', [userId]);
+    if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
+    if (user.balance < amount) return res.status(400).json({ error: 'Saldo tidak mencukupi (butuh Rp ' + amount.toLocaleString('id-ID') + ')' });
 
-    const wdId = await new Promise((resolve, reject) => {
-      db.run('INSERT INTO withdrawals (user_id, amount, method, account_number, account_name, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, amount, wallet.method, wallet.bank_account, wallet.bank_holder, 'pending'],
-        function (err) {
-          if (err) { wa.updateUserBalance(userId, amount); reject(err); }
-          else resolve(this.lastID);
-        });
-    });
+    await dbRunAsync('BEGIN IMMEDIATE TRANSACTION');
 
-    const open = isWithdrawOpen();
-    const next = getNextWithdrawWindow();
+    try {
+      const updateRes = await dbRunAsync(
+        'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?',
+        [amount, userId, amount]
+      );
+      if (updateRes.changes === 0) {
+        throw new Error('Saldo tidak cukup (race condition)');
+      }
 
-    telegram.notifyAdminWithdraw({
-      id: wdId, user_name: userFull.name, user_email: userFull.email,
-      telegram_username: userFull.telegram_username,
-      telegram_id: wallet.telegram_id,
-      amount, method: wallet.method,
-      account_number: wallet.bank_account,
-      account_name: wallet.bank_holder,
-      outsideHours: !open,
-      nextWindow: open ? null : (next.when + ' jam ' + next.start + ' WIB')
-    }).catch(() => {});
+      const wdRes = await dbRunAsync(
+        'INSERT INTO withdrawals (user_id, amount, fee, amount_received, method, account_number, account_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [userId, amount, fee, amountReceived, wallet.method, wallet.bank_account, wallet.bank_holder, 'pending']
+      );
+      const wdId = wdRes.lastID;
 
-    res.json({ 
-      success: true, 
-      id: wdId, 
-      status: 'pending',
-      processingNote: open 
-        ? 'WD akan segera diproses admin.' 
-        : 'WD masuk antrian & akan DIPROSES ' + next.when + ' jam ' + next.start + ' WIB.'
-    });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+      await dbRunAsync(
+        'INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
+        [userId, -amount, 'withdraw', 'WD#' + wdId + ' (bruto Rp' + amount.toLocaleString('id-ID') + ', fee Rp' + fee.toLocaleString('id-ID') + ', net Rp' + amountReceived.toLocaleString('id-ID') + ')']
+      );
+
+      await dbRunAsync('COMMIT');
+
+      console.log('💰 WD #' + wdId + ' - User ' + userId + ' - Rp' + amount + ' (fee Rp' + fee + ', net Rp' + amountReceived + ')');
+
+      const userFull = await dbGetAsync('SELECT name, email, telegram_username FROM users WHERE id = ?', [userId]);
+      const open = isWithdrawOpen();
+      const next = getNextWithdrawWindow();
+
+      telegram.notifyAdminWithdraw({
+        id: wdId,
+        user_name: userFull.name,
+        user_email: userFull.email,
+        telegram_username: userFull.telegram_username,
+        telegram_id: wallet.telegram_id,
+        amount,
+        fee,
+        amount_received: amountReceived,
+        method: wallet.method,
+        account_number: wallet.bank_account,
+        account_name: wallet.bank_holder,
+        outsideHours: !open,
+        nextWindow: open ? null : (next.when + ' jam ' + next.start + ' WIB')
+      }).catch(() => {});
+
+      res.json({
+        success: true,
+        id: wdId,
+        status: 'pending',
+        amount: amount,
+        fee: fee,
+        net: amountReceived,
+        processingNote: open
+          ? 'WD akan segera diproses admin.'
+          : 'WD masuk antrian & akan DIPROSES ' + next.when + ' jam ' + next.start + ' WIB.'
+      });
+    } catch (txErr) {
+      await dbRunAsync('ROLLBACK');
+      throw txErr;
+    }
+  } catch (e) {
+    console.error('❌ WD error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
 });
 
 app.get('/api/withdraw/history', requireAuth, async (req, res) => {
@@ -1077,18 +1165,60 @@ app.put('/api/admin/devices/:id/site', requireAuth, requireAdmin, (req, res) => 
 });
 
 // ============================================
-// ADMIN — WITHDRAW (ACC HANYA DI JAM OPERASIONAL)
+// ADMIN — WITHDRAW
 // ============================================
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const data = await wa.getPendingWithdrawals();
+    const pending = await new Promise((resolve) => {
+      db.all(`
+        SELECT w.*, u.email, u.name, u.telegram_username
+        FROM withdrawals w JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'pending'
+        ORDER BY w.created_at ASC
+      `, (err, rows) => resolve(rows || []));
+    });
+
+    const approved = await new Promise((resolve) => {
+      db.all(`
+        SELECT w.*, u.email, u.name, u.telegram_username
+        FROM withdrawals w JOIN users u ON w.user_id = u.id
+        WHERE w.status = 'approved'
+        ORDER BY w.processed_at DESC
+      `, (err, rows) => resolve(rows || []));
+    });
+
+    const history = await new Promise((resolve) => {
+      db.all(`
+        SELECT w.*, u.email, u.name, u.telegram_username
+        FROM withdrawals w JOIN users u ON w.user_id = u.id
+        WHERE w.status IN ('completed', 'rejected', 'refunded')
+          AND COALESCE(w.processed_at, w.created_at) > datetime('now', '-7 days')
+        ORDER BY COALESCE(w.processed_at, w.created_at) DESC
+        LIMIT 100
+      `, (err, rows) => resolve(rows || []));
+    });
+
+    // Total fee yang udah masuk dari WD approved/completed
+    const feeStats = await new Promise((resolve) => {
+      db.get(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status IN ('approved','completed') THEN fee ELSE 0 END), 0) as total_fee_collected,
+          COALESCE(SUM(CASE WHEN status = 'completed' THEN fee ELSE 0 END), 0) as total_fee_completed,
+          COALESCE(SUM(CASE WHEN status = 'approved' THEN fee ELSE 0 END), 0) as total_fee_pending_tf
+        FROM withdrawals
+      `, (err, row) => resolve(row || {}));
+    });
+
+    const wib = getWIBMinutes();
+    const wibTime = String(Math.floor(wib / 60)).padStart(2, '0') + ':' + String(wib % 60).padStart(2, '0');
+
     res.json({
-      data: data || [],
+      pending: pending,
+      approved: approved,
+      history: history,
+      feeStats: feeStats,
       canApprove: isWithdrawOpen(),
-      serverTimeWIB: (() => {
-        const wib = getWIBMinutes();
-        return String(Math.floor(wib / 60)).padStart(2, '0') + ':' + String(wib % 60).padStart(2, '0');
-      })(),
+      serverTimeWIB: wibTime,
       next: getNextWithdrawWindow(),
       windows: WITHDRAW_WINDOWS
     });
@@ -1097,7 +1227,6 @@ app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, re
 
 app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
-    // ✅ ADMIN: ACC cuma bisa di jam operasional
     if (!isWithdrawOpen()) {
       const next = getNextWithdrawWindow();
       return res.status(400).json({
@@ -1116,7 +1245,6 @@ app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// REJECT tetep bisa kapan aja (biar bisa reject WD palsu)
 app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body || {};
@@ -1124,8 +1252,99 @@ app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.put('/api/admin/withdraw/:id/mark-done', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const wdId = req.params.id;
+    const wd = await dbGetAsync('SELECT * FROM withdrawals WHERE id = ?', [wdId]);
+    if (!wd) return res.status(404).json({ error: 'WD tidak ditemukan' });
+    if (wd.status === 'completed') return res.status(400).json({ error: 'WD sudah ditandai selesai' });
+    if (wd.status !== 'approved') return res.status(400).json({ error: 'WD belum di-ACC. ACC dulu sebelum tandai selesai.' });
+
+    await dbRunAsync(
+      "UPDATE withdrawals SET status = 'completed', processed_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [wdId]
+    );
+
+    console.log('✅ WD #' + wdId + ' ditandai COMPLETED (sudah TF)');
+
+    try {
+      const userInfo = await dbGetAsync(
+        'SELECT u.name, u.email, ' +
+        '(SELECT telegram_id FROM user_wallets WHERE user_id = u.id) as telegram_id ' +
+        'FROM users u WHERE u.id = ?',
+        [wd.user_id]
+      );
+      if (userInfo && userInfo.telegram_id && telegram.sendMessage) {
+        const net = (wd.amount || 0) - (wd.fee || 0);
+        await telegram.sendMessage(userInfo.telegram_id,
+          '✅ <b>WITHDRAW SELESAI</b>\n\n' +
+          'ID: #' + wdId + '\n' +
+          'Bruto: Rp' + (wd.amount || 0).toLocaleString('id-ID') + '\n' +
+          'Fee: Rp' + (wd.fee || 0).toLocaleString('id-ID') + '\n' +
+          'Diterima: <b>Rp' + net.toLocaleString('id-ID') + '</b>\n\n' +
+          'Dana sudah ditransfer. Cek rekening/e-wallet Anda.'
+        ).catch(() => {});
+      }
+    } catch (e) {}
+
+    res.json({ success: true, id: wdId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/admin/withdraw/:id/refund', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const wdId = req.params.id;
+    const { reason } = req.body || {};
+    const wd = await dbGetAsync('SELECT * FROM withdrawals WHERE id = ?', [wdId]);
+    if (!wd) return res.status(404).json({ error: 'WD tidak ditemukan' });
+    if (wd.status === 'refunded') return res.status(400).json({ error: 'WD sudah pernah di-refund' });
+    if (wd.status === 'pending') return res.status(400).json({ error: 'WD masih pending. Tolak aja kalau mau batal.' });
+
+    await dbRunAsync('BEGIN IMMEDIATE TRANSACTION');
+    try {
+      await dbRunAsync('UPDATE users SET balance = balance + ? WHERE id = ?', [wd.amount, wd.user_id]);
+
+      await dbRunAsync(
+        "UPDATE withdrawals SET status = 'refunded', note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [reason || 'Refund oleh admin', wdId]
+      );
+
+      await dbRunAsync(
+        'INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
+        [wd.user_id, wd.amount, 'refund', 'Refund WD#' + wdId + ' - ' + (reason || 'Transfer gagal')]
+      );
+
+      await dbRunAsync('COMMIT');
+      console.log('💰 Refund WD #' + wdId + ' — Rp' + wd.amount + ' ke user ' + wd.user_id);
+    } catch (txErr) {
+      await dbRunAsync('ROLLBACK');
+      throw txErr;
+    }
+
+    try {
+      const userInfo = await dbGetAsync(
+        'SELECT u.name, u.email, ' +
+        '(SELECT telegram_id FROM user_wallets WHERE user_id = u.id) as telegram_id ' +
+        'FROM users u WHERE u.id = ?',
+        [wd.user_id]
+      );
+      if (userInfo && userInfo.telegram_id && telegram.sendMessage) {
+        await telegram.sendMessage(userInfo.telegram_id,
+          '💰 <b>WD DI-REFUND</b>\n\n' +
+          'ID: #' + wdId + '\n' +
+          'Jumlah: Rp' + wd.amount.toLocaleString('id-ID') + '\n' +
+          'Alasan: ' + (reason || 'Transfer gagal') + '\n\n' +
+          'Saldo sudah dibalikin ke akun Anda.'
+        ).catch(() => {});
+      }
+    } catch (e) {}
+
+    res.json({ success: true, refunded: wd.amount, user_id: wd.user_id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ============================================
-// ADMIN — USERS
+// ADMIN — USERS + RECALC
 // ============================================
 app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
   db.all(`
@@ -1170,6 +1389,50 @@ app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res)
       });
     });
   });
+});
+
+app.post('/api/admin/users/:id/recalc-balance', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const row = await dbGetAsync(`
+      SELECT
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type IN ('profit','bonus','refund')), 0) as total_income,
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = ? AND type = 'withdraw'), 0) as total_withdraw_log,
+        COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status IN ('approved','completed')), 0) as total_wd_approved,
+        COALESCE((SELECT balance FROM users WHERE id = ?), 0) as current_balance
+    `, [userId, userId, userId, userId]);
+
+    const totalIncome = Math.abs(row.total_income || 0);
+    const totalWdApproved = row.total_wd_approved || 0;
+    const correctBalance = totalIncome - totalWdApproved;
+    const currentBalance = row.current_balance || 0;
+
+    res.json({
+      user_id: userId,
+      current_balance: currentBalance,
+      correct_balance: correctBalance,
+      difference: correctBalance - currentBalance,
+      breakdown: {
+        total_income: totalIncome,
+        total_wd_approved: totalWdApproved,
+        total_withdraw_log: Math.abs(row.total_withdraw_log || 0)
+      }
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/users/:id/apply-balance', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { new_balance } = req.body;
+    if (new_balance === undefined || new_balance < 0) return res.status(400).json({ error: 'Saldo tidak valid' });
+
+    await dbRunAsync('UPDATE users SET balance = ? WHERE id = ?', [parseInt(new_balance), userId]);
+
+    console.log('✅ Recalc balance user ' + userId + ' → Rp' + new_balance);
+    res.json({ success: true, new_balance: parseInt(new_balance) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, (req, res) => {
@@ -1250,9 +1513,7 @@ app.get('/reset-password', (req, res) => {
 
 app.use((req, res) => res.redirect('/'));
 
-// ============================================
-// AUTO-RELEASE nomor nyangkut
-// ============================================
+// AUTO-RELEASE
 setInterval(() => {
   db.run(
     "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
@@ -1269,9 +1530,6 @@ db.run(
   }
 );
 
-// ============================================
-// EXPORT & LISTEN
-// ============================================
 module.exports = app;
 
 if (require.main === module) {
