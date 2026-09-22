@@ -76,9 +76,9 @@
         <!-- JADWAL WITHDRAW -->
         <div class="card fade-in" id="scheduleCard" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Jadwal Proses Withdraw</h3>
-<p style="font-size:12px; color:#8B97AB; margin-bottom:12px;">
-  <b style="color:#34D399;">✅ WD bisa diajukan 24 JAM</b> — tapi <b>DIPROSES ADMIN</b> hanya pada jam operasional (WIB):
-</p>
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:12px;">
+            <b style="color:#34D399;">✅ WD bisa diajukan 24 JAM</b> — DIPROSES ADMIN hanya pada jam operasional (WIB):
+          </p>
           <div style="display:flex; gap:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:140px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:12px; text-align:center;">
               <i class="fas fa-sun" style="color:#FBBF24; font-size:20px; margin-bottom:6px; display:block;"></i>
@@ -184,15 +184,44 @@
               <b>Minimal WD:</b> <span id="minWdLabelInline">Rp 20.000</span>
             </div>
 
+            <!-- INFO FEE -->
+            <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:10px 12px; margin-bottom:14px;">
+              <div style="font-size:11px; color:#93C5FD; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+                <i class="fas fa-info-circle"></i> Fee Admin per Nominal
+              </div>
+              <div id="feeTiersList" style="font-size:11px; color:#8B97AB; line-height:1.6;">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </div>
+
             <div class="form-field" style="margin-bottom:14px;">
               <label>Jumlah Withdraw (Rp)</label>
               <div class="input-wrap-app">
                 <i class="fas fa-money-bill"></i>
-                <input type="number" id="withdrawAmount" placeholder="Minimal 20.000">
+                <input type="number" id="withdrawAmount" placeholder="Minimal 20.000" oninput="updateFeePreview()">
+              </div>
+            </div>
+
+            <!-- FEE PREVIEW -->
+            <div id="feePreview" style="display:none; margin-bottom:14px;">
+              <div style="background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); border-radius:10px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0;">
+                  <span style="color:#8B97AB;">Nominal WD:</span>
+                  <b id="fpAmount" style="color:#E8EFFB;">Rp 0</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0;">
+                  <span style="color:#8B97AB;">Fee Admin:</span>
+                  <b id="fpFee" style="color:#FBBF24;">- Rp 0</b>
+                </div>
+                <div style="border-top:1px dashed rgba(251,191,36,0.3); margin-top:8px; padding-top:8px; display:flex; justify-content:space-between; font-size:14px;">
+                  <span style="color:#34D399; font-weight:700;">✅ Anda Terima:</span>
+                  <b id="fpNet" style="color:#34D399; font-size:16px;">Rp 0</b>
+                </div>
               </div>
             </div>
 
             <div class="quick-nominal">
+              <button type="button" onclick="setAmount(20000)">20rb</button>
               <button type="button" onclick="setAmount(50000)">50rb</button>
               <button type="button" onclick="setAmount(100000)">100rb</button>
               <button type="button" onclick="setAmount(500000)">500rb</button>
@@ -233,6 +262,7 @@
     let currentBalance = 0;
     let paymentSaved = false;
     let withdrawOpen = false;
+    let FEE_TIERS = [];
 
     function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
 
@@ -241,8 +271,34 @@
       document.getElementById('sidebarOverlay').classList.toggle('active');
     }
 
-    function setAmount(v) { document.getElementById('withdrawAmount').value = v; }
-    function setAmountAll() { document.getElementById('withdrawAmount').value = currentBalance; }
+    function setAmount(v) { 
+      document.getElementById('withdrawAmount').value = v; 
+      updateFeePreview();
+    }
+    function setAmountAll() { 
+      document.getElementById('withdrawAmount').value = currentBalance; 
+      updateFeePreview();
+    }
+
+    function calculateFeeLocal(amount) {
+      const amt = parseInt(amount) || 0;
+      for (const t of FEE_TIERS) {
+        if (amt >= t.min && (t.max === null || amt <= t.max)) return t.fee;
+      }
+      return 500;
+    }
+
+    function updateFeePreview() {
+      const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+      const prev = document.getElementById('feePreview');
+      if (amount <= 0) { prev.style.display = 'none'; return; }
+      const fee = calculateFeeLocal(amount);
+      const net = amount - fee;
+      document.getElementById('fpAmount').textContent = rupiah(amount);
+      document.getElementById('fpFee').textContent = '- ' + rupiah(fee);
+      document.getElementById('fpNet').textContent = rupiah(net > 0 ? net : 0);
+      prev.style.display = 'block';
+    }
 
     async function loadSettings() {
       try {
@@ -258,33 +314,53 @@
     }
 
     async function loadSchedule() {
-  try {
-    const res = await fetch('/api/withdraw/schedule', { credentials: 'include' });
-    const d = await res.json();
-    withdrawOpen = !!d.open;
-    const status = document.getElementById('scheduleStatus');
-    const btn = document.getElementById('withdrawBtn');
+      try {
+        const res = await fetch('/api/withdraw/schedule', { credentials: 'include' });
+        const d = await res.json();
+        withdrawOpen = !!d.open;
+        FEE_TIERS = d.feeTiers || [];
 
-    if (d.open) {
-      status.innerHTML = '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> — WD akan langsung diproses admin (' + (d.serverTimeWIB || '') + ' WIB)';
-      status.style.background = 'rgba(52,211,153,0.15)';
-      status.style.color = '#34D399';
-      status.style.border = '1px solid rgba(52,211,153,0.4)';
-    } else {
-      const next = d.next || {};
-      status.innerHTML = '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> — WD tetap bisa diajukan, tapi akan diproses ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>. Sekarang ' + (d.serverTimeWIB || '') + ' WIB.';
-      status.style.background = 'rgba(251,191,36,0.12)';
-      status.style.color = '#FBBF24';
-      status.style.border = '1px solid rgba(251,191,36,0.4)';
+        // Tampil daftar fee
+        const listEl = document.getElementById('feeTiersList');
+        if (FEE_TIERS.length > 0) {
+          listEl.innerHTML = FEE_TIERS.map(t => 
+            '• ' + t.label + ' → fee <b style="color:#FBBF24;">' + rupiah(t.fee) + '</b>'
+          ).join('<br>');
+        } else {
+          listEl.innerHTML = '-';
+        }
+
+        const status = document.getElementById('scheduleStatus');
+        const btn = document.getElementById('withdrawBtn');
+
+        if (d.open) {
+          status.innerHTML = '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> — WD langsung diproses admin (' + (d.serverTimeWIB || '') + ' WIB)';
+          status.style.background = 'rgba(52,211,153,0.15)';
+          status.style.color = '#34D399';
+          status.style.border = '1px solid rgba(52,211,153,0.4)';
+        } else {
+          const next = d.next || {};
+          status.innerHTML = '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> — WD tetap bisa diajukan, diproses ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>';
+          status.style.background = 'rgba(251,191,36,0.12)';
+          status.style.color = '#FBBF24';
+          status.style.border = '1px solid rgba(251,191,36,0.4)';
+        }
+
+        if (btn && paymentSaved) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
+        }
+      } catch (e) { console.error('Schedule:', e); }
     }
 
-    // ✅ Tombol SELALU enabled (asal payment saved)
-    if (btn && paymentSaved) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
+    async function loadWallet() {
+      try {
+        const res = await fetch('/api/wallet', { credentials: 'include' });
+        const d = await res.json();
+        currentBalance = d.balance || 0;
+        document.getElementById('balanceDisplay').textContent = rupiah(currentBalance);
+      } catch (e) { console.error(e); }
     }
-  } catch (e) { console.error('Schedule:', e); }
-}
 
     async function loadPaymentData() {
       try {
@@ -316,13 +392,16 @@
         const c = document.getElementById('withdrawHistory');
         if (!data || data.length === 0) { c.innerHTML = '<p class="empty">Belum ada riwayat</p>'; return; }
         c.innerHTML = data.map(w => {
-          const statusClass = w.status === 'approved' ? 'success' : (w.status === 'rejected' ? 'error' : 'pending');
-          const statusIcon = w.status === 'approved' ? 'fa-check-circle' : (w.status === 'rejected' ? 'fa-times-circle' : 'fa-clock');
+          const statusClass = w.status === 'approved' || w.status === 'completed' ? 'success' : (w.status === 'rejected' || w.status === 'refunded' ? 'error' : 'pending');
+          const statusIcon = w.status === 'approved' ? 'fa-check-circle' : (w.status === 'completed' ? 'fa-check-double' : (w.status === 'rejected' ? 'fa-times-circle' : (w.status === 'refunded' ? 'fa-undo' : 'fa-clock')));
+          const net = w.amount_received || (w.amount - (w.fee || 0));
+          const feeInfo = w.fee ? '<div class="wd-h-date" style="color:#FBBF24;">Fee: ' + rupiah(w.fee) + ' → Diterima: ' + rupiah(net) + '</div>' : '';
           return '<div class="wd-history-item fade-in">' +
             '<div class="wd-h-left">' +
               '<div class="wd-h-method">' + String(w.method || '').toUpperCase() + '</div>' +
               '<div class="wd-h-acc">' + (w.account_number || '-') + '</div>' +
               '<div class="wd-h-date">' + new Date(w.created_at).toLocaleString('id-ID') + '</div>' +
+              feeInfo +
             '</div>' +
             '<div class="wd-h-right">' +
               '<div class="wd-h-amount">' + rupiah(w.amount) + '</div>' +
@@ -418,13 +497,22 @@
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!paymentSaved) return showToast('Simpan data payment dulu', 'error');
-// Gak ada cek withdrawOpen — user bisa ajuin kapan aja
+
       const amount = parseInt(document.getElementById('withdrawAmount').value);
       const resultDiv = document.getElementById('withdrawResult');
       resultDiv.innerHTML = '';
       if (!amount || amount < minWithdraw) return showToast('Minimal ' + rupiah(minWithdraw), 'error');
       if (amount > currentBalance) return showToast('Saldo tidak cukup', 'error');
-      if (!confirm('Ajukan withdraw ' + rupiah(amount) + '?')) return;
+
+      const fee = calculateFeeLocal(amount);
+      const net = amount - fee;
+      if (net <= 0) return showToast('Nominal terlalu kecil', 'error');
+
+      const confirmText = 'Ajukan withdraw?\n\n' +
+        '💰 Nominal: ' + rupiah(amount) + '\n' +
+        '💸 Fee Admin: ' + rupiah(fee) + '\n' +
+        '✅ Anda terima: ' + rupiah(net);
+      if (!confirm(confirmText)) return;
 
       const btn = document.getElementById('withdrawBtn');
       btn.disabled = true;
@@ -438,9 +526,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        const msg = data.processingNote || 'Withdraw diajukan! Tunggu verifikasi admin.';
-showToast('✅ ' + msg, 'success');
+        showToast('✅ ' + (data.processingNote || 'WD diajukan! Tunggu verifikasi admin.'), 'success');
         document.getElementById('withdrawAmount').value = '';
+        document.getElementById('feePreview').style.display = 'none';
         loadWallet();
         loadWithdrawHistory();
       } catch (err) {
