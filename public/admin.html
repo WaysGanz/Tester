@@ -309,6 +309,8 @@
       document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
+    function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
+
     // SETTINGS
     async function loadSettings() {
       try {
@@ -343,6 +345,8 @@
         status.innerHTML = '<span style="color:#34D399;">✅ Tersimpan</span>';
         showToast('Pengaturan tersimpan!', 'success');
         setTimeout(() => { status.innerHTML = ''; }, 3000);
+        loadUsers();
+        loadSites();
       } catch (e) {
         status.innerHTML = '<span style="color:#F87171;">❌ Gagal</span>';
         showToast('Gagal: ' + e.message, 'error');
@@ -379,7 +383,7 @@
                 '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + ' sisa</span>' +
               '</div>' +
               '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB; padding-top:6px; border-top:1px dashed rgba(59,130,246,0.15);">' +
-                '<span style="color:#60A5FA;"><i class="fas fa-comments"></i> <b>' + (s.total_chat || 0).toLocaleString('id-ID') + '</b> chat</span>' +
+                '<span style="color:#60A5FA;"><i class="fas fa-comments"></i> <b>' + (s.total_chat || 0).toLocaleString('id-ID') + '</b> chat outstanding</span>' +
                 '<span style="color:#FBBF24;"><i class="fas fa-coins"></i> Rp' + (s.total_profit || 0).toLocaleString('id-ID') + '</span>' +
               '</div>' +
             '</div>' +
@@ -674,29 +678,39 @@
         const data = await res.json();
         const body = document.getElementById('siteUsersBody');
         if (!data || data.length === 0) {
-          body.innerHTML = '<p class="empty" style="text-align:center; padding:20px;">Belum ada user yang chat di DB ini (yang terekam).</p>';
+          body.innerHTML = '<p class="empty" style="text-align:center; padding:20px;">Belum ada user yang chat di DB ini.</p>';
           return;
         }
-        const total = data.reduce((sum, u) => sum + (u.total_chat || 0), 0);
+        const totalChat = data.reduce((sum, u) => sum + (u.total_chat || 0), 0);
+        const totalOutstanding = data.reduce((sum, u) => sum + (u.outstanding_rp || 0), 0);
         body.innerHTML =
-          '<div style="padding:10px; background:rgba(59,130,246,0.1); border-radius:8px; margin-bottom:12px; text-align:center;">' +
-            '<div style="font-size:11px; color:#8B97AB; text-transform:uppercase;">Total Chat Terekam di DB Ini</div>' +
-            '<div style="font-size:20px; font-weight:800; color:#3B82F6;">' + total.toLocaleString('id-ID') + '</div>' +
+          '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">' +
+            '<div style="padding:10px; background:rgba(59,130,246,0.1); border-radius:8px; text-align:center;">' +
+              '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">Chat Outstanding</div>' +
+              '<div style="font-size:18px; font-weight:800; color:#60A5FA;">' + totalChat.toLocaleString('id-ID') + '</div>' +
+            '</div>' +
+            '<div style="padding:10px; background:rgba(251,191,36,0.1); border-radius:8px; text-align:center;">' +
+              '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">Belum Dibayar</div>' +
+              '<div style="font-size:18px; font-weight:800; color:#FBBF24;">' + rupiah(totalOutstanding) + '</div>' +
+            '</div>' +
           '</div>' +
           '<table style="width:100%; border-collapse:collapse; font-size:12px;">' +
             '<thead><tr style="background:#06080f; text-align:left;">' +
               '<th style="padding:8px;">#</th>' +
               '<th style="padding:8px;">User</th>' +
               '<th style="padding:8px;">💬 Chat</th>' +
-              '<th style="padding:8px;">Profit</th>' +
+              '<th style="padding:8px;">Lunas / Total</th>' +
             '</tr></thead>' +
             '<tbody>' +
               data.map((u, i) =>
                 '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
                   '<td style="padding:8px;">' + (i + 1) + '</td>' +
                   '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:10px;">' + (u.email || '-') + '</span></td>' +
-                  '<td style="padding:8px; color:#34D399; font-weight:700;">' + (u.total_chat || 0).toLocaleString('id-ID') + '</td>' +
-                  '<td style="padding:8px; color:#FBBF24; font-weight:600;">Rp' + (u.total_profit || 0).toLocaleString('id-ID') + '</td>' +
+                  '<td style="padding:8px; color:' + (u.total_chat > 0 ? '#34D399' : '#64748B') + '; font-weight:700;">' + (u.total_chat || 0).toLocaleString('id-ID') + '</td>' +
+                  '<td style="padding:8px; font-size:11px;">' +
+                    '<div style="color:#FBBF24;">Rp' + (u.paid_rp || 0).toLocaleString('id-ID') + '</div>' +
+                    '<div style="color:#8B97AB;">/ Rp' + (u.total_profit || 0).toLocaleString('id-ID') + '</div>' +
+                  '</td>' +
                 '</tr>'
               ).join('') +
             '</tbody>' +
@@ -708,210 +722,212 @@
 
     // WITHDRAW
     async function loadPendingWithdrawals() {
-  try {
-    const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
-    const r = await res.json();
-    const pending = r.pending || [];
-    const approved = r.approved || [];
-    const history = r.history || [];
-    const feeStats = r.feeStats || {};
-    const canApprove = r.canApprove;
-    const wibTime = r.serverTimeWIB || '';
-    const next = r.next || {};
-    const c = document.getElementById('pendingWithdrawList');
+      try {
+        const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
+        const r = await res.json();
+        const pending = r.pending || [];
+        const approved = r.approved || [];
+        const history = r.history || [];
+        const feeStats = r.feeStats || {};
+        const canApprove = r.canApprove;
+        const wibTime = r.serverTimeWIB || '';
+        const next = r.next || {};
+        const c = document.getElementById('pendingWithdrawList');
 
-    // Header info + Fee collected
-    let headerInfo = '';
-    if (canApprove) {
-      headerInfo += '<div style="padding:8px 12px; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#34D399;">' +
-        '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> (' + wibTime + ' WIB) — Bisa ACC WD' +
-      '</div>';
-    } else {
-      headerInfo += '<div style="padding:8px 12px; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#FBBF24;">' +
-        '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> (' + wibTime + ' WIB) — ACC WD cuma bisa ' + next.when + ' jam <b>' + next.start + ' WIB</b>' +
-      '</div>';
-    }
+        let headerInfo = '';
+        if (canApprove) {
+          headerInfo += '<div style="padding:8px 12px; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#34D399;">' +
+            '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> (' + wibTime + ' WIB) — Bisa ACC WD' +
+          '</div>';
+        } else {
+          headerInfo += '<div style="padding:8px 12px; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#FBBF24;">' +
+            '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> (' + wibTime + ' WIB) — ACC WD cuma bisa ' + next.when + ' jam <b>' + next.start + ' WIB</b>' +
+          '</div>';
+        }
 
-    // Fee stats
-    headerInfo += '<div style="background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(251,191,36,0.05)); border:1px solid rgba(251,191,36,0.4); border-radius:10px; padding:12px; margin-bottom:14px;">' +
-      '<div style="font-size:11px; color:#FBBF24; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; margin-bottom:8px;"><i class="fas fa-coins"></i> Fee Admin Terkumpul</div>' +
-      '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">' +
-        '<div>' +
-          '<div style="font-size:10px; color:#8B97AB;">✅ Sudah Cair (Completed)</div>' +
-          '<div style="font-size:16px; font-weight:800; color:#34D399;">Rp ' + (feeStats.total_fee_completed || 0).toLocaleString('id-ID') + '</div>' +
-        '</div>' +
-        '<div>' +
-          '<div style="font-size:10px; color:#8B97AB;">⏳ Menunggu TF (Approved)</div>' +
-          '<div style="font-size:16px; font-weight:800; color:#FBBF24;">Rp ' + (feeStats.total_fee_pending_tf || 0).toLocaleString('id-ID') + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="border-top:1px dashed rgba(251,191,36,0.3); margin-top:10px; padding-top:8px; font-size:13px;">' +
-        '<b style="color:#FBBF24;">Total Fee: Rp ' + (feeStats.total_fee_collected || 0).toLocaleString('id-ID') + '</b>' +
-      '</div>' +
-    '</div>';
-
-    // SECTION 1: PENDING
-    let s1 = '<div style="font-size:13px; color:#FBBF24; margin-bottom:8px; font-weight:700; text-transform:uppercase;">' +
-      '<i class="fas fa-clock"></i> PENDING (' + pending.length + ')</div>';
-    if (pending.length === 0) {
-      s1 += '<p class="empty" style="margin-bottom:20px; padding:10px; text-align:center; color:#64748B;">Tidak ada WD pending</p>';
-    } else {
-      s1 += pending.map(w => {
-        const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
-        const accDisabled = !canApprove ? 'disabled style="opacity:0.45; cursor:not-allowed;"' : '';
-        const net = (w.amount || 0) - (w.fee || 0);
-        return '<div style="border:1px solid rgba(251,191,36,0.3); background:rgba(251,191,36,0.04); border-radius:10px; padding:12px; margin-bottom:10px;">' +
-          '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+        headerInfo += '<div style="background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(251,191,36,0.05)); border:1px solid rgba(251,191,36,0.4); border-radius:10px; padding:12px; margin-bottom:14px;">' +
+          '<div style="font-size:11px; color:#FBBF24; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; margin-bottom:8px;"><i class="fas fa-coins"></i> Fee Admin Terkumpul</div>' +
+          '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">' +
             '<div>' +
-              '<strong>' + (w.name || w.email) + '</strong>' +
-              '<span style="color:#8B97AB; font-size:12px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
-              '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
-              '<div style="font-size:11px; color:#64748B;">An: ' + (w.account_name || '-') + '</div>' +
+              '<div style="font-size:10px; color:#8B97AB;">✅ Sudah Cair (Completed)</div>' +
+              '<div style="font-size:16px; font-weight:800; color:#34D399;">' + rupiah(feeStats.total_fee_completed || 0) + '</div>' +
             '</div>' +
-            '<div style="text-align:right;">' +
-              '<div style="font-weight:700; color:#FBBF24;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</div>' +
-              '<div style="font-size:10px; color:#8B97AB;">Fee: Rp' + (w.fee || 0).toLocaleString('id-ID') + '</div>' +
-              '<div style="font-size:11px; color:#34D399;">Net: Rp' + net.toLocaleString('id-ID') + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' +
-            '<button class="btn btn-sm btn-success" onclick="approveWithdraw(' + w.id + ')" ' + accDisabled + '><i class="fas fa-check"></i> ACC</button>' +
-            '<button class="btn btn-sm btn-danger" onclick="rejectWithdraw(' + w.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    // SECTION 2: SUDAH DI-ACC, BELUM TF
-    let s2 = '<div style="font-size:13px; color:#60A5FA; margin-top:20px; margin-bottom:8px; font-weight:700; text-transform:uppercase;">' +
-      '<i class="fas fa-hand-holding-usd"></i> SUDAH DI-ACC — PERLU TF (' + approved.length + ')</div>';
-    s2 += '<div style="font-size:11px; color:#F87171; margin-bottom:10px; padding:8px 12px; background:rgba(239,68,68,0.08); border-radius:8px; border:1px solid rgba(239,68,68,0.2);">' +
-      '<i class="fas fa-exclamation-triangle"></i> TF nominal <b>NET</b> (yang user terima), setelah beres klik <b>"Sudah TF"</b> biar hilang dari list.' +
-    '</div>';
-
-    if (approved.length === 0) {
-      s2 += '<p class="empty" style="margin-bottom:20px; padding:10px; text-align:center; color:#64748B;">Tidak ada WD yang perlu TF</p>';
-    } else {
-      s2 += approved.map(w => {
-        const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
-        const accTime = w.processed_at ? new Date(w.processed_at).toLocaleString('id-ID') : '-';
-        const net = (w.amount || 0) - (w.fee || 0);
-        return '<div style="border:2px solid rgba(96,165,250,0.5); background:rgba(59,130,246,0.08); border-radius:10px; padding:12px; margin-bottom:10px;">' +
-          '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
-            '<div style="flex:1;">' +
-              '<div style="font-size:10px; color:#60A5FA; text-transform:uppercase; font-weight:700; margin-bottom:4px;">WD #' + w.id + '</div>' +
-              '<strong>' + (w.name || w.email) + '</strong>' +
-              '<div style="color:#93C5FD; font-size:13px; margin-top:4px; font-weight:600;">' + String(w.method || '').toUpperCase() + ' — ' + w.account_number + '</div>' +
-              '<div style="font-size:12px; color:#8B97AB;">An: <b style="color:#E8EFFB;">' + (w.account_name || '-') + '</b></div>' +
-              '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
-              '<div style="font-size:10px; color:#556074; margin-top:4px;">ACC: ' + accTime + '</div>' +
-            '</div>' +
-            '<div style="text-align:right; min-width:130px;">' +
-              '<div style="font-size:14px; color:#8B97AB; font-weight:600;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</div>' +
-              '<div style="font-size:11px; color:#FBBF24;">Fee: Rp' + (w.fee || 0).toLocaleString('id-ID') + '</div>' +
-              '<div style="font-size:18px; font-weight:900; color:#34D399; margin-top:4px;">TF: Rp' + net.toLocaleString('id-ID') + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' +
-            '<button class="btn btn-sm" onclick="markDoneWithdraw(' + w.id + ')" style="background:linear-gradient(135deg,#34D399,#059669); color:#fff;"><i class="fas fa-check-double"></i> Sudah TF</button>' +
-            '<button class="btn btn-sm btn-warning" onclick="refundWithdraw(' + w.id + ', ' + w.amount + ')"><i class="fas fa-undo"></i> Refund</button>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-
-    // SECTION 3: HISTORY
-    let s3 = '<div style="font-size:13px; color:#8B97AB; margin-top:20px; margin-bottom:8px; font-weight:700; text-transform:uppercase; cursor:pointer;" onclick="var e=this.nextElementSibling; e.style.display=(e.style.display===\'none\'?\'block\':\'none\')">' +
-      '<i class="fas fa-history"></i> HISTORY 7 HARI (' + history.length + ') — klik buka/tutup</div>';
-    s3 += '<div style="display:none;">';
-    if (history.length === 0) {
-      s3 += '<p class="empty" style="padding:10px; text-align:center; color:#64748B;">Belum ada history</p>';
-    } else {
-      s3 += history.map(w => {
-        const dateStr = w.processed_at ? new Date(w.processed_at).toLocaleString('id-ID') : new Date(w.created_at).toLocaleString('id-ID');
-        const statusColor = w.status === 'completed' ? '#34D399' : (w.status === 'refunded' ? '#FBBF24' : '#F87171');
-        const statusIcon = w.status === 'completed' ? 'fa-check-circle' : (w.status === 'refunded' ? 'fa-undo' : 'fa-times-circle');
-        return '<div style="border:1px solid rgba(100,116,139,0.3); border-radius:8px; padding:10px; margin-bottom:8px; opacity:0.85;">' +
-          '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
             '<div>' +
-              '<strong style="font-size:12px;">' + (w.name || w.email) + '</strong>' +
-              '<span style="color:#8B97AB; font-size:11px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
-              '<div style="font-size:10px; color:#556074; margin-top:2px;">' + dateStr + '</div>' +
-            '</div>' +
-            '<div style="text-align:right;">' +
-              '<div style="font-weight:700; color:' + statusColor + '; font-size:13px;">Rp' + (w.amount || 0).toLocaleString('id-ID') + '</div>' +
-              '<div style="font-size:10px; color:' + statusColor + '; text-transform:uppercase;"><i class="fas ' + statusIcon + '"></i> ' + w.status + '</div>' +
+              '<div style="font-size:10px; color:#8B97AB;">⏳ Menunggu TF (Approved)</div>' +
+              '<div style="font-size:16px; font-weight:800; color:#FBBF24;">' + rupiah(feeStats.total_fee_pending_tf || 0) + '</div>' +
             '</div>' +
           '</div>' +
+          '<div style="border-top:1px dashed rgba(251,191,36,0.3); margin-top:10px; padding-top:8px; font-size:13px;">' +
+            '<b style="color:#FBBF24;">Total Fee: ' + rupiah(feeStats.total_fee_collected || 0) + '</b>' +
+          '</div>' +
         '</div>';
-      }).join('');
+
+        let s1 = '<div style="font-size:13px; color:#FBBF24; margin-bottom:8px; font-weight:700; text-transform:uppercase;">' +
+          '<i class="fas fa-clock"></i> PENDING (' + pending.length + ')</div>';
+        if (pending.length === 0) {
+          s1 += '<p class="empty" style="margin-bottom:20px; padding:10px; text-align:center; color:#64748B;">Tidak ada WD pending</p>';
+        } else {
+          s1 += pending.map(w => {
+            const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
+            const accDisabled = !canApprove ? 'disabled style="opacity:0.45; cursor:not-allowed;"' : '';
+            const net = (w.amount || 0) - (w.fee || 0);
+            return '<div style="border:1px solid rgba(251,191,36,0.3); background:rgba(251,191,36,0.04); border-radius:10px; padding:12px; margin-bottom:10px;">' +
+              '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+                '<div>' +
+                  '<strong>' + (w.name || w.email) + '</strong>' +
+                  '<span style="color:#8B97AB; font-size:12px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
+                  '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
+                  '<div style="font-size:11px; color:#64748B;">An: ' + (w.account_name || '-') + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;">' +
+                  '<div style="font-weight:700; color:#FBBF24;">' + rupiah(w.amount) + '</div>' +
+                  '<div style="font-size:10px; color:#8B97AB;">Fee: ' + rupiah(w.fee || 0) + '</div>' +
+                  '<div style="font-size:11px; color:#34D399;">Net: ' + rupiah(net) + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' +
+                '<button class="btn btn-sm btn-success" onclick="approveWithdraw(' + w.id + ')" ' + accDisabled + '><i class="fas fa-check"></i> ACC</button>' +
+                '<button class="btn btn-sm btn-danger" onclick="rejectWithdraw(' + w.id + ')"><i class="fas fa-times"></i> Tolak</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        let s2 = '<div style="font-size:13px; color:#60A5FA; margin-top:20px; margin-bottom:8px; font-weight:700; text-transform:uppercase;">' +
+          '<i class="fas fa-hand-holding-usd"></i> SUDAH DI-ACC — PERLU TF (' + approved.length + ')</div>';
+        s2 += '<div style="font-size:11px; color:#F87171; margin-bottom:10px; padding:8px 12px; background:rgba(239,68,68,0.08); border-radius:8px; border:1px solid rgba(239,68,68,0.2);">' +
+          '<i class="fas fa-exclamation-triangle"></i> TF nominal <b>NET</b>, setelah beres klik <b>"Sudah TF"</b>.' +
+        '</div>';
+
+        if (approved.length === 0) {
+          s2 += '<p class="empty" style="margin-bottom:20px; padding:10px; text-align:center; color:#64748B;">Tidak ada WD yang perlu TF</p>';
+        } else {
+          s2 += approved.map(w => {
+            const tg = w.telegram_username ? '<a href="https://t.me/' + w.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + w.telegram_username + '</a>' : '-';
+            const accTime = w.processed_at ? new Date(w.processed_at).toLocaleString('id-ID') : '-';
+            const net = (w.amount || 0) - (w.fee || 0);
+            return '<div style="border:2px solid rgba(96,165,250,0.5); background:rgba(59,130,246,0.08); border-radius:10px; padding:12px; margin-bottom:10px;">' +
+              '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+                '<div style="flex:1;">' +
+                  '<div style="font-size:10px; color:#60A5FA; text-transform:uppercase; font-weight:700; margin-bottom:4px;">WD #' + w.id + '</div>' +
+                  '<strong>' + (w.name || w.email) + '</strong>' +
+                  '<div style="color:#93C5FD; font-size:13px; margin-top:4px; font-weight:600;">' + String(w.method || '').toUpperCase() + ' — ' + w.account_number + '</div>' +
+                  '<div style="font-size:12px; color:#8B97AB;">An: <b style="color:#E8EFFB;">' + (w.account_name || '-') + '</b></div>' +
+                  '<div style="font-size:11px; color:#64748B; margin-top:2px;">TG: ' + tg + '</div>' +
+                  '<div style="font-size:10px; color:#556074; margin-top:4px;">ACC: ' + accTime + '</div>' +
+                '</div>' +
+                '<div style="text-align:right; min-width:130px;">' +
+                  '<div style="font-size:14px; color:#8B97AB; font-weight:600;">' + rupiah(w.amount) + '</div>' +
+                  '<div style="font-size:11px; color:#FBBF24;">Fee: ' + rupiah(w.fee || 0) + '</div>' +
+                  '<div style="font-size:18px; font-weight:900; color:#34D399; margin-top:4px;">TF: ' + rupiah(net) + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' +
+                '<button class="btn btn-sm" onclick="markDoneWithdraw(' + w.id + ')" style="background:linear-gradient(135deg,#34D399,#059669); color:#fff;"><i class="fas fa-check-double"></i> Sudah TF</button>' +
+                '<button class="btn btn-sm btn-warning" onclick="refundWithdraw(' + w.id + ', ' + w.amount + ')"><i class="fas fa-undo"></i> Refund</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        let s3 = '<div style="font-size:13px; color:#8B97AB; margin-top:20px; margin-bottom:8px; font-weight:700; text-transform:uppercase; cursor:pointer;" onclick="var e=this.nextElementSibling; e.style.display=(e.style.display===\'none\'?\'block\':\'none\')">' +
+          '<i class="fas fa-history"></i> HISTORY 7 HARI (' + history.length + ') — klik buka/tutup</div>';
+        s3 += '<div style="display:none;">';
+        if (history.length === 0) {
+          s3 += '<p class="empty" style="padding:10px; text-align:center; color:#64748B;">Belum ada history</p>';
+        } else {
+          s3 += history.map(w => {
+            const dateStr = w.processed_at ? new Date(w.processed_at).toLocaleString('id-ID') : new Date(w.created_at).toLocaleString('id-ID');
+            const statusColor = w.status === 'completed' ? '#34D399' : (w.status === 'refunded' ? '#FBBF24' : '#F87171');
+            const statusIcon = w.status === 'completed' ? 'fa-check-circle' : (w.status === 'refunded' ? 'fa-undo' : 'fa-times-circle');
+            return '<div style="border:1px solid rgba(100,116,139,0.3); border-radius:8px; padding:10px; margin-bottom:8px; opacity:0.85;">' +
+              '<div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">' +
+                '<div>' +
+                  '<strong style="font-size:12px;">' + (w.name || w.email) + '</strong>' +
+                  '<span style="color:#8B97AB; font-size:11px; margin-left:6px;">' + String(w.method || '').toUpperCase() + ' - ' + w.account_number + '</span>' +
+                  '<div style="font-size:10px; color:#556074; margin-top:2px;">' + dateStr + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;">' +
+                  '<div style="font-weight:700; color:' + statusColor + '; font-size:13px;">' + rupiah(w.amount) + '</div>' +
+                  '<div style="font-size:10px; color:' + statusColor + '; text-transform:uppercase;"><i class="fas ' + statusIcon + '"></i> ' + w.status + '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        }
+        s3 += '</div>';
+
+        c.innerHTML = headerInfo + s1 + s2 + s3;
+      } catch (e) { console.error(e); }
     }
-    s3 += '</div>';
 
-    c.innerHTML = headerInfo + s1 + s2 + s3;
-  } catch (e) { console.error(e); }
-}
-
-async function approveWithdraw(id) {
-  if (!confirm('ACC withdraw ini?\n\nSetelah ACC, TF manual lalu klik "Sudah TF".')) return;
-  try {
-    const res = await fetch('/api/admin/withdraw/' + id + '/approve', {
-      method: 'PUT', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: '' })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      if (data.outsideHours) showToast('⚠️ ' + data.error, 'warning');
-      else showToast('Gagal: ' + (data.error || 'Error'), 'error');
-      return;
+    async function approveWithdraw(id) {
+      if (!confirm('ACC withdraw ini?\n\nSetelah ACC, TF manual lalu klik "Sudah TF".')) return;
+      try {
+        const res = await fetch('/api/admin/withdraw/' + id + '/approve', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: '' })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.outsideHours) showToast('⚠️ ' + data.error, 'warning');
+          else showToast('Gagal: ' + (data.error || 'Error'), 'error');
+          return;
+        }
+        showToast('✅ Di-ACC! Lanjut TF manual lalu klik "Sudah TF".', 'success');
+        loadPendingWithdrawals();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
-    showToast('✅ Di-ACC! Lanjut TF manual lalu klik "Sudah TF".', 'success');
-    loadPendingWithdrawals();
-  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
-}
-
-async function markDoneWithdraw(id) {
-  if (!confirm('Sudah TF ke user ini?\n\nSetelah ditandai, WD hilang dari list.')) return;
-  try {
-    const res = await fetch('/api/admin/withdraw/' + id + '/mark-done', {
-      method: 'PUT', credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok) { showToast('Gagal: ' + (data.error || 'Error'), 'error'); return; }
-    showToast('✅ WD ditandai selesai!', 'success');
-    loadPendingWithdrawals();
-  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
-}
-
-async function refundWithdraw(id, amount) {
-  const reason = prompt('Alasan refund (contoh: transfer gagal, salah nomor):', 'Transfer gagal');
-  if (reason === null) return;
-  if (!confirm('Yakin REFUND WD ini?\n\nJumlah: Rp ' + amount.toLocaleString('id-ID') + '\nSaldo bakal balik ke user.')) return;
-  try {
-    const res = await fetch('/api/admin/withdraw/' + id + '/refund', {
-      method: 'PUT', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: reason || 'Refund oleh admin' })
-    });
-    const data = await res.json();
-    if (!res.ok) { showToast('Gagal: ' + (data.error || 'Error'), 'error'); return; }
-    showToast('💰 Refund Rp ' + (data.refunded || amount).toLocaleString('id-ID') + ' berhasil!', 'success');
-    loadPendingWithdrawals();
-  } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
-}
 
     async function rejectWithdraw(id) {
-      const reason = prompt('Alasan:');
+      const reason = prompt('Alasan tolak (contoh: salah nomor, duplikat):', 'Ditolak admin');
       if (reason === null) return;
+      if (!confirm('Yakin TOLAK WD ini?\n\nSaldo akan dibalikin ke user.')) return;
       try {
         const res = await fetch('/api/admin/withdraw/' + id + '/reject', {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason })
+          body: JSON.stringify({ reason: reason || 'Ditolak admin' })
         });
-        if (res.ok) { showToast('Ditolak', 'warning'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('Gagal', 'error'); }
+        const data = await res.json();
+        if (!res.ok) { showToast('Gagal: ' + (data.error || 'Error'), 'error'); return; }
+        showToast('❌ WD ditolak. Saldo user dibalikin.', 'warning');
+        loadPendingWithdrawals();
+        loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
+    async function markDoneWithdraw(id) {
+      if (!confirm('Sudah TF ke user ini?\n\nSetelah ditandai, WD hilang dari list.')) return;
+      try {
+        const res = await fetch('/api/admin/withdraw/' + id + '/mark-done', {
+          method: 'PUT', credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast('Gagal: ' + (data.error || 'Error'), 'error'); return; }
+        showToast('✅ WD ditandai selesai!', 'success');
+        loadPendingWithdrawals();
+        loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
+    async function refundWithdraw(id, amount) {
+      const reason = prompt('Alasan refund (contoh: transfer gagal, salah nomor):', 'Transfer gagal');
+      if (reason === null) return;
+      if (!confirm('Yakin REFUND WD ini?\n\nJumlah: ' + rupiah(amount) + '\nSaldo bakal balik ke user.')) return;
+      try {
+        const res = await fetch('/api/admin/withdraw/' + id + '/refund', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason || 'Refund oleh admin' })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast('Gagal: ' + (data.error || 'Error'), 'error'); return; }
+        showToast('💰 Refund ' + rupiah(data.refunded || amount) + ' berhasil!', 'success');
+        loadPendingWithdrawals();
+        loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
     // USERS
@@ -931,21 +947,84 @@ async function refundWithdraw(id, amount) {
           const pay = [];
           if (u.bank_name) pay.push(u.bank_name);
           if (u.bank_account) pay.push(u.bank_account);
+          if (u.bank_holder) pay.push('<span style="color:#8B97AB; font-size:10px;">a/n ' + u.bank_holder + '</span>');
           const payInfo = pay.length ? pay.join('<br>') : '-';
           const totalChat = u.total_chat || 0;
+          const totalAll = u.total_chat_all || 0;
           const chatColor = totalChat > 0 ? '#34D399' : '#64748B';
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:8px;">#' + u.id + '</td>' +
             '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</span></td>' +
             '<td style="padding:8px; font-size:11px;">' + tg + '</td>' +
             '<td style="padding:8px; font-size:11px;">' + payInfo + '</td>' +
-            '<td style="padding:8px; font-weight:700; color:' + chatColor + '; font-size:14px;">' + totalChat.toLocaleString('id-ID') + '</td>' +
-            '<td style="padding:8px; font-weight:700; color:#3B82F6;">Rp' + (u.balance || 0).toLocaleString('id-ID') + '</td>' +
+            '<td style="padding:8px;">' +
+              '<div style="font-weight:700; color:' + chatColor + '; font-size:14px;">' + totalChat.toLocaleString('id-ID') + '</div>' +
+              (totalAll > totalChat ? '<div style="font-size:10px; color:#64748B;">Total: ' + totalAll.toLocaleString('id-ID') + '</div>' : '') +
+            '</td>' +
+            '<td style="padding:8px;">' +
+              '<div style="font-weight:700; color:#3B82F6;">' + rupiah(u.balance) + '</div>' +
+              '<button class="btn btn-sm" onclick="recalcBalance(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\')" style="font-size:10px; padding:2px 8px; margin-top:4px; background:rgba(251,191,36,0.15); color:#FBBF24; border:1px solid rgba(251,191,36,0.3);"><i class="fas fa-calculator"></i> Fix</button>' +
+            '</td>' +
           '</tr>';
         }).join('');
       } catch (e) { console.error(e); }
     }
 
+    async function recalcBalance(userId, userName) {
+      try {
+        const res = await fetch('/api/admin/users/' + userId + '/recalc-balance', {
+          method: 'POST', credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+
+        const diff = data.difference || 0;
+        const curBal = data.current_balance || 0;
+        const corBal = data.correct_balance || 0;
+
+        const detail =
+          '👤 User: ' + userName + ' (ID: ' + userId + ')\n\n' +
+          '💰 Saldo sekarang: ' + rupiah(curBal) + '\n' +
+          '🎯 Saldo seharusnya: ' + rupiah(corBal) + '\n\n' +
+          (diff === 0 ? '✅ Saldo SUDAH BENAR' : '⚠️ Selisih: ' + (diff > 0 ? '+' : '') + rupiah(diff)) + '\n\n' +
+          '📊 Breakdown:\n' +
+          '  • Total Pendapatan: ' + rupiah(data.breakdown.total_income) + '\n' +
+          '  • Total WD Approved: ' + rupiah(data.breakdown.total_wd_approved) + '\n' +
+          '  • Total WD Log: ' + rupiah(data.breakdown.total_withdraw_log);
+
+        if (diff === 0) {
+          alert(detail + '\n\nGak perlu diubah.');
+          return;
+        }
+
+        if (!confirm(detail + '\n\nMau apply saldo yang bener?')) return;
+
+        const applyRes = await fetch('/api/admin/users/' + userId + '/apply-balance', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ new_balance: corBal })
+        });
+        const applyData = await applyRes.json();
+        if (!applyRes.ok) throw new Error(applyData.error || 'Gagal apply');
+
+        showToast('💰 Saldo ' + userName + ' diupdate ke ' + rupiah(corBal), 'success');
+        loadUsers();
+      } catch (e) {
+        showToast('Gagal: ' + e.message, 'error');
+      }
+    }
+
+    // PHOTO PREVIEW
+    document.getElementById('sitePhoto').addEventListener('input', function() {
+      const p = document.getElementById('sitePhotoPreview');
+      const img = document.getElementById('sitePhotoPreviewImg');
+      if (p && img) {
+        if (this.value) { img.src = this.value; p.style.display = 'block'; }
+        else p.style.display = 'none';
+      }
+    });
+
+    // INIT
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
       loadSites();
@@ -954,6 +1033,7 @@ async function refundWithdraw(id, amount) {
       updateClock();
       setInterval(updateClock, 1000);
       setInterval(loadPendingWithdrawals, 30000);
+      setInterval(loadUsers, 15000);
 
       const bulkLimit = document.getElementById('bulkDeleteLimit');
       if (bulkLimit) {
