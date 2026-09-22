@@ -91,10 +91,12 @@
               <div style="font-size:15px; font-weight:800; color:#E8EFFB; font-family:'Courier New',monospace;">22.00 - 01.00</div>
             </div>
           </div>
-          <div id="scheduleStatus" style="margin-top:14px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; text-align:center;"></div>
+          <div id="scheduleStatus" style="margin-top:14px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; text-align:center;">
+            <i class="fas fa-spinner fa-spin"></i> Loading jadwal...
+          </div>
         </div>
 
-        <!-- STEP 1: PAYMENT -->
+        <!-- DATA PAYMENT -->
         <div class="section-title"><i class="fas fa-id-card"></i> Data Payment & Telegram</div>
 
         <div class="card fade-in">
@@ -168,7 +170,7 @@
           <div id="paymentStatus" style="margin-top:12px;"></div>
         </div>
 
-        <!-- STEP 2: WITHDRAW -->
+        <!-- WITHDRAW -->
         <div class="section-title"><i class="fas fa-hand-holding-usd"></i> Tarik Saldo</div>
 
         <div class="card fade-in">
@@ -262,20 +264,26 @@
         withdrawOpen = !!d.open;
         const status = document.getElementById('scheduleStatus');
         const btn = document.getElementById('withdrawBtn');
-        
+
         if (d.open) {
           status.innerHTML = '<i class="fas fa-check-circle"></i> SEDANG DIBUKA — WD bisa diajukan sekarang (' + (d.serverTimeWIB || '') + ' WIB)';
           status.style.background = 'rgba(52,211,153,0.15)';
           status.style.color = '#34D399';
           status.style.border = '1px solid rgba(52,211,153,0.4)';
-          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>'; }
+          if (btn && paymentSaved) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
+          }
         } else {
           const next = d.next || {};
           status.innerHTML = '<i class="fas fa-lock"></i> WD DITUTUP — Buka lagi ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>. Sekarang ' + (d.serverTimeWIB || '') + ' WIB.';
           status.style.background = 'rgba(251,191,36,0.12)';
           status.style.color = '#FBBF24';
           status.style.border = '1px solid rgba(251,191,36,0.4)';
-          if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-lock"></i> <span>WD Ditutup</span>'; }
+          if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-lock"></i> <span>WD Ditutup</span>';
+          }
         }
       } catch (e) { console.error('Schedule:', e); }
     }
@@ -294,7 +302,7 @@
         const res = await fetch('/api/wallet/payment', { credentials: 'include' });
         if (!res.ok) return;
         const d = await res.json();
-        if (d && d.telegram_username) {
+        if (d && d.telegram_username && d.method && d.account_number && d.account_name) {
           document.getElementById('telegramUsername').value = d.telegram_username || '';
           document.getElementById('telegramId').value = d.telegram_id || '';
           document.getElementById('paymentMethod').value = d.method || '';
@@ -398,6 +406,7 @@
       document.getElementById('withdrawLocked').style.display = 'none';
       document.getElementById('withdrawForm').style.display = 'block';
       renderPaymentPreview(payment);
+      loadSchedule();
     }
 
     function lockWithdraw() {
@@ -473,7 +482,7 @@
       });
 
       setInterval(loadWallet, 15000);
-      setInterval(loadSchedule, 60000); // refresh jadwal tiap 1 menit
+      setInterval(loadSchedule, 60000);
     });
   </script>
 </body>
