@@ -30,18 +30,13 @@ try {
   if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
   console.log('📁 Data dir   :', DATA_DIR);
   console.log('📁 Session dir:', SESSION_DIR);
-} catch (e) {
-  console.error('❌ Gagal bikin folder:', e.message);
-}
+} catch (e) { console.error('❌ Gagal bikin folder:', e.message); }
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
-  auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || ''
-  }
+  auth: { user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASS || '' }
 });
 
 // ============================================
@@ -60,20 +55,13 @@ try {
     useFileStore = true;
     console.log('✅ SESSION_DIR writable');
   }
-} catch (e) {
-  console.error('⚠️ SESSION_DIR gak writable:', e.message);
-}
+} catch (e) { console.error('⚠️ SESSION_DIR gak writable:', e.message); }
 
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || 'sewawa_secret_2026',
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    secure: false,
-    sameSite: 'lax',
-    httpOnly: true
-  }
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, secure: false, sameSite: 'lax', httpOnly: true }
 };
 
 if (useFileStore) {
@@ -116,15 +104,14 @@ function getWithdrawWithUser(wdId) {
 // WITHDRAW SCHEDULE — WIB (UTC+7)
 // ============================================
 const WITHDRAW_WINDOWS = [
-  { start: '10:30', end: '13:00' },   // Window 1
-  { start: '22:00', end: '01:00' }    // Window 2 (lintas tengah malam)
+  { start: '10:30', end: '13:00' },
+  { start: '22:00', end: '01:00' }
 ];
 
 function getWIBMinutes() {
   const now = new Date();
   const fmt = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Jakarta',
-    hour: '2-digit', minute: '2-digit', hour12: false
+    timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false
   });
   const parts = fmt.formatToParts(now);
   let h = 0, m = 0;
@@ -137,21 +124,15 @@ function getWIBMinutes() {
 
 function isWithdrawOpen() {
   const total = getWIBMinutes();
-  // Window 1: 10:30 - 13:00 (630 - 780)
-  if (total >= 630 && total < 780) return true;
-  // Window 2: 22:00 - 01:00 (1320 - 1440, atau 0 - 60)
-  if (total >= 1320 || total < 60) return true;
+  if (total >= 630 && total < 780) return true;   // 10:30 - 13:00
+  if (total >= 1320 || total < 60) return true;    // 22:00 - 01:00
   return false;
 }
 
 function getNextWithdrawWindow() {
   const total = getWIBMinutes();
-  // Sebelum W1 (sebelum 10:30) → next W1 hari ini
   if (total < 630) return { start: '10:30', when: 'hari ini' };
-  // Antara W1 selesai (13:00) dan sebelum W2 (22:00) → next W2 hari ini
   if (total >= 780 && total < 1320) return { start: '22:00', when: 'hari ini' };
-  // Setelah W2 mulai (22:00) tapi belum lewat tengah malam → gak mungkin, karena W2 buka
-  // Kalau di antara 01:00 dan 10:30 (60 - 630) → next W1 hari ini
   if (total >= 60 && total < 630) return { start: '10:30', when: 'hari ini' };
   return { start: '10:30', when: 'besok' };
 }
@@ -537,7 +518,7 @@ app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res
 });
 
 // ============================================
-// IMPORT CONTACTS
+// IMPORT CONTACTS — batch 500
 // ============================================
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -574,31 +555,45 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
 // ============================================
 app.get('/api/devices/summary', requireAuth, (req, res) => {
   const userId = req.session.userId;
+
   db.all('SELECT id, status FROM devices WHERE user_id = ?', [userId], (err, devices) => {
     if (err) return res.status(500).json({ error: err.message });
     const totalDevices = (devices || []).length;
     const connectedDevices = (devices || []).filter(d => d.status === 'connected').length;
 
     db.get('SELECT COUNT(*) as total FROM master_contacts WHERE status = "available" OR status IS NULL', (err2, masterRow) => {
-      db.get('SELECT COALESCE(SUM(b.sent), 0) as total_sent, COALESCE(SUM(b.failed), 0) as total_failed, ' +
-        'COUNT(*) as total_campaigns, COALESCE(SUM(b.recipients), 0) as total_recipients ' +
-        'FROM broadcasts b JOIN devices d ON b.device_id = d.id WHERE d.user_id = ?',
-        [userId], (err3, hist) => {
+      db.get(`
+        SELECT
+          COUNT(*) as total_chat,
+          COALESCE(SUM(amount), 0) as total_profit
+        FROM transactions WHERE user_id = ? AND type = 'profit'
+      `, [userId], (err3, trx) => {
+        db.get(`
+          SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
+          FROM broadcasts b JOIN devices d ON b.device_id = d.id
+          WHERE d.user_id = ? AND b.status = 'completed'
+        `, [userId], (err4, bc) => {
           db.get('SELECT COUNT(DISTINCT c.phone) as unique_total FROM contacts c JOIN devices d ON c.device_id = d.id WHERE d.user_id = ?',
-            [userId], (err4, contactRow) => {
+            [userId], (err5, contactRow) => {
+              const totalChat = trx ? trx.total_chat : 0;
+              const totalProfit = trx ? trx.total_profit : 0;
+
               res.json({
                 master_total: masterRow ? masterRow.total : 0,
                 devices_total: totalDevices,
                 devices_connected: connectedDevices,
-                total_sent: hist ? hist.total_sent : 0,
-                total_failed: hist ? hist.total_failed : 0,
-                total_campaigns: hist ? hist.total_campaigns : 0,
-                total_recipients: hist ? hist.total_recipients : 0,
+                total_sent: totalChat,
+                total_chat: totalChat,
+                total_profit: totalProfit,
+                total_failed: bc ? bc.total_failed : 0,
+                total_campaigns: bc ? bc.total_campaigns : 0,
+                total_recipients: 0,
                 unique_contacts: contactRow ? contactRow.unique_total : 0,
                 avg_speed: 0
               });
             });
         });
+      });
     });
   });
 });
@@ -687,7 +682,7 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// BROADCAST
+// BROADCAST — fire-and-forget + progress
 // ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
@@ -699,6 +694,12 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
 
     const status = wa.getStatus(deviceId);
     if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
+
+    // Cek udah ada blast jalan?
+    const existing = wa.getProgress(deviceId);
+    if (existing && existing.running) {
+      return res.status(400).json({ error: 'Blast sedang berjalan untuk device ini' });
+    }
 
     const dbWithNumbers = await new Promise((resolve) => {
       db.get('SELECT site_id, COUNT(*) as total FROM master_contacts WHERE status = "available" OR status IS NULL GROUP BY site_id ORDER BY total DESC LIMIT 1',
@@ -753,28 +754,42 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
       console.log('🔗 Button: "' + site.button_text + '" → ' + site.button_url);
     }
 
+    // === FIRE-AND-FORGET: balas dulu, blast di background ===
+    res.json({ status: 'started', total: recipients.length, site_id: siteId, site_name: site.name });
+
+    // Background blast
     const startTime = Date.now();
-    const result = await wa.sendBroadcast(
+    wa.sendBroadcast(
       deviceId, site.template_text, recipients, req.session.userId,
       speedMs, siteId, site.template_photo || null,
       site.button_text || '', site.button_url || ''
-    );
-    const duration = (Date.now() - startTime) / 1000;
-    const durationStr = duration > 60 ? Math.ceil(duration / 60) + ' menit' : Math.ceil(duration) + ' detik';
-    const pricePerChat = await wa.getPricePerChat();
+    ).then(async (result) => {
+      const duration = (Date.now() - startTime) / 1000;
+      const durationStr = duration > 60 ? Math.ceil(duration / 60) + ' menit' : Math.ceil(duration) + ' detik';
+      const pricePerChat = await wa.getPricePerChat();
 
-    telegram.notifyAdminBlastFinish({
-      user_id: req.session.userId,
-      user_name: userInfo ? userInfo.name : 'Unknown',
-      telegram_username: userInfo ? userInfo.telegram_username : '',
-      device_id: deviceId, device_name: device.name,
-      site_name: site.name, speed_ms: speedMs, duration: durationStr,
-      sent: result.sent || 0, failed: result.failed || 0, purged: result.purged || 0,
-      price_per_chat: pricePerChat
-    }).catch(() => {});
-
-    res.json(result);
+      telegram.notifyAdminBlastFinish({
+        user_id: req.session.userId,
+        user_name: userInfo ? userInfo.name : 'Unknown',
+        telegram_username: userInfo ? userInfo.telegram_username : '',
+        device_id: deviceId, device_name: device.name,
+        site_name: site.name, speed_ms: speedMs, duration: durationStr,
+        sent: result.sent || 0, failed: result.failed || 0, purged: result.purged || 0,
+        price_per_chat: pricePerChat
+      }).catch(() => {});
+      console.log('📊 Background blast selesai:', result);
+    }).catch((err) => {
+      console.error('❌ Background blast error:', err.message);
+    });
   } catch (error) { console.error('❌ Broadcast:', error); res.status(500).json({ error: error.message }); }
+});
+
+// Progress realtime
+app.get('/api/broadcast/progress/:deviceId', requireAuth, (req, res) => {
+  const p = wa.getProgress(req.params.deviceId);
+  if (!p) return res.json({ running: false });
+  const percent = p.total > 0 ? Math.floor((p.sent / p.total) * 100) : 0;
+  res.json({ running: p.status === 'running', ...p, percent });
 });
 
 app.get('/api/broadcast/history', requireAuth, async (req, res) => {
@@ -783,11 +798,46 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// STATS
+// STATS — pakai transactions (paling akurat)
 // ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
-  try { res.json(await wa.getUserStats(req.session.userId)); }
-  catch (e) { res.status(500).json({ error: e.message, total_devices: 0, online: 0, offline: 0, balance: 0, revenue: 0, total_sent: 0 }); }
+  try {
+    const userId = req.session.userId;
+
+    const stats = await new Promise((resolve) => {
+      db.get(`
+        SELECT
+          (SELECT COUNT(*) FROM devices WHERE user_id = ?) as total_devices,
+          (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'connected') as online,
+          (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'disconnected') as offline,
+          (SELECT COALESCE(balance, 0) FROM users WHERE id = ?) as balance,
+          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'profit') as revenue,
+          (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = 'profit') as total_chat
+      `, [userId, userId, userId, userId, userId, userId], (err, row) => resolve(row || {}));
+    });
+
+    const bcast = await new Promise((resolve) => {
+      db.get(`
+        SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
+        FROM broadcasts b JOIN devices d ON b.device_id = d.id
+        WHERE d.user_id = ? AND b.status = 'completed'
+      `, [userId], (err, row) => resolve(row || {}));
+    });
+
+    res.json({
+      total_devices: stats.total_devices || 0,
+      online: stats.online || 0,
+      offline: stats.offline || 0,
+      balance: stats.balance || 0,
+      revenue: stats.revenue || 0,
+      total_sent: stats.total_chat || 0,
+      total_chat: stats.total_chat || 0,
+      total_failed: bcast.total_failed || 0,
+      total_campaigns: bcast.total_campaigns || 0
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message, total_devices: 0, online: 0, offline: 0, balance: 0, revenue: 0, total_sent: 0, total_chat: 0 });
+  }
 });
 
 // ============================================
@@ -816,6 +866,7 @@ app.put('/api/settings', requireAuth, requireAdmin, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ADMIN SETTINGS — alias buat admin.html
 app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   db.all('SELECT key, value FROM settings', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -924,7 +975,6 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
 
-    // Cek jam operasional WIB
     if (!isWithdrawOpen()) {
       const next = getNextWithdrawWindow();
       return res.status(400).json({
@@ -1028,21 +1078,55 @@ app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req,
 });
 
 // ============================================
-// ADMIN — USERS
+// ADMIN — USERS (total chat dari transactions)
 // ============================================
 app.get('/api/admin/users', requireAuth, requireAdmin, (req, res) => {
-  db.all(
-    'SELECT u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role, u.total_referral, u.created_at, ' +
-    'w.gopay_phone, w.ovo_phone, w.dana_phone, w.bank_name, w.bank_account, w.bank_holder, w.telegram_id ' +
-    'FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id ' +
-    'WHERE u.role != "admin" ORDER BY u.created_at DESC',
-    (err, rows) => { if (err) return res.status(500).json({ error: err.message }); res.json(rows || []); }
-  );
+  db.all(`
+    SELECT
+      u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
+      u.total_referral, u.created_at,
+      w.bank_name, w.bank_account, w.bank_holder, w.telegram_id,
+      COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_profit,
+      (SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit') as total_chat,
+      (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as total_devices
+    FROM users u
+    LEFT JOIN user_wallets w ON w.user_id = u.id
+    WHERE u.role != 'admin'
+    ORDER BY u.created_at DESC
+  `, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows || []);
+  });
 });
 
-// ============================================
+// Detail chat per user
+app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res) => {
+  const userId = req.params.id;
+  db.get('SELECT id, name, email, balance FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User tidak ditemukan' });
+
+    db.get(`
+      SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit
+      FROM transactions WHERE user_id = ? AND type = 'profit'
+    `, [userId], (err2, trx) => {
+      db.get(`
+        SELECT COUNT(*) as total_campaign, COALESCE(SUM(b.failed), 0) as total_failed
+        FROM broadcasts b JOIN devices d ON b.device_id = d.id
+        WHERE d.user_id = ? AND b.status = 'completed'
+      `, [userId], (err3, bc) => {
+        res.json({
+          user: user,
+          total_chat: trx ? trx.total_chat : 0,
+          total_profit: trx ? trx.total_profit : 0,
+          total_campaign: bc ? bc.total_campaign : 0,
+          total_failed: bc ? bc.total_failed : 0
+        });
+      });
+    });
+  });
+});
+
 // ADMIN — PROFIT RESET
-// ============================================
 app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, (req, res) => {
   db.run('UPDATE devices SET profit = 0 WHERE id = ?', [req.params.deviceId], function (err) {
     if (err) return res.status(500).json({ error: err.message });
@@ -1122,15 +1206,13 @@ app.get('/reset-password', (req, res) => {
 app.use((req, res) => res.redirect('/'));
 
 // ============================================
-// AUTO-RELEASE nomor nyangkut di processing > 10 menit
+// AUTO-RELEASE nomor nyangkut
 // ============================================
 setInterval(() => {
   db.run(
     "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
     function(err) {
-      if (!err && this.changes > 0) {
-        console.log('🧹 Auto-release ' + this.changes + ' nomor nyangkut (stale > 10 menit)');
-      }
+      if (!err && this.changes > 0) console.log('🧹 Auto-release ' + this.changes + ' nomor nyangkut');
     }
   );
 }, 2 * 60 * 1000);
