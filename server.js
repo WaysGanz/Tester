@@ -104,8 +104,8 @@ function getWithdrawWithUser(wdId) {
 // WITHDRAW SCHEDULE — WIB (UTC+7)
 // ============================================
 const WITHDRAW_WINDOWS = [
-  { start: '10:30', end: '13:00' },
-  { start: '22:00', end: '01:00' }
+  { start: '10:30', end: '13:00', label: '10.30 - 13.00 Siang' },
+  { start: '22:00', end: '01:00', label: '22.00 - 01.00 Malam' }
 ];
 
 function getWIBMinutes() {
@@ -124,8 +124,8 @@ function getWIBMinutes() {
 
 function isWithdrawOpen() {
   const total = getWIBMinutes();
-  if (total >= 630 && total < 780) return true;
-  if (total >= 1320 || total < 60) return true;
+  if (total >= 630 && total < 780) return true;   // 10:30 - 13:00
+  if (total >= 1320 || total < 60) return true;    // 22:00 - 01:00
   return false;
 }
 
@@ -163,6 +163,10 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
 async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
   try {
+    if (!isWithdrawOpen()) {
+      const next = getNextWithdrawWindow();
+      return telegram.answerCallbackQuery(callbackId, 'Di luar jam proses! Buka ' + next.when + ' jam ' + next.start + ' WIB', true);
+    }
     const wdInfo = await getWithdrawWithUser(wdId);
     if (!wdInfo) return telegram.answerCallbackQuery(callbackId, 'WD tidak ditemukan', true);
     if (wdInfo.status !== 'pending') return telegram.answerCallbackQuery(callbackId, 'WD sudah di-' + wdInfo.status, true);
@@ -382,7 +386,6 @@ app.get('/api/sites', requireAuth, (req, res) => {
   });
 });
 
-// ✅ UPDATED: tambah total_chat & total_profit per DB
 app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   db.all(
     'SELECT s.*, ' +
@@ -398,7 +401,6 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   );
 });
 
-// ✅ NEW: breakdown user chat per DB
 app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, (req, res) => {
   const siteId = req.params.id;
   db.all(`
@@ -768,9 +770,6 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     }).catch(() => {});
 
     console.log('📤 Blast DB' + siteId + ' (' + site.name + '): ' + recipients.length + ' nomor');
-    if (site.button_text && site.button_url) {
-      console.log('🔗 Button: "' + site.button_text + '" → ' + site.button_url);
-    }
 
     res.json({ status: 'started', total: recipients.length, site_id: siteId, site_name: site.name });
 
@@ -979,30 +978,29 @@ app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
     open,
     serverTimeWIB: wibH + ':' + wibM,
     windows: WITHDRAW_WINDOWS,
-    next
+    next,
+    canSubmit: true,
+    note: open 
+      ? 'Jam proses WD sedang buka. WD akan langsung diproses admin.' 
+      : 'WD bisa diajukan kapan aja, tapi DIPROSES admin ' + next.when + ' jam ' + next.start + ' WIB.'
   });
 });
 
+// ✅ USER: bisa ajuin WD KAPAN AJA (24 jam)
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
 
-    if (!isWithdrawOpen()) {
-      const next = getNextWithdrawWindow();
-      return res.status(400).json({
-        error: 'Withdraw hanya bisa diajukan pada jam operasional (' + next.when + ' jam ' + next.start + ' WIB).',
-        schedule: { open: false, windows: WITHDRAW_WINDOWS, next }
-      });
-    }
+    // VALIDASI JAM DIHAPUS — user bisa ajuin 24 jam
 
     const wallet = await new Promise((resolve) => {
       db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, row) => resolve(row));
     });
     if (!wallet || !wallet.method || !wallet.bank_account || !wallet.bank_holder) {
-  return res.status(400).json({ error: 'Data payment belum lengkap. Isi metode, nomor akun, dan nama pemilik.' });
-}
+      return res.status(400).json({ error: 'Data payment belum lengkap. Isi metode, nomor akun, dan nama pemilik.' });
+    }
     if (!wallet.telegram_id) return res.status(400).json({ error: 'Telegram ID wajib diisi.' });
 
     const min = await wa.getMinWithdraw();
@@ -1019,23 +1017,35 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
 
     const wdId = await new Promise((resolve, reject) => {
       db.run('INSERT INTO withdrawals (user_id, amount, method, account_number, account_name, status) VALUES (?, ?, ?, ?, ?, ?)',
-  [userId, amount, wallet.method, wallet.bank_account, wallet.bank_holder, 'pending'],
+        [userId, amount, wallet.method, wallet.bank_account, wallet.bank_holder, 'pending'],
         function (err) {
           if (err) { wa.updateUserBalance(userId, amount); reject(err); }
           else resolve(this.lastID);
         });
     });
 
-    telegram.notifyAdminWithdraw({
-  id: wdId, user_name: userFull.name, user_email: userFull.email,
-  telegram_username: userFull.telegram_username,
-  telegram_id: wallet.telegram_id,
-  amount, method: wallet.method,
-  account_number: wallet.bank_account,
-  account_name: wallet.bank_holder
-}).catch(() => {});
+    const open = isWithdrawOpen();
+    const next = getNextWithdrawWindow();
 
-    res.json({ success: true, id: wdId, status: 'pending' });
+    telegram.notifyAdminWithdraw({
+      id: wdId, user_name: userFull.name, user_email: userFull.email,
+      telegram_username: userFull.telegram_username,
+      telegram_id: wallet.telegram_id,
+      amount, method: wallet.method,
+      account_number: wallet.bank_account,
+      account_name: wallet.bank_holder,
+      outsideHours: !open,
+      nextWindow: open ? null : (next.when + ' jam ' + next.start + ' WIB')
+    }).catch(() => {});
+
+    res.json({ 
+      success: true, 
+      id: wdId, 
+      status: 'pending',
+      processingNote: open 
+        ? 'WD akan segera diproses admin.' 
+        : 'WD masuk antrian & akan DIPROSES ' + next.when + ' jam ' + next.start + ' WIB.'
+    });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -1067,14 +1077,36 @@ app.put('/api/admin/devices/:id/site', requireAuth, requireAdmin, (req, res) => 
 });
 
 // ============================================
-// ADMIN — WITHDRAW
+// ADMIN — WITHDRAW (ACC HANYA DI JAM OPERASIONAL)
 // ============================================
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await wa.getPendingWithdrawals()); } catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const data = await wa.getPendingWithdrawals();
+    res.json({
+      data: data || [],
+      canApprove: isWithdrawOpen(),
+      serverTimeWIB: (() => {
+        const wib = getWIBMinutes();
+        return String(Math.floor(wib / 60)).padStart(2, '0') + ':' + String(wib % 60).padStart(2, '0');
+      })(),
+      next: getNextWithdrawWindow(),
+      windows: WITHDRAW_WINDOWS
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
+    // ✅ ADMIN: ACC cuma bisa di jam operasional
+    if (!isWithdrawOpen()) {
+      const next = getNextWithdrawWindow();
+      return res.status(400).json({
+        error: 'ACC WD hanya bisa di jam operasional. Buka lagi ' + next.when + ' jam ' + next.start + ' WIB.',
+        outsideHours: true,
+        next
+      });
+    }
+
     const { note } = req.body || {};
     const wdId = req.params.id;
     const wdInfo = await getWithdrawWithUser(wdId);
@@ -1084,6 +1116,7 @@ app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// REJECT tetep bisa kapan aja (biar bisa reject WD palsu)
 app.put('/api/admin/withdraw/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body || {};
