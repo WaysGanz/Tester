@@ -200,6 +200,22 @@
           </div>
         </div>
         <div class="form-field" style="margin-bottom:14px;">
+  <label>Button Text (opsional, max 20 char)</label>
+  <div class="input-wrap-app">
+    <i class="fas fa-mouse-pointer"></i>
+    <input type="text" id="siteButtonText" placeholder="Contoh: Order Sekarang" maxlength="20">
+  </div>
+  <small class="help-text">Kosongkan kalau gak pakai button.</small>
+</div>
+<div class="form-field" style="margin-bottom:14px;">
+  <label>Button URL (opsional)</label>
+  <div class="input-wrap-app">
+    <i class="fas fa-link"></i>
+    <input type="url" id="siteButtonUrl" placeholder="https://wa.me/628xxx">
+  </div>
+  <small class="help-text">Link yang kebuka saat tombol di-klik.</small>
+</div>
+        <div class="form-field" style="margin-bottom:14px;">
           <label>Template Pesan</label>
           <textarea id="siteTemplate" class="form-control" rows="4" placeholder="Contoh: assalamualaikum"></textarea>
         </div>
@@ -388,7 +404,8 @@
               '<div style="font-weight:700; font-size:14px; color:#3B82F6; margin-bottom:4px;"><i class="fas fa-database"></i> ' + s.name + '</div>' +
               '<div style="font-size:12px; color:#8B97AB; margin-bottom:6px;"><b>Template:</b> "' + tmpl + tmplTrunc + '"</div>' +
               (s.template_photo ? '<img src="' + s.template_photo + '" style="max-width:60px; border-radius:6px; margin-bottom:6px; border:1px solid rgba(59,130,246,0.4);" onerror="this.style.display=\'none\'">' : '') +
-              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
+              (s.button_text && s.button_url ? '<div style="font-size:11px; color:#60A5FA; margin-bottom:4px;"><i class="fas fa-mouse-pointer"></i> Button: <b>' + s.button_text + '</b> → ' + s.button_url + '</div>' : '') +
+          '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
                 '<span><i class="fas fa-list"></i> ' + (s.total_contacts || 0).toLocaleString('id-ID') + '</span>' +
                 '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> ' + (s.sent_contacts || 0).toLocaleString('id-ID') + '</span>' +
                 '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + '</span>' +
@@ -431,9 +448,13 @@
           document.getElementById('siteName').value = s.name || '';
           document.getElementById('siteTemplate').value = s.template_text || '';
           document.getElementById('sitePhoto').value = s.template_photo || '';
+          document.getElementById('siteButtonText').value = s.button_text || '';
+          document.getElementById('siteButtonUrl').value = s.button_url || '';
           if (s.template_photo) {
             document.getElementById('sitePhotoPreviewImg').src = s.template_photo;
             document.getElementById('sitePhotoPreview').style.display = 'block';
+            document.getElementById('siteButtonText').value = '';
+            document.getElementById('siteButtonUrl').value = '';
           }
         }
       }
@@ -445,6 +466,10 @@
       const name = document.getElementById('siteName').value.trim();
       const template_text = document.getElementById('siteTemplate').value;
       const template_photo = document.getElementById('sitePhoto').value.trim();
+      const button_text = document.getElementById('siteButtonText').value.trim();
+const button_url = document.getElementById('siteButtonUrl').value.trim();
+if (button_text && !button_url) return showToast('Button URL wajib kalau ada Button Text', 'error');
+if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'error');
       if (!name) return showToast('Nama wajib diisi', 'error');
       try {
         const url = id ? '/api/admin/sites/' + id : '/api/admin/sites';
@@ -452,7 +477,7 @@
         const res = await fetch(url, {
           method, credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, template_text, template_photo })
+          body: JSON.stringify({ name, template_text, template_photo, button_text, button_url })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
