@@ -45,44 +45,12 @@
 
       <div class="devices-content">
 
-        <!-- ALERT PROFILE -->
-        <div class="alert-profile fade-in">
-          <div class="alert-profile-head">
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>PERHATIAN: ATURAN PROFIL</strong>
-          </div>
-          <div class="alert-profile-body">
-            <p>Wajib pakai foto yang disediakan & ubah nama WhatsApp sesuai ketentuan sebelum mengirim pesan!</p>
-            <div class="profile-template-box">
-              <div class="profile-template-preview">
-                <img src="https://cdn.phototourl.com/free/2026-09-20-8c717727-ef32-4847-9272-b9122c016213.png" alt="Foto Profil" class="profile-template-img">
-              </div>
-              <div class="profile-template-info">
-                <div class="profile-template-title">
-                  <i class="fas fa-image"></i> Foto Profil ( Tidak Wajib )
-                </div>
-                <div class="profile-template-desc">
-                  Download & pasang sebagai foto profil WhatsApp Anda.
-                </div>
-                <a href="https://cdn.phototourl.com/free/2026-09-20-8c717727-ef32-4847-9272-b9122c016213.png" download="foto-profil-wa.png" class="btn-download-photo">
-                  <i class="fas fa-download"></i> Download Foto
-                </a>
-              </div>
-            </div>
-            <div class="alert-profile-sub">
-              <i class="fas fa-bullhorn"></i>
-              <strong>RECORD & KIRIM KE OWNER BIAR DI UP KE CHANNEL ( Wajib )</strong>
-              <a href="https://t.me/Yianglin1" target="_blank">https://t.me/Yianglin1</a>
-            </div>
-          </div>
-        </div>
-
         <!-- DATA BAR -->
         <div class="data-available-bar fade-in">
           <div class="data-left">
             <div class="data-icon"><i class="fas fa-database"></i></div>
             <div>
-              <div class="data-label">Data tersisa saat ini</div>
+              <div class="data-label">Nomor tersedia</div>
               <div class="data-value" id="dataAvailable">0</div>
             </div>
           </div>
@@ -93,7 +61,7 @@
         </div>
 
         <!-- PERFORMANCE GRID -->
-        <div class="section-title"><i class="fas fa-chart-bar"></i> Ringkasan Performa Blast</div>
+        <div class="section-title"><i class="fas fa-chart-bar"></i> Ringkasan Performa</div>
 
         <div class="stats-compact-grid">
           <div class="stat-box fade-in">
@@ -107,7 +75,7 @@
             <div class="stat-icon success"><i class="fas fa-check-circle"></i></div>
             <div class="stat-info">
               <div class="stat-value" id="perfSuccess">0</div>
-              <div class="stat-label">Sukses</div>
+              <div class="stat-label">Chat Terkirim</div>
             </div>
           </div>
           <div class="stat-box fade-in">
@@ -132,15 +100,15 @@
             </div>
           </div>
           <div class="stat-box fade-in">
-            <div class="stat-icon balance"><i class="fas fa-bolt"></i></div>
+            <div class="stat-icon balance"><i class="fas fa-coins"></i></div>
             <div class="stat-info">
-              <div class="stat-value" id="perfAvgSpeed">0</div>
-              <div class="stat-label">Speed (dtk)</div>
+              <div class="stat-value" id="perfProfit">0</div>
+              <div class="stat-label">Total Profit</div>
             </div>
           </div>
         </div>
 
-        <!-- TOOLBAR BARU -->
+        <!-- TOOLBAR -->
         <div class="device-toolbar">
           <div class="toolbar-row-1">
             <div class="btn-group">
@@ -177,10 +145,6 @@
         </div>
         <img id="qrImage" src="" alt="QR" style="display:none;max-width:240px;border-radius:12px;border:2px solid rgba(59,130,246,0.4);margin:0 auto;">
         <p id="qrStatus" style="font-size:14px;color:#8B97AB;margin-top:14px;">Menyiapkan device...</p>
-        <div class="alert alert-info" style="text-align:left;font-size:12px;margin-top:16px;">
-          <b>Cara scan:</b><br>
-          WhatsApp → Menu (⋮) → Linked Devices → Link a Device → Scan QR
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('qrModal')">Tutup</button>
@@ -197,9 +161,6 @@
       </div>
       <div class="modal-body">
         <div id="pairingPhoneArea">
-          <div class="alert alert-info" style="font-size:12px;margin-bottom:14px;">
-            <i class="fas fa-info-circle"></i> Masukkan nomor HP yang mau di-pairing.
-          </div>
           <div class="form-field">
             <label>Nomor HP WhatsApp</label>
             <div class="field-input">
@@ -212,19 +173,12 @@
             <span>Dapatkan Kode</span>
           </button>
         </div>
-
         <div id="pairingCodeArea" style="display:none;text-align:center;">
-          <p style="font-size:13px;color:#8B97AB;margin-bottom:12px;">Masukkan kode ini di WhatsApp:</p>
-          <div style="background:rgba(6,8,15,0.6);border-radius:14px;padding:22px;border:2px dashed #3B82F6;margin-bottom:12px;box-shadow:0 0 30px rgba(59,130,246,0.4);">
-            <div id="pairingCodeDisplay" style="font-size:34px;font-weight:800;letter-spacing:6px;color:#3B82F6;font-family:'Courier New',monospace;text-shadow:0 0 20px rgba(59,130,246,0.8);">------</div>
+          <p style="font-size:13px;color:#8B97AB;margin-bottom:12px;">Masukkan kode di WhatsApp:</p>
+          <div style="background:rgba(6,8,15,0.6);border-radius:14px;padding:22px;border:2px dashed #3B82F6;">
+            <div id="pairingCodeDisplay" style="font-size:34px;font-weight:800;letter-spacing:6px;color:#3B82F6;font-family:monospace;">------</div>
           </div>
-          <p id="pairingCodeStatus" style="font-size:12px;color:#64748B;">
-            WhatsApp → Linked Devices → Link with Phone Number
-          </p>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('pairingModal')">Tutup</button>
       </div>
     </div>
   </div>
@@ -240,7 +194,9 @@
     const devicesGrid = document.getElementById('devicesGrid');
     window._watchers = {};
     window._blasting = {};
-    window._speeds = {};   // ← simpan pilihan speed per device
+    window._speeds = {};
+    window._progress = {};   // deviceId -> progress dari server
+    let progressInterval = null;
 
     const SPEED_OPTIONS = [
       { value: 1000, label: '1 detik' },
@@ -280,21 +236,17 @@
     function watchDeviceConnection(deviceId, deviceLabel, onConnected) {
       if (window._watchers[deviceId]) clearInterval(window._watchers[deviceId]);
       const start = Date.now();
-      const MAX_WAIT = 5 * 60 * 1000;
-      let done = false;
       const interval = setInterval(async () => {
-        if (Date.now() - start > MAX_WAIT) { clearInterval(interval); delete window._watchers[deviceId]; return; }
+        if (Date.now() - start > 5 * 60 * 1000) { clearInterval(interval); delete window._watchers[deviceId]; return; }
         try {
           const res = await fetch('/api/devices', { credentials: 'include' });
           const devices = await res.json();
           const dev = devices.find(d => d.id === deviceId);
-          if (dev && dev.real_status === 'connected' && !done) {
-            done = true;
+          if (dev && dev.real_status === 'connected') {
             clearInterval(interval);
             delete window._watchers[deviceId];
             if (typeof onConnected === 'function') onConnected();
-            showConnectSuccessBanner(deviceLabel || deviceId);
-            showToast('✅ Device ' + (deviceLabel || deviceId) + ' terhubung!', 'success');
+            showToast('Device terhubung!', 'success');
             await loadDevices();
             await loadSummary();
           }
@@ -303,28 +255,12 @@
       window._watchers[deviceId] = interval;
     }
 
-    function showConnectSuccessBanner(label) {
-      const old = document.getElementById('connectSuccessBanner');
-      if (old) old.remove();
-      const banner = document.createElement('div');
-      banner.id = 'connectSuccessBanner';
-      banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-120px);background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;padding:16px 26px;border-radius:14px;box-shadow:0 10px 40px rgba(59,130,246,0.6);z-index:99999;font-weight:600;font-size:15px;display:flex;align-items:center;gap:14px;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);max-width:92%;';
-      banner.innerHTML = '<i class="fas fa-check-circle" style="font-size:30px;"></i><div><div style="font-size:16px;">✅ Pairing Berhasil!</div><div style="font-size:13px;opacity:0.9;font-weight:400;margin-top:2px;">Device <b>' + label + '</b> siap blast.</div></div>';
-      document.body.appendChild(banner);
-      requestAnimationFrame(() => { banner.style.transform = 'translateX(-50%) translateY(0)'; });
-      setTimeout(() => {
-        banner.style.transform = 'translateX(-50%) translateY(-120px)';
-        setTimeout(() => banner.remove(), 500);
-      }, 6000);
-    }
-
     async function openQRModal() {
       const modal = document.getElementById('qrModal');
       document.getElementById('qrImage').src = '';
       document.getElementById('qrImage').style.display = 'none';
       document.getElementById('qrLoading').style.display = 'block';
       document.getElementById('qrStatus').textContent = 'Menyiapkan device...';
-      document.getElementById('qrStatus').style.color = '#8B97AB';
       modal.classList.add('active');
       try {
         const name = 'Device-' + Date.now().toString(36).slice(-5);
@@ -337,7 +273,7 @@
         if (!createRes.ok) throw new Error(createData.error || 'Gagal buat device');
         await loadDevices();
         await loadSummary();
-        document.getElementById('qrStatus').textContent = 'Menunggu QR Code...';
+        document.getElementById('qrStatus').textContent = 'Menunggu QR...';
         let qrData = null;
         for (let i = 0; i < 20; i++) {
           await new Promise(r => setTimeout(r, 1000));
@@ -345,14 +281,12 @@
           qrData = await qrRes.json();
           if (qrData.qr) break;
         }
-        if (!qrData || !qrData.qr) throw new Error('QR tidak tersedia. Coba lagi.');
+        if (!qrData || !qrData.qr) throw new Error('QR tidak tersedia');
         document.getElementById('qrLoading').style.display = 'none';
         document.getElementById('qrImage').src = qrData.qr;
         document.getElementById('qrImage').style.display = 'block';
-        document.getElementById('qrStatus').textContent = 'Scan QR dengan WhatsApp Anda';
+        document.getElementById('qrStatus').textContent = 'Scan QR dengan WhatsApp';
         watchDeviceConnection(createData.id, createData.name, () => {
-          document.getElementById('qrStatus').textContent = '✅ Berhasil terhubung!';
-          document.getElementById('qrStatus').style.color = '#3B82F6';
           setTimeout(() => closeModal('qrModal'), 2000);
         });
       } catch (err) {
@@ -367,16 +301,15 @@
       document.getElementById('pairingPhoneArea').style.display = 'block';
       document.getElementById('pairingCodeArea').style.display = 'none';
       document.getElementById('pairingPhone').value = '';
-      document.getElementById('pairingCodeDisplay').textContent = '------';
     }
 
     async function startPairingCode() {
       const phone = document.getElementById('pairingPhone').value.trim();
       const btn = document.getElementById('pairingBtn');
-      if (!phone) return showToast('Masukkan nomor HP dulu', 'error');
+      if (!phone) return showToast('Masukkan nomor HP', 'error');
       if (!/^[0-9]{10,15}$/.test(phone)) return showToast('Format nomor tidak valid', 'error');
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Memproses...</span>';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
       try {
         const name = 'Device-' + phone.slice(-4);
         const createRes = await fetch('/api/devices', {
@@ -385,26 +318,24 @@
           body: JSON.stringify({ name, phone, siteId: 1 })
         });
         const createData = await createRes.json();
-        if (!createRes.ok) throw new Error(createData.error || 'Gagal buat device');
+        if (!createRes.ok) throw new Error(createData.error || 'Gagal');
         await loadDevices();
-        await loadSummary();
         const pairRes = await fetch('/api/devices/' + createData.id + '/pairing', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phoneNumber: phone })
         });
         const pairData = await pairRes.json();
-        if (!pairRes.ok) throw new Error(pairData.error || 'Gagal request pairing');
+        if (!pairRes.ok) throw new Error(pairData.error || 'Gagal');
         document.getElementById('pairingPhoneArea').style.display = 'none';
         document.getElementById('pairingCodeArea').style.display = 'block';
         document.getElementById('pairingCodeDisplay').textContent = pairData.code || '------';
-        showToast('✅ Kode pairing dibuat!', 'success');
+        showToast('Kode pairing dibuat!', 'success');
         watchDeviceConnection(createData.id, createData.name, () => {
-          document.getElementById('pairingCodeStatus').innerHTML = '<span style="color:#3B82F6;font-weight:600;">✅ Berhasil terhubung!</span>';
           setTimeout(() => closeModal('pairingModal'), 2000);
         });
       } catch (err) {
-        showToast('❌ ' + err.message, 'error');
+        showToast('Gagal: ' + err.message, 'error');
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Dapatkan Kode</span>';
@@ -419,11 +350,11 @@
         animateNumber('dataAvailable', d.master_total || 0);
         document.getElementById('slotBadge').textContent = (d.devices_total || 0) + '/' + MAX_SLOTS;
         document.getElementById('perfSlotsActive').textContent = d.devices_connected || 0;
-        animateNumber('perfSuccess', d.total_sent || 0);
+        animateNumber('perfSuccess', d.total_chat || 0);
         animateNumber('perfFailed', d.total_failed || 0);
         document.getElementById('perfCampaigns').textContent = d.total_campaigns || 0;
         animateNumber('perfUniqueContacts', d.unique_contacts || 0);
-        document.getElementById('perfAvgSpeed').textContent = d.avg_speed || 0;
+        animateNumber('perfProfit', d.total_profit || 0);
       } catch (e) { console.error(e); }
     }
 
@@ -453,38 +384,33 @@
       }
 
       if (filtered.length === 0) {
-        devicesGrid.innerHTML = '<div class="empty-device-state"><div class="empty-icon"><i class="fas fa-mobile-alt"></i></div><h3>Belum Ada WhatsApp Tertaut</h3><p>Tambahkan perangkat baru untuk mulai mengirim pesan.</p><button class="btn btn-primary" onclick="openQRModal()"><i class="fas fa-plus"></i> Tambah Device</button></div>';
+        devicesGrid.innerHTML = '<div class="empty-device-state"><div class="empty-icon"><i class="fas fa-mobile-alt"></i></div><h3>Belum Ada Device</h3><p>Tambahkan perangkat untuk mulai blast.</p><button class="btn btn-primary" onclick="openQRModal()"><i class="fas fa-plus"></i> Tambah Device</button></div>';
         return;
       }
 
       devicesGrid.innerHTML = filtered.map(d => {
-        const isBlasting = window._blasting && window._blasting[d.id] === true;
+        const progress = window._progress[d.id];
+        const isBlasting = progress && progress.running;
+        const isProgress = progress && (progress.running || progress.status === 'done' || progress.status === 'failed');
+
         let actionButtons = '';
 
         if (d.real_status === 'connected') {
           if (isBlasting) {
-            actionButtons =
-              '<button class="btn-blast-stop" onclick="stopBlast(\'' + d.id + '\')">' +
-                '<i class="fas fa-stop"></i> Stop Blast' +
-              '</button>';
+            // Sedang blasting — tampilkan STOP
+            actionButtons = '<button class="btn-blast-stop" onclick="stopBlast(\'' + d.id + '\')"><i class="fas fa-stop"></i> Stop Blast</button>';
           } else {
-            // ✅ Speed dibaca dari state (persist antar refresh)
             const currentSpeed = window._speeds[d.id] || 5000;
             const speedOpts = SPEED_OPTIONS.map(o =>
               '<option value="' + o.value + '"' + (currentSpeed === o.value ? ' selected' : '') + '>' + o.label + '</option>'
             ).join('');
             actionButtons =
               '<select id="speed-' + d.id + '" class="speed-select-compact" onchange="window._speeds[\'' + d.id + '\'] = parseInt(this.value)">' + speedOpts + '</select>' +
-              '<button class="btn-blast-start" onclick="blastAll(\'' + d.id + '\')">' +
-                '<i class="fas fa-play"></i> Start Blast' +
-              '</button>';
+              '<button class="btn-blast-start" onclick="blastAll(\'' + d.id + '\')"><i class="fas fa-play"></i> Start Blast</button>';
           }
           actionButtons +=
             '<button class="btn-icon-sm" onclick="showQR(\'' + d.id + '\')" title="Lihat QR"><i class="fas fa-qrcode"></i></button>' +
             '<button class="btn-icon-sm danger" onclick="deleteDevice(\'' + d.id + '\')" title="Hapus Device"><i class="fas fa-trash"></i></button>';
-        } else if (d.real_status === 'qr_scanned') {
-          actionButtons =
-            '<button class="btn btn-sm btn-warning" onclick="deleteDevice(\'' + d.id + '\')"><i class="fas fa-times"></i> Batal</button>';
         } else {
           actionButtons =
             '<button class="btn-blast-start" disabled><i class="fas fa-play"></i> Start Blast</button>' +
@@ -494,16 +420,36 @@
         const statusLabel = isBlasting ? 'BLASTING' : (d.real_status || '').toUpperCase();
         const statusClass = isBlasting ? 'blasting' : d.real_status;
 
+        // Progress bar
+        let progressHtml = '';
+        if (isProgress && progress.total > 0) {
+          const pct = progress.percent || Math.floor((progress.sent / progress.total) * 100);
+          const done = progress.status === 'done';
+          const failed = progress.status === 'failed';
+          const bgColor = done ? 'linear-gradient(90deg,#34D399,#059669)' : (failed ? 'linear-gradient(90deg,#EF4444,#B91C1C)' : 'linear-gradient(90deg,#3B82F6,#2563EB)');
+          progressHtml = '<div style="margin:10px 0; padding:10px 12px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:10px;">' +
+            '<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">' +
+              '<span style="color:#93C5FD;">' + (done ? '✅ Selesai' : (failed ? '❌ Gagal' : '<i class="fas fa-spinner fa-spin"></i> Blasting')) + '</span>' +
+              '<span style="font-weight:700; color:#E8EFFB;">' + progress.sent + ' / ' + progress.total + '</span>' +
+            '</div>' +
+            '<div style="height:6px; background:rgba(0,0,0,0.3); border-radius:3px; overflow:hidden;">' +
+              '<div style="height:100%; width:' + pct + '%; background:' + bgColor + '; transition:width 0.4s ease;"></div>' +
+            '</div>' +
+            '<div style="font-size:11px; color:#8B97AB; margin-top:4px; text-align:right;">' + pct + '%' + (progress.failed > 0 ? ' • ' + progress.failed + ' gagal' : '') + '</div>' +
+          '</div>';
+        }
+
         return '<div class="device-card fade-in" data-id="' + d.id + '">' +
           '<div class="device-header">' +
             '<div class="device-info"><span class="device-id">' + d.id + '</span><span class="device-status ' + statusClass + '">' + statusLabel + '</span></div>' +
             '<div class="device-phone">' + (d.phone || 'Belum tersambung') + '</div>' +
           '</div>' +
           '<div class="device-stats-row">' +
-            '<span><i class="fas fa-check-circle"></i> Sent ' + (d.sent || 0) + '</span>' +
-            '<span><i class="fas fa-coins"></i> Profit ' + (d.profit || 0).toLocaleString() + '</span>' +
+            '<span><i class="fas fa-check-circle"></i> Terkirim ' + (d.sent || 0) + '</span>' +
+            '<span><i class="fas fa-coins"></i> Profit ' + (d.profit || 0).toLocaleString('id-ID') + '</span>' +
             '<span class="device-mode">' + (d.mode || 'FAST (1s)') + '</span>' +
           '</div>' +
+          progressHtml +
           '<div class="device-actions">' + actionButtons + '</div>' +
         '</div>';
       }).join('');
@@ -513,44 +459,44 @@
     function searchDevices() { searchTerm = document.getElementById('deviceSearch').value.trim(); renderDevices(); }
 
     async function stopBlast(deviceId) {
-      if (!confirm('Yakin mau stop blast device ini?')) return;
+      if (!confirm('Stop blast device ini?')) return;
       try {
         await fetch('/api/devices/' + deviceId + '/stop', { method: 'POST', credentials: 'include' });
-        showToast('⏹ Blast dihentikan', 'warning');
+        showToast('Blast dihentikan', 'warning');
         window._blasting[deviceId] = false;
         await loadDevices();
-      } catch (e) {
-        showToast('Gagal stop', 'error');
-      }
+      } catch (e) { showToast('Gagal stop', 'error'); }
     }
-
-    async function stopDevice(id) { return stopBlast(id); }
 
     async function deleteDevice(id) {
       if (!confirm('Hapus device ini?')) return;
-      try { await fetch('/api/devices/' + id, { method: 'DELETE', credentials: 'include' }); showToast('Device dihapus', 'success'); loadDevices(); loadSummary(); }
-      catch (e) { showToast('Gagal hapus', 'error'); }
+      try {
+        await fetch('/api/devices/' + id, { method: 'DELETE', credentials: 'include' });
+        showToast('Device dihapus', 'success');
+        loadDevices(); loadSummary();
+      } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
     async function showQR(deviceId) {
       try {
         const res = await fetch('/api/devices/' + deviceId + '/qr', { credentials: 'include' });
         const data = await res.json();
-        if (!data.qr) return showToast('Tidak ada QR. Device mungkin sudah terhubung.', 'warning');
+        if (!data.qr) return showToast('Tidak ada QR', 'warning');
         const win = window.open('', '_blank');
-        win.document.write('<html><body style="background:#050810;color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h3>Scan QR dengan WhatsApp</h3><img src="' + data.qr + '" style="max-width:300px;display:block;margin:20px auto;border-radius:12px;"></body></html>');
-        watchDeviceConnection(deviceId, deviceId);
+        win.document.write('<html><body style="background:#050810;color:#fff;text-align:center;padding:40px;"><h3>Scan QR</h3><img src="' + data.qr + '" style="max-width:300px;"></body></html>');
       } catch (e) { showToast('Gagal ambil QR', 'error'); }
     }
 
+    // BLAST — fire and forget + polling progress
     async function blastAll(deviceId) {
       const device = allDevices.find(d => d.id === deviceId);
       if (!device || device.real_status !== 'connected') return showToast('Device offline', 'error');
 
-      // ✅ Baca speed dari STATE (bukan DOM) — anti reset
       const speed = window._speeds[deviceId] || 5000;
 
+      // Set UI state blasting
       window._blasting[deviceId] = true;
+      window._progress[deviceId] = { running: true, total: 0, sent: 0, failed: 0, percent: 0 };
       renderDevices();
 
       try {
@@ -562,21 +508,69 @@
           body: JSON.stringify({ deviceId, speed })
         });
         const data = await blastRes.json();
-        if (!blastRes.ok) throw new Error(data.error || 'Gagal mengirim');
+        if (!blastRes.ok) throw new Error(data.error || 'Gagal');
 
-        showToast('✅ ' + (data.sent || 0) + ' sukses, ' + (data.failed || 0) + ' gagal', (data.failed || 0) > 0 ? 'warning' : 'success');
+        // Update progress awal dengan total dari server
+        window._progress[deviceId] = {
+          running: true, total: data.total || 0,
+          sent: 0, failed: 0, percent: 0, status: 'running'
+        };
+        renderDevices();
+
+        // Mulai polling progress
+        startProgressPolling(deviceId);
+
+        showToast('Blast berjalan di background. Progress muncul di card.', 'success');
       } catch (err) {
-        showToast('❌ ' + err.message, 'error');
-      } finally {
+        showToast('Gagal: ' + err.message, 'error');
         window._blasting[deviceId] = false;
-        await loadDevices();
-        await loadSummary();
+        window._progress[deviceId] = null;
+        renderDevices();
       }
+    }
+
+    // Polling progress tiap 2 detik
+    function startProgressPolling(deviceId) {
+      if (window._progressIntervals && window._progressIntervals[deviceId]) {
+        clearInterval(window._progressIntervals[deviceId]);
+      }
+      if (!window._progressIntervals) window._progressIntervals = {};
+
+      window._progressIntervals[deviceId] = setInterval(async () => {
+        try {
+          const res = await fetch('/api/broadcast/progress/' + deviceId, { credentials: 'include' });
+          const data = await res.json();
+
+          if (!data.running && (!data.status || data.status === 'done' || data.status === 'failed')) {
+            // Selesai
+            window._progress[deviceId] = data.status ? data : null;
+            window._blasting[deviceId] = false;
+            clearInterval(window._progressIntervals[deviceId]);
+            delete window._progressIntervals[deviceId];
+
+            // Update device stats
+            await loadDevices();
+            await loadSummary();
+
+            // Clear progress setelah 5 detik
+            setTimeout(() => {
+              window._progress[deviceId] = null;
+              renderDevices();
+            }, 5000);
+          } else {
+            window._progress[deviceId] = data;
+            window._blasting[deviceId] = true;
+            renderDevices();
+          }
+        } catch (e) {
+          console.error('Progress poll error:', e);
+        }
+      }, 2000);
     }
 
     async function refreshDevices() {
       await Promise.all([loadDevices(), loadSummary()]);
-      showToast('✅ Data diperbarui', 'info');
+      showToast('Data diperbarui', 'info');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
