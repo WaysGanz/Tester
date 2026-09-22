@@ -1003,7 +1003,6 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
     if (!wallet || !wallet.method || !wallet.bank_account || !wallet.bank_holder) {
   return res.status(400).json({ error: 'Data payment belum lengkap. Isi metode, nomor akun, dan nama pemilik.' });
 }
-    }
     if (!wallet.telegram_id) return res.status(400).json({ error: 'Telegram ID wajib diisi.' });
 
     const min = await wa.getMinWithdraw();
