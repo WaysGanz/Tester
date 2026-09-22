@@ -34,9 +34,6 @@ try {
   console.error('❌ Gagal bikin folder:', e.message);
 }
 
-// ============================================
-// EMAIL TRANSPORTER
-// ============================================
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
@@ -113,6 +110,50 @@ function getWithdrawWithUser(wdId) {
       [wdId], (err, row) => resolve(row || null)
     );
   });
+}
+
+// ============================================
+// WITHDRAW SCHEDULE — WIB (UTC+7)
+// ============================================
+const WITHDRAW_WINDOWS = [
+  { start: '10:30', end: '13:00' },   // Window 1
+  { start: '22:00', end: '01:00' }    // Window 2 (lintas tengah malam)
+];
+
+function getWIBMinutes() {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  const parts = fmt.formatToParts(now);
+  let h = 0, m = 0;
+  parts.forEach(p => {
+    if (p.type === 'hour') h = parseInt(p.value);
+    if (p.type === 'minute') m = parseInt(p.value);
+  });
+  return h * 60 + m;
+}
+
+function isWithdrawOpen() {
+  const total = getWIBMinutes();
+  // Window 1: 10:30 - 13:00 (630 - 780)
+  if (total >= 630 && total < 780) return true;
+  // Window 2: 22:00 - 01:00 (1320 - 1440, atau 0 - 60)
+  if (total >= 1320 || total < 60) return true;
+  return false;
+}
+
+function getNextWithdrawWindow() {
+  const total = getWIBMinutes();
+  // Sebelum W1 (sebelum 10:30) → next W1 hari ini
+  if (total < 630) return { start: '10:30', when: 'hari ini' };
+  // Antara W1 selesai (13:00) dan sebelum W2 (22:00) → next W2 hari ini
+  if (total >= 780 && total < 1320) return { start: '22:00', when: 'hari ini' };
+  // Setelah W2 mulai (22:00) tapi belum lewat tengah malam → gak mungkin, karena W2 buka
+  // Kalau di antara 01:00 dan 10:30 (60 - 630) → next W1 hari ini
+  if (total >= 60 && total < 630) return { start: '10:30', when: 'hari ini' };
+  return { start: '10:30', when: 'besok' };
 }
 
 // ============================================
@@ -374,20 +415,22 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
-  const { name, template_text, template_photo } = req.body;
+  const { name, template_text, template_photo, button_text, button_url } = req.body;
   if (!name) return res.status(400).json({ error: 'Nama database wajib' });
-  db.run('INSERT INTO sites (name, template_text, template_photo, is_active) VALUES (?, ?, ?, 1)',
-    [name, template_text || '', template_photo || ''],
+  db.run('INSERT INTO sites (name, template_text, template_photo, button_text, button_url, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+    [name, template_text || '', template_photo || '', button_text || '', button_url || ''],
     function (err) { if (err) return res.status(500).json({ error: err.message }); res.json({ success: true, id: this.lastID }); });
 });
 
 app.put('/api/admin/sites/:id', requireAuth, requireAdmin, (req, res) => {
-  const { name, template_text, template_photo } = req.body;
+  const { name, template_text, template_photo, button_text, button_url } = req.body;
   const updates = [];
   const params = [];
   if (name !== undefined) { updates.push('name = ?'); params.push(name); }
   if (template_text !== undefined) { updates.push('template_text = ?'); params.push(template_text); }
   if (template_photo !== undefined) { updates.push('template_photo = ?'); params.push(template_photo); }
+  if (button_text !== undefined) { updates.push('button_text = ?'); params.push(button_text); }
+  if (button_url !== undefined) { updates.push('button_url = ?'); params.push(button_url); }
   if (updates.length === 0) return res.status(400).json({ error: 'Tidak ada perubahan' });
   updates.push('updated_at = CURRENT_TIMESTAMP');
   params.push(req.params.id);
@@ -457,9 +500,6 @@ app.post('/api/admin/sites/:id/delete-sent', requireAuth, requireAdmin, (req, re
     });
 });
 
-// ============================================
-// DELETE BULK — hapus N nomor berdasarkan filter
-// ============================================
 app.post('/api/admin/sites/:id/delete-bulk', requireAuth, requireAdmin, (req, res) => {
   const { status = 'all', limit = 1000, order = 'DESC' } = req.body || {};
   const siteId = req.params.id;
@@ -480,9 +520,6 @@ app.post('/api/admin/sites/:id/delete-bulk', requireAuth, requireAdmin, (req, re
   });
 });
 
-// ============================================
-// DELETE ALL — hapus SEMUA nomor sesuai filter
-// ============================================
 app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res) => {
   const { status = 'all' } = req.body || {};
   const siteId = req.params.id;
@@ -683,7 +720,7 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     }
 
     const site = await new Promise((resolve) => {
-      db.get('SELECT id, name, template_text, template_photo FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
+      db.get('SELECT id, name, template_text, template_photo, button_text, button_url FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
     });
     if (!site || !site.template_text) return res.status(400).json({ error: 'Database belum ada template.' });
 
@@ -712,9 +749,16 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     }).catch(() => {});
 
     console.log('📤 Blast DB' + siteId + ' (' + site.name + '): ' + recipients.length + ' nomor');
+    if (site.button_text && site.button_url) {
+      console.log('🔗 Button: "' + site.button_text + '" → ' + site.button_url);
+    }
 
     const startTime = Date.now();
-    const result = await wa.sendBroadcast(deviceId, site.template_text, recipients, req.session.userId, speedMs, siteId, site.template_photo || null);
+    const result = await wa.sendBroadcast(
+      deviceId, site.template_text, recipients, req.session.userId,
+      speedMs, siteId, site.template_photo || null,
+      site.button_text || '', site.button_url || ''
+    );
     const duration = (Date.now() - startTime) / 1000;
     const durationStr = duration > 60 ? Math.ceil(duration / 60) + ' menit' : Math.ceil(duration) + ' detik';
     const pricePerChat = await wa.getPricePerChat();
@@ -772,9 +816,6 @@ app.put('/api/settings', requireAuth, requireAdmin, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
-// ADMIN SETTINGS — ALIAS buat admin.html
-// ============================================
 app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   db.all('SELECT key, value FROM settings', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -861,13 +902,36 @@ app.post('/api/wallet/payment', requireAuth, (req, res) => {
 });
 
 // ============================================
-// WITHDRAW
+// WITHDRAW + SCHEDULE
 // ============================================
+app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
+  const open = isWithdrawOpen();
+  const next = getNextWithdrawWindow();
+  const wib = getWIBMinutes();
+  const wibH = String(Math.floor(wib / 60)).padStart(2, '0');
+  const wibM = String(wib % 60).padStart(2, '0');
+  res.json({
+    open,
+    serverTimeWIB: wibH + ':' + wibM,
+    windows: WITHDRAW_WINDOWS,
+    next
+  });
+});
+
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { amount } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
+
+    // Cek jam operasional WIB
+    if (!isWithdrawOpen()) {
+      const next = getNextWithdrawWindow();
+      return res.status(400).json({
+        error: 'Withdraw hanya bisa diajukan pada jam operasional (' + next.when + ' jam ' + next.start + ' WIB).',
+        schedule: { open: false, windows: WITHDRAW_WINDOWS, next }
+      });
+    }
 
     const wallet = await new Promise((resolve) => {
       db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, row) => resolve(row));
@@ -1071,7 +1135,6 @@ setInterval(() => {
   );
 }, 2 * 60 * 1000);
 
-// Jalanin sekali saat startup juga
 db.run(
   "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
   function(err) {
