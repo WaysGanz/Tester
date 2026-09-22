@@ -76,9 +76,9 @@
         <!-- JADWAL WITHDRAW -->
         <div class="card fade-in" id="scheduleCard" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Jadwal Proses Withdraw</h3>
-          <p style="font-size:12px; color:#8B97AB; margin-bottom:12px;">
-            Withdraw hanya bisa diajukan pada jam operasional berikut (WIB):
-          </p>
+<p style="font-size:12px; color:#8B97AB; margin-bottom:12px;">
+  <b style="color:#34D399;">✅ WD bisa diajukan 24 JAM</b> — tapi <b>DIPROSES ADMIN</b> hanya pada jam operasional (WIB):
+</p>
           <div style="display:flex; gap:12px; flex-wrap:wrap;">
             <div style="flex:1; min-width:140px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:12px; text-align:center;">
               <i class="fas fa-sun" style="color:#FBBF24; font-size:20px; margin-bottom:6px; display:block;"></i>
@@ -258,44 +258,33 @@
     }
 
     async function loadSchedule() {
-      try {
-        const res = await fetch('/api/withdraw/schedule', { credentials: 'include' });
-        const d = await res.json();
-        withdrawOpen = !!d.open;
-        const status = document.getElementById('scheduleStatus');
-        const btn = document.getElementById('withdrawBtn');
+  try {
+    const res = await fetch('/api/withdraw/schedule', { credentials: 'include' });
+    const d = await res.json();
+    withdrawOpen = !!d.open;
+    const status = document.getElementById('scheduleStatus');
+    const btn = document.getElementById('withdrawBtn');
 
-        if (d.open) {
-          status.innerHTML = '<i class="fas fa-check-circle"></i> SEDANG DIBUKA — WD bisa diajukan sekarang (' + (d.serverTimeWIB || '') + ' WIB)';
-          status.style.background = 'rgba(52,211,153,0.15)';
-          status.style.color = '#34D399';
-          status.style.border = '1px solid rgba(52,211,153,0.4)';
-          if (btn && paymentSaved) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
-          }
-        } else {
-          const next = d.next || {};
-          status.innerHTML = '<i class="fas fa-lock"></i> WD DITUTUP — Buka lagi ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>. Sekarang ' + (d.serverTimeWIB || '') + ' WIB.';
-          status.style.background = 'rgba(251,191,36,0.12)';
-          status.style.color = '#FBBF24';
-          status.style.border = '1px solid rgba(251,191,36,0.4)';
-          if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-lock"></i> <span>WD Ditutup</span>';
-          }
-        }
-      } catch (e) { console.error('Schedule:', e); }
+    if (d.open) {
+      status.innerHTML = '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> — WD akan langsung diproses admin (' + (d.serverTimeWIB || '') + ' WIB)';
+      status.style.background = 'rgba(52,211,153,0.15)';
+      status.style.color = '#34D399';
+      status.style.border = '1px solid rgba(52,211,153,0.4)';
+    } else {
+      const next = d.next || {};
+      status.innerHTML = '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> — WD tetap bisa diajukan, tapi akan diproses ' + (next.when || '') + ' jam <b>' + (next.start || '') + ' WIB</b>. Sekarang ' + (d.serverTimeWIB || '') + ' WIB.';
+      status.style.background = 'rgba(251,191,36,0.12)';
+      status.style.color = '#FBBF24';
+      status.style.border = '1px solid rgba(251,191,36,0.4)';
     }
 
-    async function loadWallet() {
-      try {
-        const res = await fetch('/api/wallet', { credentials: 'include' });
-        const d = await res.json();
-        currentBalance = d.balance || 0;
-        document.getElementById('balanceDisplay').textContent = rupiah(currentBalance);
-      } catch (e) { console.error(e); }
+    // ✅ Tombol SELALU enabled (asal payment saved)
+    if (btn && paymentSaved) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Withdraw</span>';
     }
+  } catch (e) { console.error('Schedule:', e); }
+}
 
     async function loadPaymentData() {
       try {
@@ -429,8 +418,7 @@
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!paymentSaved) return showToast('Simpan data payment dulu', 'error');
-      if (!withdrawOpen) return showToast('WD ditutup. Tunggu jam operasional.', 'error');
-
+// Gak ada cek withdrawOpen — user bisa ajuin kapan aja
       const amount = parseInt(document.getElementById('withdrawAmount').value);
       const resultDiv = document.getElementById('withdrawResult');
       resultDiv.innerHTML = '';
@@ -450,7 +438,8 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast('Withdraw diajukan! Tunggu verifikasi admin.', 'success');
+        const msg = data.processingNote || 'Withdraw diajukan! Tunggu verifikasi admin.';
+showToast('✅ ' + msg, 'success');
         document.getElementById('withdrawAmount').value = '';
         loadWallet();
         loadWithdrawHistory();
