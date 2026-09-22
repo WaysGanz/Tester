@@ -54,11 +54,9 @@
 
       <div class="admin-content">
 
-        <!-- PENGATURAN RATE & MINIMUM WD -->
+        <!-- PENGATURAN RATE -->
         <div class="card fade-in" style="margin-bottom:20px;">
-          <h3>
-            <i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD
-          </h3>
+          <h3><i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD</h3>
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
             Atur harga per pesan sukses & minimal withdraw untuk semua user.
           </p>
@@ -67,26 +65,20 @@
               <label>Rate per Pesan Sukses (Rp)</label>
               <div class="input-wrap-app">
                 <i class="fas fa-coins" style="color:#FBBF24;"></i>
-                <input type="number" id="setPricePerChat" placeholder="1100" min="0">
+                <input type="number" id="setPricePerChat" placeholder="700" min="0">
               </div>
-              <small class="help-text">Rate yang dibayarkan ke user tiap pesan sukses</small>
             </div>
             <div class="form-field">
               <label>Minimum Withdraw (Rp)</label>
               <div class="input-wrap-app">
                 <i class="fas fa-hand-holding-usd" style="color:#34D399;"></i>
-                <input type="number" id="setMinWithdraw" placeholder="50000" min="0">
+                <input type="number" id="setMinWithdraw" placeholder="20000" min="0">
               </div>
-              <small class="help-text">Minimal saldo yang bisa ditarik user</small>
             </div>
           </div>
           <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-primary" onclick="saveSettings()">
-              <i class="fas fa-save"></i> Simpan Pengaturan
-            </button>
-            <button class="btn btn-secondary" onclick="loadSettings()">
-              <i class="fas fa-sync"></i> Reload
-            </button>
+            <button class="btn btn-primary" onclick="saveSettings()"><i class="fas fa-save"></i> Simpan</button>
+            <button class="btn btn-secondary" onclick="loadSettings()"><i class="fas fa-sync"></i> Reload</button>
             <span id="settingsStatus" style="font-size:13px; color:#8B97AB;"></span>
           </div>
         </div>
@@ -99,9 +91,6 @@
               <i class="fas fa-plus"></i> Tambah
             </button>
           </h3>
-          <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
-            Setiap database punya template + foto + pool nomor sendiri.
-          </p>
           <div id="sitesList" style="display:grid; gap:10px;">
             <p class="empty">Loading...</p>
           </div>
@@ -134,19 +123,6 @@
           <div id="importResult" style="margin-top:12px;"></div>
         </div>
 
-        <!-- ASSIGN DEVICE -->
-        <div class="card fade-in" style="margin-bottom:20px;">
-          <h3>
-            <i class="fas fa-mobile-alt"></i> Assign Device ke Database
-            <button class="btn btn-sm btn-info" onclick="loadDevices()" style="margin-left:auto;">
-              <i class="fas fa-sync"></i>
-            </button>
-          </h3>
-          <div id="devicesList" style="display:grid; gap:8px;">
-            <p class="empty">Loading...</p>
-          </div>
-        </div>
-
         <!-- WITHDRAW PENDING -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Withdraw Pending</h3>
@@ -169,11 +145,12 @@
                   <th style="padding:8px;">Nama / Email</th>
                   <th style="padding:8px;">Telegram</th>
                   <th style="padding:8px;">Payment</th>
+                  <th style="padding:8px;">💬 Chat</th>
                   <th style="padding:8px;">Saldo</th>
                 </tr>
               </thead>
               <tbody id="usersList">
-                <tr><td colspan="5" style="padding:16px; text-align:center; color:#64748B;">Loading...</td></tr>
+                <tr><td colspan="6" style="padding:16px; text-align:center; color:#64748B;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -200,24 +177,24 @@
           </div>
         </div>
         <div class="form-field" style="margin-bottom:14px;">
-  <label>Button Text (opsional, max 20 char)</label>
-  <div class="input-wrap-app">
-    <i class="fas fa-mouse-pointer"></i>
-    <input type="text" id="siteButtonText" placeholder="Contoh: Order Sekarang" maxlength="20">
-  </div>
-  <small class="help-text">Kosongkan kalau gak pakai button.</small>
-</div>
-<div class="form-field" style="margin-bottom:14px;">
-  <label>Button URL (opsional)</label>
-  <div class="input-wrap-app">
-    <i class="fas fa-link"></i>
-    <input type="url" id="siteButtonUrl" placeholder="https://wa.me/628xxx">
-  </div>
-  <small class="help-text">Link yang kebuka saat tombol di-klik.</small>
-</div>
-        <div class="form-field" style="margin-bottom:14px;">
           <label>Template Pesan</label>
           <textarea id="siteTemplate" class="form-control" rows="4" placeholder="Contoh: assalamualaikum"></textarea>
+        </div>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Button Text (opsional, max 20 char)</label>
+          <div class="input-wrap-app">
+            <i class="fas fa-mouse-pointer"></i>
+            <input type="text" id="siteButtonText" placeholder="Contoh: Order Sekarang" maxlength="20">
+          </div>
+          <small class="help-text">Kosongkan kalau gak pakai button.</small>
+        </div>
+        <div class="form-field" style="margin-bottom:14px;">
+          <label>Button URL (opsional)</label>
+          <div class="input-wrap-app">
+            <i class="fas fa-link"></i>
+            <input type="url" id="siteButtonUrl" placeholder="https://wa.me/628xxx">
+          </div>
+          <small class="help-text">Link yang kebuka saat tombol di-klik.</small>
         </div>
         <div class="form-field" style="margin-bottom:14px;">
           <label>Foto Template (URL, opsional)</label>
@@ -225,9 +202,6 @@
             <i class="fas fa-image"></i>
             <input type="url" id="sitePhoto" placeholder="https://example.com/foto.jpg">
           </div>
-        </div>
-        <div id="sitePhotoPreview" style="display:none; margin-top:10px;">
-          <img id="sitePhotoPreviewImg" src="" style="max-width:200px; border-radius:8px; border:1px solid rgba(59,130,246,0.4);">
         </div>
       </div>
       <div class="modal-footer">
@@ -261,7 +235,6 @@
           <button class="btn btn-sm btn-warning" onclick="resetSent()"><i class="fas fa-undo"></i> Reset Terkirim</button>
         </div>
 
-        <!-- HAPUS MASSAL -->
         <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:12px; margin-bottom:12px;">
           <div style="font-size:11px; color:#F87171; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
             <i class="fas fa-exclamation-triangle"></i> Hapus Massal
@@ -336,20 +309,16 @@
       document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
-    // ============================================
-    // SETTINGS — Rate & Min WD
-    // ============================================
     async function loadSettings() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
-        if (!res.ok) throw new Error('Gagal load');
+        if (!res.ok) throw new Error();
         const d = await res.json();
-        document.getElementById('setPricePerChat').value = d.price_per_chat || 1100;
-        document.getElementById('setMinWithdraw').value = d.min_withdraw || 50000;
+        document.getElementById('setPricePerChat').value = d.price_per_chat || 700;
+        document.getElementById('setMinWithdraw').value = d.min_withdraw || 20000;
       } catch (e) {
-        console.error(e);
-        document.getElementById('setPricePerChat').value = 1100;
-        document.getElementById('setMinWithdraw').value = 50000;
+        document.getElementById('setPricePerChat').value = 700;
+        document.getElementById('setMinWithdraw').value = 20000;
       }
     }
 
@@ -366,23 +335,19 @@
         const res = await fetch('/api/admin/settings', {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            price_per_chat: parseInt(price_per_chat),
-            min_withdraw: parseInt(min_withdraw)
-          })
+          body: JSON.stringify({ price_per_chat: parseInt(price_per_chat), min_withdraw: parseInt(min_withdraw) })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal simpan');
-        status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        status.innerHTML = '<span style="color:#34D399;">✅ Tersimpan</span>';
         showToast('Pengaturan tersimpan!', 'success');
         setTimeout(() => { status.innerHTML = ''; }, 3000);
       } catch (e) {
-        status.innerHTML = '<span style="color:#F87171;"><i class="fas fa-times-circle"></i> Gagal</span>';
+        status.innerHTML = '<span style="color:#F87171;">❌ Gagal</span>';
         showToast('Gagal: ' + e.message, 'error');
       }
     }
 
-    // SITES
     async function loadSites() {
       try {
         const res = await fetch('/api/admin/sites', { credentials: 'include' });
@@ -403,9 +368,9 @@
             '<div style="flex:1; min-width:180px;">' +
               '<div style="font-weight:700; font-size:14px; color:#3B82F6; margin-bottom:4px;"><i class="fas fa-database"></i> ' + s.name + '</div>' +
               '<div style="font-size:12px; color:#8B97AB; margin-bottom:6px;"><b>Template:</b> "' + tmpl + tmplTrunc + '"</div>' +
-              (s.template_photo ? '<img src="' + s.template_photo + '" style="max-width:60px; border-radius:6px; margin-bottom:6px; border:1px solid rgba(59,130,246,0.4);" onerror="this.style.display=\'none\'">' : '') +
               (s.button_text && s.button_url ? '<div style="font-size:11px; color:#60A5FA; margin-bottom:4px;"><i class="fas fa-mouse-pointer"></i> Button: <b>' + s.button_text + '</b> → ' + s.button_url + '</div>' : '') +
-          '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
+              (s.template_photo ? '<img src="' + s.template_photo + '" style="max-width:60px; border-radius:6px; margin-bottom:6px; border:1px solid rgba(59,130,246,0.4);" onerror="this.style.display=\'none\'">' : '') +
+              '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB;">' +
                 '<span><i class="fas fa-list"></i> ' + (s.total_contacts || 0).toLocaleString('id-ID') + '</span>' +
                 '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> ' + (s.sent_contacts || 0).toLocaleString('id-ID') + '</span>' +
                 '<span style="color:#FBBF24;"><i class="fas fa-clock"></i> ' + (s.available_contacts || 0).toLocaleString('id-ID') + '</span>' +
@@ -441,7 +406,8 @@
       document.getElementById('siteName').value = '';
       document.getElementById('siteTemplate').value = '';
       document.getElementById('sitePhoto').value = '';
-      document.getElementById('sitePhotoPreview').style.display = 'none';
+      document.getElementById('siteButtonText').value = '';
+      document.getElementById('siteButtonUrl').value = '';
       if (id) {
         const s = allSites.find(x => x.id === id);
         if (s) {
@@ -450,12 +416,6 @@
           document.getElementById('sitePhoto').value = s.template_photo || '';
           document.getElementById('siteButtonText').value = s.button_text || '';
           document.getElementById('siteButtonUrl').value = s.button_url || '';
-          if (s.template_photo) {
-            document.getElementById('sitePhotoPreviewImg').src = s.template_photo;
-            document.getElementById('sitePhotoPreview').style.display = 'block';
-            document.getElementById('siteButtonText').value = '';
-            document.getElementById('siteButtonUrl').value = '';
-          }
         }
       }
       document.getElementById('siteModal').classList.add('active');
@@ -467,10 +427,10 @@
       const template_text = document.getElementById('siteTemplate').value;
       const template_photo = document.getElementById('sitePhoto').value.trim();
       const button_text = document.getElementById('siteButtonText').value.trim();
-const button_url = document.getElementById('siteButtonUrl').value.trim();
-if (button_text && !button_url) return showToast('Button URL wajib kalau ada Button Text', 'error');
-if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'error');
+      const button_url = document.getElementById('siteButtonUrl').value.trim();
       if (!name) return showToast('Nama wajib diisi', 'error');
+      if (button_text && !button_url) return showToast('Button URL wajib kalau ada Button Text', 'error');
+      if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'error');
       try {
         const url = id ? '/api/admin/sites/' + id : '/api/admin/sites';
         const method = id ? 'PUT' : 'POST';
@@ -495,7 +455,6 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
       } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
-    // IMPORT
     document.getElementById('importForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const siteId = document.getElementById('importSite').value;
@@ -533,7 +492,6 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
 
     document.getElementById('importNumbers').addEventListener('input', updateImportCount);
 
-    // CONTACTS VIEW
     function openContactModal(siteId) {
       currentContactSiteId = siteId;
       currentContactFilter = 'all';
@@ -575,11 +533,11 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
             '<div style="font-size:18px; font-weight:800; color:#3B82F6;">' + (s ? (s.total_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(52,211,153,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;"><i class="fas fa-check-circle"></i> TERKIRIM</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERKIRIM</div>' +
             '<div style="font-size:18px; font-weight:800; color:#34D399;">' + (s ? (s.sent_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>' +
           '<div style="padding:10px; background:rgba(251,191,36,0.1); border-radius:8px; text-align:center;">' +
-            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;"><i class="fas fa-clock"></i> TERSEDIA</div>' +
+            '<div style="font-size:10px; color:#8B97AB; text-transform:uppercase;">TERSEDIA</div>' +
             '<div style="font-size:18px; font-weight:800; color:#FBBF24;">' + (s ? (s.available_contacts || 0).toLocaleString('id-ID') : 0) + '</div>' +
           '</div>';
 
@@ -606,9 +564,9 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
 
         const pag = document.getElementById('contactsPagination');
         let html = '';
-        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')"><i class="fas fa-chevron-left"></i> Prev</button>';
+        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')">« Prev</button>';
         html += '<span style="padding:8px 12px; font-size:12px;">Hal ' + data.page + ' / ' + data.totalPages + '</span>';
-        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next <i class="fas fa-chevron-right"></i></button>';
+        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next »</button>';
         pag.innerHTML = html;
       } catch (e) {
         tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error: ' + e.message + '</td></tr>';
@@ -631,7 +589,7 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
         });
         const data = await res.json();
         if (res.ok) { showToast(data.deleted + ' dihapus', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('Gagal hapus', 'error'); }
+      } catch (e) { showToast('Gagal', 'error'); }
     }
 
     async function resetSent() {
@@ -640,21 +598,16 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
         const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/reset-sent', { method: 'POST', credentials: 'include' });
         const data = await res.json();
         if (res.ok) { showToast(data.reset + ' direset', 'success'); loadContacts(); loadSites(); }
-      } catch (e) { showToast('Gagal reset', 'error'); }
+      } catch (e) { showToast('Gagal', 'error'); }
     }
 
-    // ============================================
-    // HAPUS MASSAL
-    // ============================================
     async function bulkDelete() {
       const limit = parseInt(document.getElementById('bulkDeleteLimit').value) || 1000;
       const order = document.getElementById('bulkDeleteOrder').value || 'DESC';
       const status = currentContactFilter || 'all';
-
       const statusLabel = status === 'all' ? 'semua status' : status;
       const orderLabel = order === 'DESC' ? 'terbaru' : 'terlama';
-      if (!confirm('Hapus ' + limit + ' nomor (' + statusLabel + ', ' + orderLabel + ' dulu)?\n\nTindakan ini tidak bisa dibatalkan!')) return;
-
+      if (!confirm('Hapus ' + limit + ' nomor (' + statusLabel + ', ' + orderLabel + ')?')) return;
       try {
         const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-bulk', {
           method: 'POST', credentials: 'include',
@@ -662,7 +615,7 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
           body: JSON.stringify({ status, limit, order })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
+        if (!res.ok) throw new Error(data.error);
         showToast(data.deleted + ' nomor dihapus', 'success');
         loadContacts(); loadSites();
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
@@ -671,13 +624,10 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
     async function deleteAllFilter() {
       const status = currentContactFilter || 'all';
       const statusLabel = status === 'all' ? 'SEMUA STATUS' : status.toUpperCase();
-
-      if (!confirm('⚠️ HAPUS SEMUA nomor (' + statusLabel + ')?\n\nTindakan ini tidak bisa dibatalkan!')) return;
-      if (!confirm('Beneran yakin? Ini bakal hapus SEMUA nomor ' + statusLabel + '.')) return;
-
+      if (!confirm('⚠️ HAPUS SEMUA nomor (' + statusLabel + ')?')) return;
+      if (!confirm('Beneran yakin?')) return;
       const verify = prompt('Ketik "HAPUS" untuk konfirmasi:');
       if (verify !== 'HAPUS') return showToast('Dibatalkan', 'warning');
-
       try {
         const res = await fetch('/api/admin/sites/' + currentContactSiteId + '/delete-all', {
           method: 'POST', credentials: 'include',
@@ -685,49 +635,12 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
           body: JSON.stringify({ status })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
+        if (!res.ok) throw new Error(data.error);
         showToast(data.deleted + ' nomor dihapus', 'success');
         loadContacts(); loadSites();
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
-    // DEVICES ASSIGNMENT
-    async function loadDevices() {
-      try {
-        const res = await fetch('/api/admin/devices', { credentials: 'include' });
-        const devices = await res.json();
-        const c = document.getElementById('devicesList');
-        if (!devices || devices.length === 0) { c.innerHTML = '<p class="empty">Belum ada device</p>'; return; }
-        c.innerHTML = devices.map(d => {
-          const opts = allSites.map(s => '<option value="' + s.id + '"' + (s.id === d.site_id ? ' selected' : '') + '>' + s.name + '</option>').join('');
-          return '<div style="padding:12px; background:#06080f; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">' +
-            '<div style="flex:1; min-width:180px;">' +
-              '<div style="font-weight:600; font-size:13px;">' + d.name + ' <span style="font-size:10px; color:#64748B;">(' + d.id + ')</span></div>' +
-              '<div style="font-size:11px; color:#8B97AB;">' + (d.user_name || '-') + (d.phone ? ' · ' + d.phone : '') +
-                ' <span style="color:' + (d.status === 'connected' ? '#34D399' : '#F87171') + ';">· ' + d.status + '</span>' +
-              '</div>' +
-            '</div>' +
-            '<div style="display:flex; gap:6px; align-items:center;">' +
-              '<label style="font-size:11px; color:#8B97AB;">DB:</label>' +
-              '<select class="form-control" style="padding:6px 10px; font-size:12px; min-width:140px;" onchange="assignDevice(\'' + d.id + '\', this.value)">' + opts + '</select>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-      } catch (e) { console.error(e); }
-    }
-
-    async function assignDevice(deviceId, siteId) {
-      try {
-        const res = await fetch('/api/admin/devices/' + deviceId + '/site', {
-          method: 'PUT', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ siteId })
-        });
-        if (res.ok) showToast('Device di-assign', 'success');
-      } catch (e) { showToast('Gagal assign', 'error'); }
-    }
-
-    // WITHDRAW
     async function loadPendingWithdrawals() {
       try {
         const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
@@ -763,7 +676,7 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
           body: JSON.stringify({ note: '' })
         });
         if (res.ok) { showToast('Di-ACC', 'success'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('Gagal ACC', 'error'); }
+      } catch (e) { showToast('Gagal', 'error'); }
     }
 
     async function rejectWithdraw(id) {
@@ -776,47 +689,43 @@ if (button_text.length > 20) return showToast('Button Text max 20 karakter', 'er
           body: JSON.stringify({ reason })
         });
         if (res.ok) { showToast('Ditolak', 'warning'); loadPendingWithdrawals(); }
-      } catch (e) { showToast('Gagal tolak', 'error'); }
+      } catch (e) { showToast('Gagal', 'error'); }
     }
 
-    // USERS
     async function loadUsers() {
       try {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
         const users = await res.json();
         const tbody = document.getElementById('usersList');
-        if (!users || users.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="padding:16px; text-align:center;">Belum ada user</td></tr>'; return; }
+        if (!users || users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="padding:16px; text-align:center;">Belum ada user</td></tr>';
+          return;
+        }
         tbody.innerHTML = users.map(u => {
-          const tg = u.telegram_username ? '<a href="https://t.me/' + u.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + u.telegram_username + '</a>' : '-';
+          const tg = u.telegram_username
+            ? '<a href="https://t.me/' + u.telegram_username + '" target="_blank" style="color:#60A5FA;">@' + u.telegram_username + '</a>'
+            : '-';
           const pay = [];
-          if (u.method) pay.push(String(u.method).toUpperCase());
           if (u.bank_name) pay.push(u.bank_name);
           if (u.bank_account) pay.push(u.bank_account);
           const payInfo = pay.length ? pay.join('<br>') : '-';
+          const totalChat = u.total_chat || 0;
+          const chatColor = totalChat > 0 ? '#34D399' : '#64748B';
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:8px;">#' + u.id + '</td>' +
             '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</span></td>' +
             '<td style="padding:8px; font-size:11px;">' + tg + '</td>' +
             '<td style="padding:8px; font-size:11px;">' + payInfo + '</td>' +
+            '<td style="padding:8px; font-weight:700; color:' + chatColor + '; font-size:14px;">' + totalChat.toLocaleString('id-ID') + '</td>' +
             '<td style="padding:8px; font-weight:700; color:#3B82F6;">Rp' + (u.balance || 0).toLocaleString('id-ID') + '</td>' +
           '</tr>';
         }).join('');
       } catch (e) { console.error(e); }
     }
 
-    // PHOTO PREVIEW
-    document.getElementById('sitePhoto').addEventListener('input', function() {
-      const p = document.getElementById('sitePhotoPreview');
-      const img = document.getElementById('sitePhotoPreviewImg');
-      if (this.value) { img.src = this.value; p.style.display = 'block'; }
-      else p.style.display = 'none';
-    });
-
-    // INIT
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
       loadSites();
-      loadDevices();
       loadPendingWithdrawals();
       loadUsers();
       updateClock();
