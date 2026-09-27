@@ -11,11 +11,10 @@
     .settings-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
     @media (min-width: 600px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
 
-    /* Schedule Item */
     .sched-item {
       display: flex; gap: 8px; align-items: center; padding: 10px;
       background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2);
-      border-radius: 10px; margin-bottom: 8px;
+      border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap;
     }
     .sched-item input {
       background: rgba(6,10,22,0.7); border: 1px solid rgba(59,130,246,0.3);
@@ -24,7 +23,6 @@
     }
     .sched-item input:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
 
-    /* VIP Badge */
     .vip-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; font-size: 10px; font-weight: 700;
@@ -70,9 +68,7 @@
 
       <div class="admin-content">
 
-        <!-- ═══════════════════════════════════════
-             PENGATURAN RATE & MIN WD
-             ═══════════════════════════════════════ -->
+        <!-- PENGATURAN RATE & MIN WD -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD</h3>
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
@@ -101,16 +97,13 @@
           </div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             PENGATURAN JADWAL WD (NEW)
-             ═══════════════════════════════════════ -->
+        <!-- JADWAL WD -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-calendar-clock"></i> Pengaturan Jadwal Withdraw</h3>
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
-            Atur jam operasional WD. User bebas ajuin, admin cuma bisa ACC di jam ini.
+            User bebas ajuin WD 24 jam. Admin ACC WD cuma di jam ini (kecuali mode 24 jam ON).
           </p>
 
-          <!-- Toggle 24 Jam -->
           <div style="padding:14px; background:linear-gradient(135deg,rgba(52,211,153,0.1),rgba(52,211,153,0.03)); border:1px solid rgba(52,211,153,0.3); border-radius:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
             <div style="display:flex; align-items:center; gap:12px;">
               <i class="fas fa-infinity" style="font-size:24px; color:#34D399;"></i>
@@ -125,7 +118,6 @@
             </label>
           </div>
 
-          <!-- List Sesi -->
           <div id="wdScheduleWrapper">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <div style="font-size:13px; color:#93C5FD; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
@@ -145,42 +137,79 @@
           </div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             VIP REFERRAL (NEW)
-             ═══════════════════════════════════════ -->
+        <!-- KELOLA VIP REFERRAL -->
         <div class="card fade-in" style="margin-bottom:20px;">
-          <h3><i class="fas fa-crown" style="color:#FBBF24;"></i> VIP Referral & Bonus Default</h3>
+          <h3><i class="fas fa-crown" style="color:#FBBF24;"></i> Kelola VIP Referral</h3>
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
-            Atur bonus referral default + VIP user dengan bonus custom.
+            Atur bonus referral default + set VIP ke user tertentu dengan bonus custom.
           </p>
-          <div class="form-field" style="margin-bottom:16px;">
-            <label><i class="fas fa-gift"></i> Bonus Referral Default (Rp)</label>
-            <div class="input-wrap-app">
-              <i class="fas fa-coins" style="color:#FBBF24;"></i>
-              <input type="number" id="setDefaultRefBonus" placeholder="50" min="0">
+
+          <!-- Bonus Default -->
+          <div style="padding:12px 14px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:10px; margin-bottom:16px;">
+            <label style="font-size:11px; color:#8B97AB; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display:block; margin-bottom:8px;">
+              <i class="fas fa-coins" style="color:#FBBF24;"></i> Bonus Referral Default (untuk NON-VIP)
+            </label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div class="input-wrap-app" style="flex:1; min-width:150px;">
+                <i class="fas fa-gift" style="color:#FBBF24;"></i>
+                <input type="number" id="setDefaultRefBonus" placeholder="50" min="0">
+              </div>
+              <button class="btn btn-primary" onclick="saveDefaultRefBonus()"><i class="fas fa-save"></i> Simpan</button>
             </div>
-            <small class="help-text">Bonus yang didapat referrer untuk setiap user baru (non-VIP)</small>
-          </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-primary" onclick="saveDefaultRefBonus()"><i class="fas fa-save"></i> Simpan Bonus Default</button>
-            <span id="refBonusStatus" style="font-size:13px; color:#8B97AB;"></span>
+            <span id="refBonusStatus" style="font-size:12px; color:#8B97AB; display:block; margin-top:6px;"></span>
           </div>
 
-          <div style="margin-top:20px; padding:14px; background:rgba(251,191,36,0.05); border:1px dashed rgba(251,191,36,0.3); border-radius:10px;">
-            <div style="font-size:12px; color:#FBBF24; font-weight:700; margin-bottom:8px;">
-              <i class="fas fa-info-circle"></i> Cara Kerja VIP Referral
+          <!-- Set VIP Form -->
+          <div style="padding:14px; background:linear-gradient(135deg,rgba(251,191,36,0.1),rgba(251,191,36,0.02)); border:1px solid rgba(251,191,36,0.35); border-radius:12px; margin-bottom:16px;">
+            <div style="font-size:12px; color:#FBBF24; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+              <i class="fas fa-user-plus"></i> Set VIP ke User
             </div>
-            <div style="font-size:11px; color:#8B97AB; line-height:1.7;">
-              • User biasa dapet bonus <b id="defBonusPreview" style="color:#FBBF24;">Rp 50</b> per referral<br>
-              • User VIP dapet bonus <b style="color:#FBBF24;">custom</b> yang lo set per user<br>
-              • Untuk jadi VIP, aktifkan di tabel <b>Daftar User</b> di bawah
+
+            <div class="form-field" style="margin-bottom:10px;">
+              <label style="font-size:11px;">Cari User (email / username / phone)</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-search" style="color:#FBBF24;"></i>
+                <input type="text" id="vipSearchUser" placeholder="Ketik email atau username..." oninput="filterVipUsers()">
+              </div>
+            </div>
+
+            <div class="form-field" style="margin-bottom:10px;">
+              <label style="font-size:11px;">Pilih dari List</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-users" style="color:#FBBF24;"></i>
+                <select id="vipSelectUser" style="background:transparent; border:none; color:#E8EFFB; font-size:13px; width:100%; cursor:pointer; outline:none;">
+                  <option value="">-- Pilih User --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-field" style="margin-bottom:12px;">
+              <label style="font-size:11px;">Bonus Custom VIP (Rp per referral)</label>
+              <div class="input-wrap-app">
+                <i class="fas fa-coins" style="color:#FBBF24;"></i>
+                <input type="number" id="vipCustomBonusInput" placeholder="Contoh: 200" min="0">
+              </div>
+              <small class="help-text">User VIP dapet bonus ini per referral (bukan default)</small>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-success" onclick="setVipFromForm(true)"><i class="fas fa-crown"></i> Aktifkan VIP</button>
+              <button class="btn btn-danger" onclick="setVipFromForm(false)"><i class="fas fa-times-circle"></i> Nonaktifkan VIP</button>
+            </div>
+          </div>
+
+          <!-- List User VIP -->
+          <div>
+            <div style="font-size:12px; color:#FBBF24; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">
+              <i class="fas fa-crown"></i> User VIP Aktif <span id="vipCount" style="color:#8B97AB; font-weight:400;">(0)</span>
+            </div>
+            <div id="vipUserList">
+              <p class="empty" style="font-size:12px; text-align:center; padding:10px; color:#64748B;">Belum ada user VIP</p>
             </div>
           </div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             KELOLA DATABASE
-             ═══════════════════════════════════════ -->
+        <!-- KELOLA DATABASE -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-database"></i> Kelola Database
@@ -193,9 +222,7 @@
           </div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             IMPORT KONTAK
-             ═══════════════════════════════════════ -->
+        <!-- IMPORT KONTAK -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-upload"></i> Import Kontak Massal</h3>
           <form id="importForm">
@@ -222,17 +249,13 @@
           <div id="importResult" style="margin-top:12px;"></div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             WITHDRAW PENDING
-             ═══════════════════════════════════════ -->
+        <!-- WITHDRAW PENDING -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Withdraw Pending</h3>
           <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan</p></div>
         </div>
 
-        <!-- ═══════════════════════════════════════
-             DAFTAR USER + VIP
-             ═══════════════════════════════════════ -->
+        <!-- DAFTAR USER -->
         <div class="card fade-in">
           <h3>
             <i class="fas fa-users"></i> Daftar User
@@ -245,11 +268,11 @@
               <thead>
                 <tr style="background:#06080f; text-align:left;">
                   <th style="padding:8px;">ID</th>
-                  <th style="padding:8px;">Nama / Email</th>
+                  <th style="padding:8px;">Nama / Email / Telegram</th>
                   <th style="padding:8px;">Payment</th>
                   <th style="padding:8px;">💬 Chat</th>
                   <th style="padding:8px;">Saldo</th>
-                  <th style="padding:8px;">VIP / Referral</th>
+                  <th style="padding:8px;">Referral</th>
                   <th style="padding:8px;">Aksi</th>
                 </tr>
               </thead>
@@ -384,45 +407,6 @@
     </div>
   </div>
 
-  <!-- MODAL VIP -->
-  <div class="modal" id="vipModal">
-    <div class="modal-content" style="max-width:480px;">
-      <div class="modal-header">
-        <h3><i class="fas fa-crown" style="color:#FBBF24;"></i> Setting VIP Referral</h3>
-        <button class="modal-close" onclick="closeModal('vipModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="vipUserId">
-        <div id="vipUserInfo" style="padding:12px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); border-radius:10px; margin-bottom:14px;"></div>
-
-        <div class="form-field" style="margin-bottom:14px;">
-          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; text-transform:none; letter-spacing:0; font-size:13px; color:#E8EFFB;">
-            <input type="checkbox" id="vipIsVip" style="width:18px; height:18px; accent-color:#FBBF24;">
-            <span><i class="fas fa-crown" style="color:#FBBF24;"></i> Aktifkan VIP untuk user ini</span>
-          </label>
-        </div>
-
-        <div class="form-field" id="vipBonusGroup" style="margin-bottom:14px; display:none;">
-          <label>Custom Bonus Referral (Rp)</label>
-          <div class="input-wrap-app">
-            <i class="fas fa-gift" style="color:#FBBF24;"></i>
-            <input type="number" id="vipCustomBonus" placeholder="Contoh: 200" min="0">
-          </div>
-          <small class="help-text">Bonus yang didapat user ini per referral (ganti default)</small>
-        </div>
-
-        <div id="vipInfoBox" style="padding:12px; background:rgba(59,130,246,0.06); border-radius:10px; font-size:12px; color:#8B97AB; line-height:1.6;">
-          <i class="fas fa-info-circle" style="color:#3B82F6;"></i>
-          User VIP dapat bonus referral custom. Kalau dikosongkan, pakai bonus default.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('vipModal')">Batal</button>
-        <button class="btn btn-primary" onclick="saveVip()"><i class="fas fa-save"></i> Simpan</button>
-      </div>
-    </div>
-  </div>
-
   <div id="toastContainer" class="toast-container"></div>
   <script src="helpers.js"></script>
 
@@ -454,9 +438,7 @@
       document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
-    // ═══════════════════════════════════════════
-    // SETTINGS (Rate, Min WD, Ref Bonus)
-    // ═══════════════════════════════════════════
+    // SETTINGS
     async function loadSettings() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
@@ -465,7 +447,6 @@
         document.getElementById('setPricePerChat').value = d.price_per_chat || 700;
         document.getElementById('setMinWithdraw').value = d.min_withdraw || 20000;
         document.getElementById('setDefaultRefBonus').value = d.default_ref_bonus || 50;
-        document.getElementById('defBonusPreview').textContent = rupiah(d.default_ref_bonus || 50);
         defaultRefBonus = parseInt(d.default_ref_bonus) || 50;
       } catch (e) {
         document.getElementById('setPricePerChat').value = 700;
@@ -519,7 +500,6 @@
         status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
         showToast('Bonus default tersimpan!', 'success');
         defaultRefBonus = parseInt(val);
-        document.getElementById('defBonusPreview').textContent = rupiah(val);
         setTimeout(() => { status.innerHTML = ''; }, 3000);
         loadUsers();
       } catch (e) {
@@ -528,9 +508,7 @@
       }
     }
 
-    // ═══════════════════════════════════════════
     // JADWAL WD
-    // ═══════════════════════════════════════════
     async function loadScheduleConfig() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
@@ -554,8 +532,6 @@
         slider.style.background = 'rgba(100,116,139,0.5)';
         slider.style.boxShadow = 'none';
       }
-      const knob = slider.querySelector('span') || document.createElement('span');
-      // Simple knob
       if (!slider.querySelector('.toggle-knob')) {
         const k = document.createElement('span');
         k.className = 'toggle-knob';
@@ -579,7 +555,7 @@
           '<input type="time" class="sched-start" value="' + (s.start || '10:30') + '">' +
           '<span style="color:#8B97AB; font-size:12px;">s/d</span>' +
           '<input type="time" class="sched-end" value="' + (s.end || '13:00') + '">' +
-          '<input type="text" class="sched-label" placeholder="Label (opsional)" value="' + (s.label || '') + '" style="flex:1; text-align:left;">' +
+          '<input type="text" class="sched-label" placeholder="Label (opsional)" value="' + (s.label || '') + '" style="flex:1; text-align:left; min-width:100px;">' +
           '<button class="btn-icon-sm danger" onclick="removeScheduleRow(' + i + ')" title="Hapus"><i class="fas fa-trash"></i></button>' +
         '</div>'
       ).join('');
@@ -658,9 +634,123 @@
       }
     }
 
-    // ═══════════════════════════════════════════
+    // VIP MANAGEMENT
+    function populateVipDropdown() {
+      const sel = document.getElementById('vipSelectUser');
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">-- Pilih User --</option>';
+      (allUsers || []).forEach(u => {
+        const o = document.createElement('option');
+        o.value = u.id;
+        o.textContent = u.name + ' (' + u.email + ')' + (u.is_vip ? ' 👑 VIP' : '');
+        sel.appendChild(o);
+      });
+      if (cur) sel.value = cur;
+    }
+
+    function filterVipUsers() {
+      const search = (document.getElementById('vipSearchUser').value || '').trim().toLowerCase();
+      const sel = document.getElementById('vipSelectUser');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">-- Pilih User --</option>';
+      const filtered = (allUsers || []).filter(u =>
+        !search ||
+        (u.email || '').toLowerCase().includes(search) ||
+        (u.name || '').toLowerCase().includes(search) ||
+        (u.phone || '').includes(search)
+      );
+      filtered.forEach(u => {
+        const o = document.createElement('option');
+        o.value = u.id;
+        o.textContent = u.name + ' (' + u.email + ')' + (u.is_vip ? ' 👑 VIP' : '');
+        sel.appendChild(o);
+      });
+      if (cur && filtered.some(u => String(u.id) === String(cur))) sel.value = cur;
+    }
+
+    async function setVipFromForm(enable) {
+      const userId = document.getElementById('vipSelectUser').value;
+      const bonus = document.getElementById('vipCustomBonusInput').value.trim();
+
+      if (!userId) return showToast('Pilih user dulu', 'error');
+      if (enable && !bonus) return showToast('Isi bonus custom VIP', 'error');
+      if (enable && parseInt(bonus) < 0) return showToast('Bonus tidak valid', 'error');
+
+      const u = allUsers.find(x => String(x.id) === String(userId));
+      const username = u ? (u.name + ' (' + u.email + ')') : '';
+
+      const confirmText = enable
+        ? 'Aktifkan VIP untuk:\n' + username + '\nBonus: ' + rupiah(parseInt(bonus)) + '/ref\n\nLanjut?'
+        : 'Nonaktifkan VIP untuk:\n' + username + '?\n\nBonus akan balik ke default.';
+      if (!confirm(confirmText)) return;
+
+      try {
+        const res = await fetch('/api/admin/users/' + userId + '/vip', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            is_vip: enable ? 1 : 0,
+            custom_ref_bonus: enable ? parseInt(bonus) : null
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+
+        showToast(enable ? '👑 User di-set VIP!' : '✓ VIP dinonaktifkan', 'success');
+        document.getElementById('vipCustomBonusInput').value = '';
+        document.getElementById('vipSearchUser').value = '';
+        await loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
+    function renderVipList() {
+      const c = document.getElementById('vipUserList');
+      if (!c) return;
+      const vips = (allUsers || []).filter(u => u.is_vip === 1);
+      document.getElementById('vipCount').textContent = '(' + vips.length + ')';
+
+      if (vips.length === 0) {
+        c.innerHTML = '<p class="empty" style="font-size:12px; text-align:center; padding:10px; color:#64748B;"><i class="fas fa-crown" style="opacity:0.3;"></i> Belum ada user VIP</p>';
+        return;
+      }
+
+      c.innerHTML = vips.map(u =>
+        '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px; background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.3); border-radius:10px; margin-bottom:8px; flex-wrap:wrap;">' +
+          '<div style="flex:1; min-width:180px;">' +
+            '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">' +
+              '<b style="color:#FBBF24; font-size:13px;">' + (u.name || '-') + '</b>' +
+              '<span class="vip-badge"><i class="fas fa-crown"></i> VIP</span>' +
+            '</div>' +
+            '<div style="color:#8B97AB; font-size:11px; margin-top:2px;">' + (u.email || '-') + '</div>' +
+            '<div style="color:#60A5FA; font-size:11px; margin-top:4px;">' +
+              '<i class="fas fa-gift"></i> Bonus: <b style="color:#FBBF24;">' + rupiah(u.custom_ref_bonus || 0) + '/ref</b>' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn btn-sm btn-danger" onclick="quickUnVip(' + u.id + ')" title="Nonaktifkan VIP" style="padding:6px 12px; font-size:11px; white-space:nowrap;">' +
+            '<i class="fas fa-times"></i> UnVIP' +
+          '</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    async function quickUnVip(userId) {
+      const u = allUsers.find(x => x.id === userId);
+      const username = u ? (u.name + ' (' + u.email + ')') : '';
+      if (!confirm('Nonaktifkan VIP untuk ' + username + '?')) return;
+      try {
+        const res = await fetch('/api/admin/users/' + userId + '/vip', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_vip: 0, custom_ref_bonus: null })
+        });
+        if (!res.ok) throw new Error('Gagal');
+        showToast('✓ VIP dinonaktifkan', 'success');
+        await loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
     // SITES
-    // ═══════════════════════════════════════════
     async function loadSites() {
       try {
         const res = await fetch('/api/admin/sites', { credentials: 'include' });
@@ -774,9 +864,7 @@
       } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
-    // ═══════════════════════════════════════════
     // IMPORT
-    // ═══════════════════════════════════════════
     document.getElementById('importForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const siteId = document.getElementById('importSite').value;
@@ -814,9 +902,7 @@
 
     document.getElementById('importNumbers').addEventListener('input', updateImportCount);
 
-    // ═══════════════════════════════════════════
     // CONTACTS
-    // ═══════════════════════════════════════════
     function openContactModal(siteId) {
       currentContactSiteId = siteId;
       currentContactFilter = 'all';
@@ -966,9 +1052,7 @@
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
-    // ═══════════════════════════════════════════
     // USER CHAT PER DB
-    // ═══════════════════════════════════════════
     async function openSiteUsersModal(siteId, siteName) {
       const existing = document.getElementById('siteUsersModal');
       if (existing) existing.remove();
@@ -1033,9 +1117,7 @@
       }
     }
 
-    // ═══════════════════════════════════════════
     // WITHDRAW
-    // ═══════════════════════════════════════════
     async function loadPendingWithdrawals() {
       try {
         const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
@@ -1248,9 +1330,7 @@
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
-    // ═══════════════════════════════════════════
-    // USERS + VIP
-    // ═══════════════════════════════════════════
+    // USERS
     async function loadUsers() {
       try {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
@@ -1261,6 +1341,7 @@
         const tbody = document.getElementById('usersList');
         if (!users || users.length === 0) {
           tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">Belum ada user</td></tr>';
+          try { populateVipDropdown(); renderVipList(); } catch (_) {}
           return;
         }
         tbody.innerHTML = users.map(u => {
@@ -1276,12 +1357,10 @@
           const totalAll = u.total_chat_all || 0;
           const chatColor = totalChat > 0 ? '#34D399' : '#64748B';
           const isVip = u.is_vip === 1;
-          const vipBadge = isVip
-            ? '<div class="vip-badge"><i class="fas fa-crown"></i> VIP</div>'
-            : '';
+          const vipBadge = isVip ? '<span class="vip-badge"><i class="fas fa-crown"></i> VIP</span>' : '';
           const bonusText = isVip && u.custom_ref_bonus
-            ? '<div style="font-size:10px; color:#FBBF24; margin-top:2px;"><i class="fas fa-gift"></i> ' + rupiah(u.custom_ref_bonus) + '/ref</div>'
-            : '<div style="font-size:10px; color:#64748B; margin-top:2px;"><i class="fas fa-gift"></i> ' + rupiah(u.effective_ref_bonus || defaultRefBonus) + '/ref</div>';
+            ? '<div style="color:#FBBF24; font-weight:700;"><i class="fas fa-gift"></i> ' + rupiah(u.custom_ref_bonus) + '/ref</div>'
+            : '<div style="color:#64748B; font-size:11px;"><i class="fas fa-gift"></i> ' + rupiah(u.effective_ref_bonus || defaultRefBonus) + '/ref</div>';
 
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:8px;">#' + u.id + '</td>' +
@@ -1300,66 +1379,14 @@
             '</td>' +
             '<td style="padding:8px; font-size:11px;">' + bonusText + '</td>' +
             '<td style="padding:8px;">' +
-              '<div style="display:flex; gap:4px; flex-wrap:wrap;">' +
-                '<button class="btn btn-sm" onclick="openVipModal(' + u.id + ')" title="Setting VIP" style="background:rgba(251,191,36,0.15); color:#FBBF24; border:1px solid rgba(251,191,36,0.3); padding:4px 8px; font-size:10px;"><i class="fas fa-crown"></i></button>' +
-                '<button class="btn btn-sm" onclick="recalcBalance(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Fix saldo" style="background:rgba(59,130,246,0.15); color:#60A5FA; border:1px solid rgba(59,130,246,0.3); padding:4px 8px; font-size:10px;"><i class="fas fa-calculator"></i></button>' +
-              '</div>' +
+              '<button class="btn btn-sm" onclick="recalcBalance(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Fix saldo" style="background:rgba(59,130,246,0.15); color:#60A5FA; border:1px solid rgba(59,130,246,0.3); padding:4px 8px; font-size:10px;"><i class="fas fa-calculator"></i> Fix</button>' +
             '</td>' +
           '</tr>';
         }).join('');
+
+        populateVipDropdown();
+        renderVipList();
       } catch (e) { console.error(e); }
-    }
-
-    function openVipModal(userId) {
-      const u = allUsers.find(x => x.id === userId);
-      if (!u) return;
-      document.getElementById('vipUserId').value = userId;
-      document.getElementById('vipUserInfo').innerHTML =
-        '<div style="font-size:13px;">' +
-          '<b style="color:#FBBF24;"><i class="fas fa-user"></i> ' + (u.name || '-') + '</b>' +
-          '<div style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</div>' +
-          '<div style="color:#8B97AB; font-size:11px;">Referral: <b style="color:#60A5FA;">' + (u.total_referral || 0) + '</b> orang</div>' +
-        '</div>';
-
-      const isVip = u.is_vip === 1;
-      document.getElementById('vipIsVip').checked = isVip;
-      document.getElementById('vipBonusGroup').style.display = isVip ? 'block' : 'none';
-      document.getElementById('vipCustomBonus').value = u.custom_ref_bonus || '';
-
-      document.getElementById('vipModal').classList.add('active');
-    }
-
-    document.getElementById('vipIsVip').addEventListener('change', function() {
-      document.getElementById('vipBonusGroup').style.display = this.checked ? 'block' : 'none';
-    });
-
-    async function saveVip() {
-      const userId = document.getElementById('vipUserId').value;
-      const isVip = document.getElementById('vipIsVip').checked;
-      const customBonus = document.getElementById('vipCustomBonus').value.trim();
-
-      if (isVip && !customBonus) {
-        return showToast('Isi bonus custom untuk VIP', 'error');
-      }
-      if (isVip && parseInt(customBonus) < 0) {
-        return showToast('Bonus tidak valid', 'error');
-      }
-
-      try {
-        const res = await fetch('/api/admin/users/' + userId + '/vip', {
-          method: 'PUT', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            is_vip: isVip ? 1 : 0,
-            custom_ref_bonus: isVip ? parseInt(customBonus) : null
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Gagal');
-        showToast(isVip ? '👑 User di-set VIP!' : '✓ VIP dinonaktifkan', 'success');
-        closeModal('vipModal');
-        loadUsers();
-      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
     async function recalcBalance(userId, userName) {
@@ -1406,9 +1433,7 @@
       }
     }
 
-    // ═══════════════════════════════════════════
     // INIT
-    // ═══════════════════════════════════════════
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
       loadScheduleConfig();
