@@ -8,13 +8,29 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    .settings-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
+    .settings-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 600px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
+
+    /* Schedule Item */
+    .sched-item {
+      display: flex; gap: 8px; align-items: center; padding: 10px;
+      background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 10px; margin-bottom: 8px;
     }
-    @media (min-width: 600px) {
-      .settings-grid { grid-template-columns: 1fr 1fr; }
+    .sched-item input {
+      background: rgba(6,10,22,0.7); border: 1px solid rgba(59,130,246,0.3);
+      color: #E8EFFB; padding: 8px 10px; border-radius: 8px; font-size: 13px;
+      font-family: 'Courier New', monospace; text-align: center;
+    }
+    .sched-item input:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 10px rgba(59,130,246,0.4); }
+
+    /* VIP Badge */
+    .vip-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; font-size: 10px; font-weight: 700;
+      background: linear-gradient(135deg, #FBBF24, #D97706);
+      color: #0a0e0d; border-radius: 20px; text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
   </style>
 </head>
@@ -54,7 +70,9 @@
 
       <div class="admin-content">
 
-        <!-- PENGATURAN RATE -->
+        <!-- ═══════════════════════════════════════
+             PENGATURAN RATE & MIN WD
+             ═══════════════════════════════════════ -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-sliders-h"></i> Pengaturan Rate & Minimum WD</h3>
           <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
@@ -83,7 +101,86 @@
           </div>
         </div>
 
-        <!-- KELOLA DATABASE -->
+        <!-- ═══════════════════════════════════════
+             PENGATURAN JADWAL WD (NEW)
+             ═══════════════════════════════════════ -->
+        <div class="card fade-in" style="margin-bottom:20px;">
+          <h3><i class="fas fa-calendar-clock"></i> Pengaturan Jadwal Withdraw</h3>
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
+            Atur jam operasional WD. User bebas ajuin, admin cuma bisa ACC di jam ini.
+          </p>
+
+          <!-- Toggle 24 Jam -->
+          <div style="padding:14px; background:linear-gradient(135deg,rgba(52,211,153,0.1),rgba(52,211,153,0.03)); border:1px solid rgba(52,211,153,0.3); border-radius:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <i class="fas fa-infinity" style="font-size:24px; color:#34D399;"></i>
+              <div>
+                <div style="font-weight:700; color:#34D399; font-size:14px;">Mode 24 Jam</div>
+                <div style="font-size:11px; color:#8B97AB;">Kalau ON, WD bisa diajuin & di-ACC kapan aja</div>
+              </div>
+            </div>
+            <label style="position:relative; display:inline-block; width:56px; height:30px; cursor:pointer;">
+              <input type="checkbox" id="toggle24h" onchange="toggle24hMode(this.checked)" style="opacity:0; width:0; height:0;">
+              <span id="toggle24hSlider" style="position:absolute; inset:0; background:rgba(100,116,139,0.5); border-radius:30px; transition:.3s;"></span>
+            </label>
+          </div>
+
+          <!-- List Sesi -->
+          <div id="wdScheduleWrapper">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <div style="font-size:13px; color:#93C5FD; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
+                <i class="fas fa-clock"></i> Sesi WD (WIB)
+              </div>
+              <button class="btn btn-sm btn-success" onclick="addScheduleRow()" id="btnAddSched">
+                <i class="fas fa-plus"></i> Tambah Sesi
+              </button>
+            </div>
+            <div id="scheduleList"></div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary" onclick="saveSchedule()"><i class="fas fa-save"></i> Simpan Jadwal</button>
+            <button class="btn btn-secondary" onclick="loadScheduleConfig()"><i class="fas fa-sync"></i> Reload</button>
+            <span id="scheduleStatus" style="font-size:13px; color:#8B97AB;"></span>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════
+             VIP REFERRAL (NEW)
+             ═══════════════════════════════════════ -->
+        <div class="card fade-in" style="margin-bottom:20px;">
+          <h3><i class="fas fa-crown" style="color:#FBBF24;"></i> VIP Referral & Bonus Default</h3>
+          <p style="font-size:12px; color:#8B97AB; margin-bottom:14px;">
+            Atur bonus referral default + VIP user dengan bonus custom.
+          </p>
+          <div class="form-field" style="margin-bottom:16px;">
+            <label><i class="fas fa-gift"></i> Bonus Referral Default (Rp)</label>
+            <div class="input-wrap-app">
+              <i class="fas fa-coins" style="color:#FBBF24;"></i>
+              <input type="number" id="setDefaultRefBonus" placeholder="50" min="0">
+            </div>
+            <small class="help-text">Bonus yang didapat referrer untuk setiap user baru (non-VIP)</small>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary" onclick="saveDefaultRefBonus()"><i class="fas fa-save"></i> Simpan Bonus Default</button>
+            <span id="refBonusStatus" style="font-size:13px; color:#8B97AB;"></span>
+          </div>
+
+          <div style="margin-top:20px; padding:14px; background:rgba(251,191,36,0.05); border:1px dashed rgba(251,191,36,0.3); border-radius:10px;">
+            <div style="font-size:12px; color:#FBBF24; font-weight:700; margin-bottom:8px;">
+              <i class="fas fa-info-circle"></i> Cara Kerja VIP Referral
+            </div>
+            <div style="font-size:11px; color:#8B97AB; line-height:1.7;">
+              • User biasa dapet bonus <b id="defBonusPreview" style="color:#FBBF24;">Rp 50</b> per referral<br>
+              • User VIP dapet bonus <b style="color:#FBBF24;">custom</b> yang lo set per user<br>
+              • Untuk jadi VIP, aktifkan di tabel <b>Daftar User</b> di bawah
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════
+             KELOLA DATABASE
+             ═══════════════════════════════════════ -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3>
             <i class="fas fa-database"></i> Kelola Database
@@ -96,7 +193,9 @@
           </div>
         </div>
 
-        <!-- IMPORT KONTAK -->
+        <!-- ═══════════════════════════════════════
+             IMPORT KONTAK
+             ═══════════════════════════════════════ -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-upload"></i> Import Kontak Massal</h3>
           <form id="importForm">
@@ -116,20 +215,24 @@
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
-              <button type="button" class="btn btn-secondary" onclick="document.getElementById('importNumbers').value='';updateImportCount();">Kosongkan</button>
+              <button type="button" class="btn btn-secondary" onclick="document.getElementById('importNumbers').value='';updateImportCount();"><i class="fas fa-eraser"></i> Kosongkan</button>
               <span id="importCount" style="font-size:13px; color:#8B97AB; margin-left:8px;">0 nomor</span>
             </div>
           </form>
           <div id="importResult" style="margin-top:12px;"></div>
         </div>
 
-        <!-- WITHDRAW PENDING -->
+        <!-- ═══════════════════════════════════════
+             WITHDRAW PENDING
+             ═══════════════════════════════════════ -->
         <div class="card fade-in" style="margin-bottom:20px;">
           <h3><i class="fas fa-clock"></i> Withdraw Pending</h3>
           <div id="pendingWithdrawList"><p class="empty">Tidak ada permintaan</p></div>
         </div>
 
-        <!-- DAFTAR USER -->
+        <!-- ═══════════════════════════════════════
+             DAFTAR USER + VIP
+             ═══════════════════════════════════════ -->
         <div class="card fade-in">
           <h3>
             <i class="fas fa-users"></i> Daftar User
@@ -143,14 +246,15 @@
                 <tr style="background:#06080f; text-align:left;">
                   <th style="padding:8px;">ID</th>
                   <th style="padding:8px;">Nama / Email</th>
-                  <th style="padding:8px;">Telegram</th>
                   <th style="padding:8px;">Payment</th>
                   <th style="padding:8px;">💬 Chat</th>
                   <th style="padding:8px;">Saldo</th>
+                  <th style="padding:8px;">VIP / Referral</th>
+                  <th style="padding:8px;">Aksi</th>
                 </tr>
               </thead>
               <tbody id="usersList">
-                <tr><td colspan="6" style="padding:16px; text-align:center; color:#64748B;">Loading...</td></tr>
+                <tr><td colspan="7" style="padding:16px; text-align:center; color:#64748B;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -186,7 +290,6 @@
             <i class="fas fa-mouse-pointer"></i>
             <input type="text" id="siteButtonText" placeholder="Contoh: Order Sekarang" maxlength="20">
           </div>
-          <small class="help-text">Kosongkan kalau gak pakai button.</small>
         </div>
         <div class="form-field" style="margin-bottom:14px;">
           <label>Button URL (opsional)</label>
@@ -194,7 +297,6 @@
             <i class="fas fa-link"></i>
             <input type="url" id="siteButtonUrl" placeholder="https://wa.me/628xxx">
           </div>
-          <small class="help-text">Link yang kebuka saat tombol di-klik.</small>
         </div>
         <div class="form-field" style="margin-bottom:14px;">
           <label>Foto Template (URL, opsional)</label>
@@ -211,7 +313,7 @@
     </div>
   </div>
 
-  <!-- MODAL LIHAT NOMOR -->
+  <!-- MODAL CONTACTS -->
   <div class="modal" id="contactModal">
     <div class="modal-content" style="max-width:720px;">
       <div class="modal-header">
@@ -282,6 +384,45 @@
     </div>
   </div>
 
+  <!-- MODAL VIP -->
+  <div class="modal" id="vipModal">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-crown" style="color:#FBBF24;"></i> Setting VIP Referral</h3>
+        <button class="modal-close" onclick="closeModal('vipModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="vipUserId">
+        <div id="vipUserInfo" style="padding:12px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.3); border-radius:10px; margin-bottom:14px;"></div>
+
+        <div class="form-field" style="margin-bottom:14px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; text-transform:none; letter-spacing:0; font-size:13px; color:#E8EFFB;">
+            <input type="checkbox" id="vipIsVip" style="width:18px; height:18px; accent-color:#FBBF24;">
+            <span><i class="fas fa-crown" style="color:#FBBF24;"></i> Aktifkan VIP untuk user ini</span>
+          </label>
+        </div>
+
+        <div class="form-field" id="vipBonusGroup" style="margin-bottom:14px; display:none;">
+          <label>Custom Bonus Referral (Rp)</label>
+          <div class="input-wrap-app">
+            <i class="fas fa-gift" style="color:#FBBF24;"></i>
+            <input type="number" id="vipCustomBonus" placeholder="Contoh: 200" min="0">
+          </div>
+          <small class="help-text">Bonus yang didapat user ini per referral (ganti default)</small>
+        </div>
+
+        <div id="vipInfoBox" style="padding:12px; background:rgba(59,130,246,0.06); border-radius:10px; font-size:12px; color:#8B97AB; line-height:1.6;">
+          <i class="fas fa-info-circle" style="color:#3B82F6;"></i>
+          User VIP dapat bonus referral custom. Kalau dikosongkan, pakai bonus default.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('vipModal')">Batal</button>
+        <button class="btn btn-primary" onclick="saveVip()"><i class="fas fa-save"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
   <script src="helpers.js"></script>
 
@@ -290,6 +431,10 @@
     let currentContactFilter = 'all';
     let currentContactPage = 1;
     let currentContactSiteId = null;
+    let allUsers = [];
+    let defaultRefBonus = 50;
+
+    function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
 
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -309,9 +454,9 @@
       document.getElementById('importCount').textContent = lines.length + ' nomor';
     }
 
-    function rupiah(n) { return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID'); }
-
-    // SETTINGS
+    // ═══════════════════════════════════════════
+    // SETTINGS (Rate, Min WD, Ref Bonus)
+    // ═══════════════════════════════════════════
     async function loadSettings() {
       try {
         const res = await fetch('/api/admin/settings', { credentials: 'include' });
@@ -319,9 +464,13 @@
         const d = await res.json();
         document.getElementById('setPricePerChat').value = d.price_per_chat || 700;
         document.getElementById('setMinWithdraw').value = d.min_withdraw || 20000;
+        document.getElementById('setDefaultRefBonus').value = d.default_ref_bonus || 50;
+        document.getElementById('defBonusPreview').textContent = rupiah(d.default_ref_bonus || 50);
+        defaultRefBonus = parseInt(d.default_ref_bonus) || 50;
       } catch (e) {
         document.getElementById('setPricePerChat').value = 700;
         document.getElementById('setMinWithdraw').value = 20000;
+        document.getElementById('setDefaultRefBonus').value = 50;
       }
     }
 
@@ -342,18 +491,176 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        status.innerHTML = '<span style="color:#34D399;">✅ Tersimpan</span>';
+        status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
         showToast('Pengaturan tersimpan!', 'success');
         setTimeout(() => { status.innerHTML = ''; }, 3000);
         loadUsers();
-        loadSites();
       } catch (e) {
-        status.innerHTML = '<span style="color:#F87171;">❌ Gagal</span>';
+        status.innerHTML = '<span style="color:#F87171;"><i class="fas fa-times-circle"></i> Gagal</span>';
         showToast('Gagal: ' + e.message, 'error');
       }
     }
 
+    async function saveDefaultRefBonus() {
+      const val = document.getElementById('setDefaultRefBonus').value.trim();
+      const status = document.getElementById('refBonusStatus');
+
+      if (!val || parseInt(val) < 0) return showToast('Bonus tidak valid', 'error');
+
+      status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ default_ref_bonus: parseInt(val) })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
+        showToast('Bonus default tersimpan!', 'success');
+        defaultRefBonus = parseInt(val);
+        document.getElementById('defBonusPreview').textContent = rupiah(val);
+        setTimeout(() => { status.innerHTML = ''; }, 3000);
+        loadUsers();
+      } catch (e) {
+        status.innerHTML = '<span style="color:#F87171;"><i class="fas fa-times-circle"></i> Gagal</span>';
+        showToast('Gagal: ' + e.message, 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // JADWAL WD
+    // ═══════════════════════════════════════════
+    async function loadScheduleConfig() {
+      try {
+        const res = await fetch('/api/admin/settings', { credentials: 'include' });
+        const d = await res.json();
+        const is24h = d.wd_24h_mode === '1';
+        document.getElementById('toggle24h').checked = is24h;
+        updateToggle24hUI(is24h);
+
+        let sched = [];
+        try { sched = JSON.parse(d.wd_schedule || '[]'); } catch { sched = []; }
+        renderSchedule(sched);
+      } catch (e) { console.error(e); }
+    }
+
+    function updateToggle24hUI(on) {
+      const slider = document.getElementById('toggle24hSlider');
+      if (on) {
+        slider.style.background = 'linear-gradient(135deg,#34D399,#059669)';
+        slider.style.boxShadow = '0 0 15px rgba(52,211,153,0.6)';
+      } else {
+        slider.style.background = 'rgba(100,116,139,0.5)';
+        slider.style.boxShadow = 'none';
+      }
+      const knob = slider.querySelector('span') || document.createElement('span');
+      // Simple knob
+      if (!slider.querySelector('.toggle-knob')) {
+        const k = document.createElement('span');
+        k.className = 'toggle-knob';
+        k.style.cssText = 'position:absolute;top:3px;left:3px;width:24px;height:24px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 2px 4px rgba(0,0,0,0.3);';
+        slider.appendChild(k);
+      }
+      const k = slider.querySelector('.toggle-knob');
+      if (on) { k.style.transform = 'translateX(26px)'; }
+      else { k.style.transform = 'translateX(0)'; }
+    }
+
+    function renderSchedule(list) {
+      const c = document.getElementById('scheduleList');
+      if (!list || list.length === 0) {
+        c.innerHTML = '<p class="empty" style="text-align:center; padding:14px; color:#64748B;"><i class="fas fa-calendar-times"></i> Belum ada sesi. Klik "Tambah Sesi".</p>';
+        return;
+      }
+      c.innerHTML = list.map((s, i) =>
+        '<div class="sched-item">' +
+          '<span style="color:#60A5FA; font-size:11px; font-weight:700; min-width:24px;">#' + (i+1) + '</span>' +
+          '<input type="time" class="sched-start" value="' + (s.start || '10:30') + '">' +
+          '<span style="color:#8B97AB; font-size:12px;">s/d</span>' +
+          '<input type="time" class="sched-end" value="' + (s.end || '13:00') + '">' +
+          '<input type="text" class="sched-label" placeholder="Label (opsional)" value="' + (s.label || '') + '" style="flex:1; text-align:left;">' +
+          '<button class="btn-icon-sm danger" onclick="removeScheduleRow(' + i + ')" title="Hapus"><i class="fas fa-trash"></i></button>' +
+        '</div>'
+      ).join('');
+    }
+
+    function addScheduleRow() {
+      const list = getScheduleFromDOM();
+      list.push({ start: '10:30', end: '13:00', label: '' });
+      renderSchedule(list);
+    }
+
+    function removeScheduleRow(idx) {
+      const list = getScheduleFromDOM();
+      list.splice(idx, 1);
+      renderSchedule(list);
+    }
+
+    function getScheduleFromDOM() {
+      const rows = document.querySelectorAll('.sched-item');
+      const list = [];
+      rows.forEach(r => {
+        const start = r.querySelector('.sched-start').value;
+        const end = r.querySelector('.sched-end').value;
+        const label = r.querySelector('.sched-label').value.trim();
+        if (start && end) list.push({ start, end, label });
+      });
+      return list;
+    }
+
+    async function toggle24hMode(on) {
+      updateToggle24hUI(on);
+      const wrapper = document.getElementById('wdScheduleWrapper');
+      const btnAdd = document.getElementById('btnAddSched');
+      if (on) {
+        wrapper.style.opacity = '0.4';
+        wrapper.style.pointerEvents = 'none';
+        btnAdd.disabled = true;
+      } else {
+        wrapper.style.opacity = '1';
+        wrapper.style.pointerEvents = 'auto';
+        btnAdd.disabled = false;
+      }
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wd_24h_mode: on ? '1' : '0' })
+        });
+        if (!res.ok) throw new Error('Gagal');
+        showToast(on ? '🔥 Mode 24 jam AKTIF' : '📅 Mode jadwal AKTIF', 'success');
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    }
+
+    async function saveSchedule() {
+      const status = document.getElementById('scheduleStatus');
+      const list = getScheduleFromDOM();
+
+      if (list.length === 0) return showToast('Minimal 1 sesi', 'error');
+
+      status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wd_schedule: JSON.stringify(list) })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        status.innerHTML = '<span style="color:#34D399;"><i class="fas fa-check-circle"></i> Tersimpan</span>';
+        showToast('Jadwal tersimpan!', 'success');
+        setTimeout(() => { status.innerHTML = ''; }, 3000);
+      } catch (e) {
+        status.innerHTML = '<span style="color:#F87171;"><i class="fas fa-times-circle"></i> Gagal</span>';
+        showToast('Gagal: ' + e.message, 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════
     // SITES
+    // ═══════════════════════════════════════════
     async function loadSites() {
       try {
         const res = await fetch('/api/admin/sites', { credentials: 'include' });
@@ -384,7 +691,7 @@
               '</div>' +
               '<div style="display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:#8B97AB; padding-top:6px; border-top:1px dashed rgba(59,130,246,0.15);">' +
                 '<span style="color:#60A5FA;"><i class="fas fa-comments"></i> <b>' + (s.total_chat || 0).toLocaleString('id-ID') + '</b> chat outstanding</span>' +
-                '<span style="color:#FBBF24;"><i class="fas fa-coins"></i> Rp' + (s.total_profit || 0).toLocaleString('id-ID') + '</span>' +
+                '<span style="color:#FBBF24;"><i class="fas fa-coins"></i> ' + rupiah(s.total_profit || 0) + '</span>' +
               '</div>' +
             '</div>' +
             '<div style="display:flex; flex-direction:column; gap:6px; min-width:130px;">' +
@@ -467,7 +774,9 @@
       } catch (e) { showToast('Gagal hapus', 'error'); }
     }
 
+    // ═══════════════════════════════════════════
     // IMPORT
+    // ═══════════════════════════════════════════
     document.getElementById('importForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const siteId = document.getElementById('importSite').value;
@@ -491,12 +800,12 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Gagal');
-        resultDiv.innerHTML = '<div class="alert alert-success"><b>' + data.inserted + '</b> diimport! ' + (data.skipped > 0 ? '(' + data.skipped + ' duplikat)' : '') + '</div>';
+        resultDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> <b>' + data.inserted + '</b> diimport! ' + (data.skipped > 0 ? '(' + data.skipped + ' duplikat)' : '') + '</div>';
         document.getElementById('importNumbers').value = '';
         updateImportCount();
         loadSites();
       } catch (err) {
-        resultDiv.innerHTML = '<div class="alert alert-danger">Gagal: ' + err.message + '</div>';
+        resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Gagal: ' + err.message + '</div>';
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-upload"></i> Import';
@@ -505,7 +814,9 @@
 
     document.getElementById('importNumbers').addEventListener('input', updateImportCount);
 
+    // ═══════════════════════════════════════════
     // CONTACTS
+    // ═══════════════════════════════════════════
     function openContactModal(siteId) {
       currentContactSiteId = siteId;
       currentContactFilter = 'all';
@@ -578,9 +889,9 @@
 
         const pag = document.getElementById('contactsPagination');
         let html = '';
-        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')">« Prev</button>';
+        if (data.page > 1) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page - 1) + ')"><i class="fas fa-chevron-left"></i> Prev</button>';
         html += '<span style="padding:8px 12px; font-size:12px;">Hal ' + data.page + ' / ' + data.totalPages + '</span>';
-        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next »</button>';
+        if (data.page < data.totalPages) html += '<button class="btn btn-sm btn-secondary" onclick="loadContacts(null, ' + (data.page + 1) + ')">Next <i class="fas fa-chevron-right"></i></button>';
         pag.innerHTML = html;
       } catch (e) {
         tbody.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#F87171;">Error: ' + e.message + '</td></tr>';
@@ -655,7 +966,9 @@
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
+    // ═══════════════════════════════════════════
     // USER CHAT PER DB
+    // ═══════════════════════════════════════════
     async function openSiteUsersModal(siteId, siteName) {
       const existing = document.getElementById('siteUsersModal');
       if (existing) existing.remove();
@@ -698,7 +1011,7 @@
             '<thead><tr style="background:#06080f; text-align:left;">' +
               '<th style="padding:8px;">#</th>' +
               '<th style="padding:8px;">User</th>' +
-              '<th style="padding:8px;">💬 Chat</th>' +
+              '<th style="padding:8px;"><i class="fas fa-comments"></i></th>' +
               '<th style="padding:8px;">Lunas / Total</th>' +
             '</tr></thead>' +
             '<tbody>' +
@@ -708,8 +1021,8 @@
                   '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:10px;">' + (u.email || '-') + '</span></td>' +
                   '<td style="padding:8px; color:' + (u.total_chat > 0 ? '#34D399' : '#64748B') + '; font-weight:700;">' + (u.total_chat || 0).toLocaleString('id-ID') + '</td>' +
                   '<td style="padding:8px; font-size:11px;">' +
-                    '<div style="color:#FBBF24;">Rp' + (u.paid_rp || 0).toLocaleString('id-ID') + '</div>' +
-                    '<div style="color:#8B97AB;">/ Rp' + (u.total_profit || 0).toLocaleString('id-ID') + '</div>' +
+                    '<div style="color:#FBBF24;">' + rupiah(u.paid_rp || 0) + '</div>' +
+                    '<div style="color:#8B97AB;">/ ' + rupiah(u.total_profit || 0) + '</div>' +
                   '</td>' +
                 '</tr>'
               ).join('') +
@@ -720,7 +1033,9 @@
       }
     }
 
+    // ═══════════════════════════════════════════
     // WITHDRAW
+    // ═══════════════════════════════════════════
     async function loadPendingWithdrawals() {
       try {
         const res = await fetch('/api/admin/withdraw/pending', { credentials: 'include' });
@@ -730,6 +1045,7 @@
         const history = r.history || [];
         const feeStats = r.feeStats || {};
         const canApprove = r.canApprove;
+        const is24h = r.is24h;
         const wibTime = r.serverTimeWIB || '';
         const next = r.next || {};
         const c = document.getElementById('pendingWithdrawList');
@@ -737,11 +1053,13 @@
         let headerInfo = '';
         if (canApprove) {
           headerInfo += '<div style="padding:8px 12px; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#34D399;">' +
-            '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> (' + wibTime + ' WIB) — Bisa ACC WD' +
+            (is24h
+              ? '<i class="fas fa-infinity"></i> <b>MODE 24 JAM AKTIF</b> (' + wibTime + ' WIB) — Bisa ACC kapan aja'
+              : '<i class="fas fa-check-circle"></i> <b>JAM PROSES BUKA</b> (' + wibTime + ' WIB) — Bisa ACC WD') +
           '</div>';
         } else {
           headerInfo += '<div style="padding:8px 12px; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.4); border-radius:8px; margin-bottom:10px; font-size:12px; color:#FBBF24;">' +
-            '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> (' + wibTime + ' WIB) — ACC WD cuma bisa ' + next.when + ' jam <b>' + next.start + ' WIB</b>' +
+            '<i class="fas fa-hourglass-half"></i> <b>Di luar jam proses</b> (' + wibTime + ' WIB) — ACC WD cuma bisa jam <b>' + (next.start || '') + ' WIB</b>' +
           '</div>';
         }
 
@@ -749,11 +1067,11 @@
           '<div style="font-size:11px; color:#FBBF24; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; margin-bottom:8px;"><i class="fas fa-coins"></i> Fee Admin Terkumpul</div>' +
           '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">' +
             '<div>' +
-              '<div style="font-size:10px; color:#8B97AB;">✅ Sudah Cair (Completed)</div>' +
+              '<div style="font-size:10px; color:#8B97AB;"><i class="fas fa-check-circle" style="color:#34D399;"></i> Sudah Cair</div>' +
               '<div style="font-size:16px; font-weight:800; color:#34D399;">' + rupiah(feeStats.total_fee_completed || 0) + '</div>' +
             '</div>' +
             '<div>' +
-              '<div style="font-size:10px; color:#8B97AB;">⏳ Menunggu TF (Approved)</div>' +
+              '<div style="font-size:10px; color:#8B97AB;"><i class="fas fa-hourglass-half" style="color:#FBBF24;"></i> Menunggu TF</div>' +
               '<div style="font-size:16px; font-weight:800; color:#FBBF24;">' + rupiah(feeStats.total_fee_pending_tf || 0) + '</div>' +
             '</div>' +
           '</div>' +
@@ -796,7 +1114,7 @@
         let s2 = '<div style="font-size:13px; color:#60A5FA; margin-top:20px; margin-bottom:8px; font-weight:700; text-transform:uppercase;">' +
           '<i class="fas fa-hand-holding-usd"></i> SUDAH DI-ACC — PERLU TF (' + approved.length + ')</div>';
         s2 += '<div style="font-size:11px; color:#F87171; margin-bottom:10px; padding:8px 12px; background:rgba(239,68,68,0.08); border-radius:8px; border:1px solid rgba(239,68,68,0.2);">' +
-          '<i class="fas fa-exclamation-triangle"></i> TF nominal <b>NET</b>, setelah beres klik <b>"Sudah TF"</b>.' +
+          '<i class="fas fa-exclamation-triangle"></i> TF nominal <b>NET</b>, setelah beres klik "Sudah TF".' +
         '</div>';
 
         if (approved.length === 0) {
@@ -930,14 +1248,19 @@
       } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
-    // USERS
+    // ═══════════════════════════════════════════
+    // USERS + VIP
+    // ═══════════════════════════════════════════
     async function loadUsers() {
       try {
         const res = await fetch('/api/admin/users', { credentials: 'include' });
         const users = await res.json();
+        allUsers = users || [];
+        defaultRefBonus = users?.[0]?.default_ref_bonus || 50;
+
         const tbody = document.getElementById('usersList');
         if (!users || users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="padding:16px; text-align:center;">Belum ada user</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" style="padding:16px; text-align:center;">Belum ada user</td></tr>';
           return;
         }
         tbody.innerHTML = users.map(u => {
@@ -952,10 +1275,21 @@
           const totalChat = u.total_chat || 0;
           const totalAll = u.total_chat_all || 0;
           const chatColor = totalChat > 0 ? '#34D399' : '#64748B';
+          const isVip = u.is_vip === 1;
+          const vipBadge = isVip
+            ? '<div class="vip-badge"><i class="fas fa-crown"></i> VIP</div>'
+            : '';
+          const bonusText = isVip && u.custom_ref_bonus
+            ? '<div style="font-size:10px; color:#FBBF24; margin-top:2px;"><i class="fas fa-gift"></i> ' + rupiah(u.custom_ref_bonus) + '/ref</div>'
+            : '<div style="font-size:10px; color:#64748B; margin-top:2px;"><i class="fas fa-gift"></i> ' + rupiah(u.effective_ref_bonus || defaultRefBonus) + '/ref</div>';
+
           return '<tr style="border-bottom:1px solid rgba(59,130,246,0.08);">' +
             '<td style="padding:8px;">#' + u.id + '</td>' +
-            '<td style="padding:8px;"><b>' + (u.name || '-') + '</b><br><span style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</span></td>' +
-            '<td style="padding:8px; font-size:11px;">' + tg + '</td>' +
+            '<td style="padding:8px;">' +
+              '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"><b>' + (u.name || '-') + '</b>' + vipBadge + '</div>' +
+              '<div style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</div>' +
+              '<div style="font-size:11px; margin-top:2px;">' + tg + '</div>' +
+            '</td>' +
             '<td style="padding:8px; font-size:11px;">' + payInfo + '</td>' +
             '<td style="padding:8px;">' +
               '<div style="font-weight:700; color:' + chatColor + '; font-size:14px;">' + totalChat.toLocaleString('id-ID') + '</div>' +
@@ -963,11 +1297,69 @@
             '</td>' +
             '<td style="padding:8px;">' +
               '<div style="font-weight:700; color:#3B82F6;">' + rupiah(u.balance) + '</div>' +
-              '<button class="btn btn-sm" onclick="recalcBalance(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\')" style="font-size:10px; padding:2px 8px; margin-top:4px; background:rgba(251,191,36,0.15); color:#FBBF24; border:1px solid rgba(251,191,36,0.3);"><i class="fas fa-calculator"></i> Fix</button>' +
+            '</td>' +
+            '<td style="padding:8px; font-size:11px;">' + bonusText + '</td>' +
+            '<td style="padding:8px;">' +
+              '<div style="display:flex; gap:4px; flex-wrap:wrap;">' +
+                '<button class="btn btn-sm" onclick="openVipModal(' + u.id + ')" title="Setting VIP" style="background:rgba(251,191,36,0.15); color:#FBBF24; border:1px solid rgba(251,191,36,0.3); padding:4px 8px; font-size:10px;"><i class="fas fa-crown"></i></button>' +
+                '<button class="btn btn-sm" onclick="recalcBalance(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Fix saldo" style="background:rgba(59,130,246,0.15); color:#60A5FA; border:1px solid rgba(59,130,246,0.3); padding:4px 8px; font-size:10px;"><i class="fas fa-calculator"></i></button>' +
+              '</div>' +
             '</td>' +
           '</tr>';
         }).join('');
       } catch (e) { console.error(e); }
+    }
+
+    function openVipModal(userId) {
+      const u = allUsers.find(x => x.id === userId);
+      if (!u) return;
+      document.getElementById('vipUserId').value = userId;
+      document.getElementById('vipUserInfo').innerHTML =
+        '<div style="font-size:13px;">' +
+          '<b style="color:#FBBF24;"><i class="fas fa-user"></i> ' + (u.name || '-') + '</b>' +
+          '<div style="color:#8B97AB; font-size:11px;">' + (u.email || '-') + '</div>' +
+          '<div style="color:#8B97AB; font-size:11px;">Referral: <b style="color:#60A5FA;">' + (u.total_referral || 0) + '</b> orang</div>' +
+        '</div>';
+
+      const isVip = u.is_vip === 1;
+      document.getElementById('vipIsVip').checked = isVip;
+      document.getElementById('vipBonusGroup').style.display = isVip ? 'block' : 'none';
+      document.getElementById('vipCustomBonus').value = u.custom_ref_bonus || '';
+
+      document.getElementById('vipModal').classList.add('active');
+    }
+
+    document.getElementById('vipIsVip').addEventListener('change', function() {
+      document.getElementById('vipBonusGroup').style.display = this.checked ? 'block' : 'none';
+    });
+
+    async function saveVip() {
+      const userId = document.getElementById('vipUserId').value;
+      const isVip = document.getElementById('vipIsVip').checked;
+      const customBonus = document.getElementById('vipCustomBonus').value.trim();
+
+      if (isVip && !customBonus) {
+        return showToast('Isi bonus custom untuk VIP', 'error');
+      }
+      if (isVip && parseInt(customBonus) < 0) {
+        return showToast('Bonus tidak valid', 'error');
+      }
+
+      try {
+        const res = await fetch('/api/admin/users/' + userId + '/vip', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            is_vip: isVip ? 1 : 0,
+            custom_ref_bonus: isVip ? parseInt(customBonus) : null
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        showToast(isVip ? '👑 User di-set VIP!' : '✓ VIP dinonaktifkan', 'success');
+        closeModal('vipModal');
+        loadUsers();
+      } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     }
 
     async function recalcBalance(userId, userName) {
@@ -1014,19 +1406,12 @@
       }
     }
 
-    // PHOTO PREVIEW
-    document.getElementById('sitePhoto').addEventListener('input', function() {
-      const p = document.getElementById('sitePhotoPreview');
-      const img = document.getElementById('sitePhotoPreviewImg');
-      if (p && img) {
-        if (this.value) { img.src = this.value; p.style.display = 'block'; }
-        else p.style.display = 'none';
-      }
-    });
-
+    // ═══════════════════════════════════════════
     // INIT
+    // ═══════════════════════════════════════════
     document.addEventListener('DOMContentLoaded', () => {
       loadSettings();
+      loadScheduleConfig();
       loadSites();
       loadPendingWithdrawals();
       loadUsers();
