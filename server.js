@@ -67,6 +67,9 @@ if (useFileStore) {
 app.use(session(sessionOptions));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ============================================
+// HELPERS
+// ============================================
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   next();
@@ -94,8 +97,7 @@ function getWithdrawWithUser(wdId) {
 function dbRunAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve(this);
+      if (err) reject(err); else resolve(this);
     });
   });
 }
@@ -103,13 +105,27 @@ function dbRunAsync(sql, params = []) {
 function dbGetAsync(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
+      if (err) reject(err); else resolve(row);
     });
   });
 }
 
+function getSetting(key) {
+  return new Promise((resolve) => {
+    db.get('SELECT value FROM settings WHERE key = ?', [key], (err, row) => resolve(row?.value));
+  });
+}
+
+function setSetting(key, value) {
+  return new Promise((resolve, reject) => {
+    db.run('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [key, value],
+      (err) => err ? reject(err) : resolve());
+  });
+}
+
+// ============================================
 // FEE TIERS
+// ============================================
 const FEE_TIERS = [
   { min: 20000,     max: 49999,     fee: 500,   label: 'Rp 20rb - 49rb' },
   { min: 50000,     max: 99999,     fee: 750,   label: 'Rp 50rb - 99rb' },
@@ -128,11 +144,19 @@ function calculateFee(amount) {
   return 500;
 }
 
-// WITHDRAW SCHEDULE
-const WITHDRAW_WINDOWS = [
-  { start: '10:30', end: '13:00', label: '10.30 - 13.00 Siang' },
-  { start: '22:00', end: '01:00', label: '22.00 - 01.00 Malam' }
-];
+// ============================================
+// WITHDRAW SCHEDULE — DINAMIS dari settings
+// ============================================
+async function getWithdrawWindows() {
+  const raw = await getSetting('wd_schedule');
+  try { return JSON.parse(raw || '[]'); }
+  catch { return []; }
+}
+
+async function isWithdraw24h() {
+  const mode = await getSetting('wd_24h_mode');
+  return mode === '1';
+}
 
 function getWIBMinutes() {
   const now = new Date();
@@ -148,22 +172,57 @@ function getWIBMinutes() {
   return h * 60 + m;
 }
 
-function isWithdrawOpen() {
-  const total = getWIBMinutes();
-  if (total >= 630 && total < 780) return true;
-  if (total >= 1320 || total < 60) return true;
+function timeToMin(timeStr) {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number);
+  return h * 60 + m;
+}
+
+async function isWithdrawOpen() {
+  // 24h mode → selalu buka
+  if (await isWithdraw24h()) return true;
+
+  const windows = await getWithdrawWindows();
+  if (!windows || windows.length === 0) return true; // kalau gak ada jadwal, anggap buka
+
+  const now = getWIBMinutes();
+
+  for (const w of windows) {
+    const s = timeToMin(w.start);
+    const e = timeToMin(w.end);
+    // Handle lintas tengah malam (contoh 22:00 - 01:00)
+    if (s <= e) {
+      if (now >= s && now < e) return true;
+    } else {
+      if (now >= s || now < e) return true;
+    }
+  }
   return false;
 }
 
-function getNextWithdrawWindow() {
-  const total = getWIBMinutes();
-  if (total < 630) return { start: '10:30', when: 'hari ini' };
-  if (total >= 780 && total < 1320) return { start: '22:00', when: 'hari ini' };
-  if (total >= 60 && total < 630) return { start: '10:30', when: 'hari ini' };
-  return { start: '10:30', when: 'besok' };
+async function getNextWithdrawWindow() {
+  if (await isWithdraw24h()) return { start: '24 Jam', when: 'sekarang' };
+
+  const windows = await getWithdrawWindows();
+  if (!windows || windows.length === 0) return { start: '24 Jam', when: 'sekarang' };
+
+  const now = getWIBMinutes();
+  let nearest = null;
+
+  for (const w of windows) {
+    const s = timeToMin(w.start);
+    let diff;
+    if (now < s) diff = s - now;
+    else diff = (1440 - now) + s;
+    if (!nearest || diff < nearest.diff) {
+      nearest = { diff, start: w.start, end: w.end, label: w.label };
+    }
+  }
+  return nearest || { start: '10:30', when: 'besok' };
 }
 
+// ============================================
 // TELEGRAM WEBHOOK
+// ============================================
 app.post('/api/telegram/webhook', async (req, res) => {
   res.json({ ok: true });
   try {
@@ -187,9 +246,10 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
 async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
   try {
-    if (!isWithdrawOpen()) {
-      const next = getNextWithdrawWindow();
-      return telegram.answerCallbackQuery(callbackId, 'Di luar jam proses! Buka ' + next.when + ' jam ' + next.start + ' WIB', true);
+    const open = await isWithdrawOpen();
+    if (!open) {
+      const next = await getNextWithdrawWindow();
+      return telegram.answerCallbackQuery(callbackId, 'Di luar jam proses! Buka jam ' + next.start + ' WIB', true);
     }
     const wdInfo = await getWithdrawWithUser(wdId);
     if (!wdInfo) return telegram.answerCallbackQuery(callbackId, 'WD tidak ditemukan', true);
@@ -201,9 +261,8 @@ async function handleApproveFromTelegram(wdId, chatId, messageId, callbackId) {
       '👤 ' + (wdInfo.user_name || 'Unknown') + '\n' +
       '💰 Bruto: ' + telegram.rp(wdInfo.amount) + '\n' +
       '💸 Fee: ' + telegram.rp(wdInfo.fee || 0) + '\n' +
-      '✅ Diterima: ' + telegram.rp(netAmount) + '\n' +
-      '💳 ' + String(wdInfo.method || '').toUpperCase() + '\n\n' +
-      '✅ APPROVED\n🕐 ' + new Date().toLocaleString('id-ID');
+      '✅ Diterima: ' + telegram.rp(netAmount) + '\n\n' +
+      '🕐 ' + new Date().toLocaleString('id-ID');
     await telegram.editMessageText(chatId, messageId, newText);
     await telegram.notifyChannelWithdrawSuccess(wdInfo);
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
@@ -219,12 +278,14 @@ async function handleRejectFromTelegram(wdId, chatId, messageId, callbackId) {
     const newText = '<b>WITHDRAW DITOLAK</b>\n\n' +
       '👤 ' + (wdInfo.user_name || 'Unknown') + '\n' +
       '💰 ' + telegram.rp(wdInfo.amount) + '\n\n' +
-      '❌ REJECTED (saldo dibalikin)\n🕐 ' + new Date().toLocaleString('id-ID');
+      '❌ REJECTED (saldo dibalikin)';
     await telegram.editMessageText(chatId, messageId, newText);
   } catch (e) { try { await telegram.answerCallbackQuery(callbackId, 'Error', true); } catch (_) {} }
 }
 
+// ============================================
 // AUTH
+// ============================================
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -270,7 +331,7 @@ app.post('/api/register', async (req, res) => {
       let referrerId = null;
       if (ref) {
         const refRow = await new Promise((resolve) => {
-          db.get('SELECT id FROM users WHERE referral_code = ?', [ref], (err, r) => resolve(r || null));
+          db.get('SELECT id, is_vip, custom_ref_bonus FROM users WHERE referral_code = ?', [ref], (err, r) => resolve(r || null));
         });
         if (refRow) referrerId = refRow.id;
       }
@@ -278,17 +339,27 @@ app.post('/api/register', async (req, res) => {
       db.run(
         'INSERT INTO users (email, password, name, phone, role, referral_code, referred_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
         [email, hashedPassword, username, phone, 'user', referralCode, referrerId],
-        function (err) {
+        async function (err) {
           if (err) return res.status(500).json({ error: err.message });
           const newUserId = this.lastID;
           console.log('✅ User baru:', email, 'ID:', newUserId);
 
           if (referrerId) {
-            db.run('UPDATE users SET balance = balance + 50, total_referral = total_referral + 1 WHERE id = ?', [referrerId]);
+            // Cek bonus referral — VIP pakai custom, else pakai default
+            const refUser = await dbGetAsync('SELECT is_vip, custom_ref_bonus FROM users WHERE id = ?', [referrerId]);
+            let bonus = 50;
+            if (refUser && refUser.is_vip && refUser.custom_ref_bonus) {
+              bonus = refUser.custom_ref_bonus;
+            } else {
+              const defBonus = await getSetting('default_ref_bonus');
+              bonus = parseInt(defBonus) || 50;
+            }
+
+            db.run('UPDATE users SET balance = balance + ?, total_referral = total_referral + 1 WHERE id = ?', [bonus, referrerId]);
             db.run('INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
-              [referrerId, 50, 'bonus', 'Referral dari ' + username]);
+              [referrerId, bonus, 'bonus', 'Referral dari ' + username + (refUser && refUser.is_vip ? ' (VIP)' : '')]);
             db.run('INSERT INTO referrals (referrer_id, referred_id, bonus_amount, status) VALUES (?, ?, ?, ?)',
-              [referrerId, newUserId, 50, 'completed']);
+              [referrerId, newUserId, bonus, 'completed']);
           }
 
           res.json({ success: true, message: 'Akun berhasil dibuat.' });
@@ -301,103 +372,15 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/logout', (req, res) => { req.session.destroy(); res.json({ success: true }); });
 
 app.get('/api/me', requireAuth, (req, res) => {
-  db.get('SELECT id, email, name, phone, balance, role, telegram_username FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+  db.get('SELECT id, email, name, phone, balance, role, telegram_username, is_vip, custom_ref_bonus FROM users WHERE id = ?', [req.session.userId], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(user);
   });
 });
 
-app.post('/api/user/telegram', requireAuth, (req, res) => {
-  const clean = String(req.body.telegram_username || '').replace('@', '').trim();
-  if (!clean) return res.status(400).json({ error: 'Wajib diisi' });
-  db.run('UPDATE users SET telegram_username = ? WHERE id = ?', [clean, req.session.userId], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, telegram_username: clean });
-  });
-});
-
-// REFERRAL
-app.get('/api/referral', requireAuth, (req, res) => {
-  db.get('SELECT referral_code, total_referral FROM users WHERE id = ?', [req.session.userId], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: 'User tidak ditemukan' });
-    const baseUrl = req.protocol + '://' + req.get('host');
-    res.json({
-      code: row.referral_code,
-      link: baseUrl + '/register?ref=' + row.referral_code,
-      total: row.total_referral || 0
-    });
-  });
-});
-
-app.get('/api/referral/history', requireAuth, (req, res) => {
-  db.all(
-    'SELECT r.*, u.name as referred_name, u.email as referred_email, u.created_at ' +
-    'FROM referrals r JOIN users u ON r.referred_id = u.id ' +
-    'WHERE r.referrer_id = ? ORDER BY r.created_at DESC',
-    [req.session.userId],
-    (err, rows) => { if (err) return res.status(500).json({ error: err.message }); res.json(rows || []); }
-  );
-});
-
-// FORGOT / RESET PASSWORD
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email wajib' });
-    db.get('SELECT id FROM users WHERE email = ?', [email], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!user) return res.json({ success: true, message: 'Jika email terdaftar, link reset dikirim.' });
-
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 3600000).toISOString();
-
-      db.run('INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)', [email, token, expiresAt], async (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const baseUrl = req.protocol + '://' + req.get('host');
-        const resetLink = baseUrl + '/reset-password?token=' + token;
-        try {
-          await transporter.sendMail({
-            from: '"SewaWA" <' + (process.env.SMTP_USER || 'noreply@sewawa.cloud') + '>',
-            to: email,
-            subject: 'Reset Password SewaWA',
-            html: '<div style="font-family:Arial;max-width:600px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px;">' +
-              '<h2 style="color:#3B82F6;">Reset Password</h2>' +
-              '<p>Klik link di bawah:</p>' +
-              '<div style="text-align:center;margin:30px 0;">' +
-              '<a href="' + resetLink + '" style="background:#3B82F6;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:600;">Reset Password</a>' +
-              '</div>' +
-              '<p>' + resetLink + '</p>' +
-              '<p style="font-size:12px;color:#888;">Berlaku 1 jam.</p>' +
-              '</div>'
-          });
-        } catch (e) { console.error('Email:', e.message); }
-        res.json({ success: true, message: 'Link reset telah dikirim.' });
-      });
-    });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-app.post('/api/reset-password', async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) return res.status(400).json({ error: 'Token dan password wajib' });
-    if (newPassword.length < 8) return res.status(400).json({ error: 'Password minimal 8 karakter' });
-    db.get('SELECT email FROM password_resets WHERE token = ? AND expires_at > CURRENT_TIMESTAMP AND used = 0', [token], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!row) return res.status(400).json({ error: 'Token tidak valid' });
-      const hash = bcrypt.hashSync(newPassword, 10);
-      db.run('UPDATE users SET password = ? WHERE email = ?', [hash, row.email], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        db.run('UPDATE password_resets SET used = 1 WHERE token = ?', [token], () => {
-          res.json({ success: true, message: 'Password berhasil direset.' });
-        });
-      });
-    });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// SITES
+// ============================================
+// SITES / DATABASES
+// ============================================
 app.get('/api/sites', requireAuth, (req, res) => {
   db.all('SELECT * FROM sites WHERE is_active = 1 ORDER BY id ASC', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -420,7 +403,6 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   );
 });
 
-// USERS CHAT PER DB — pakai outstanding
 app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, async (req, res) => {
   try {
     const siteId = req.params.id;
@@ -433,30 +415,20 @@ app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, async (req
         COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_chat_all,
         COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_income,
         COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done
-      FROM users u
-      WHERE u.role != 'admin'
+      FROM users u WHERE u.role != 'admin'
     `, [siteId, siteId], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
-
       const result = (rows || []).map(u => {
-        const income = u.total_income || 0;
-        const wdDone = u.total_wd_done || 0;
-        const outstandingRp = Math.max(0, income - wdDone);
-        const chatOutstanding = Math.floor(outstandingRp / rate);
-
+        const outstandingRp = Math.max(0, (u.total_income || 0) - (u.total_wd_done || 0));
         return {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          total_chat: chatOutstanding,
+          id: u.id, name: u.name, email: u.email,
+          total_chat: Math.floor(outstandingRp / rate),
           total_chat_all: u.total_chat_all || 0,
-          total_profit: income,
+          total_profit: u.total_income || 0,
           outstanding_rp: outstandingRp,
-          paid_rp: wdDone
+          paid_rp: u.total_wd_done || 0
         };
-      }).filter(u => u.total_chat_all > 0 || u.paid_rp > 0)
-        .sort((a, b) => b.total_chat - a.total_chat);
-
+      }).filter(u => u.total_chat_all > 0 || u.paid_rp > 0).sort((a, b) => b.total_chat - a.total_chat);
       res.json(result);
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -472,8 +444,7 @@ app.post('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
 
 app.put('/api/admin/sites/:id', requireAuth, requireAdmin, (req, res) => {
   const { name, template_text, template_photo, button_text, button_url } = req.body;
-  const updates = [];
-  const params = [];
+  const updates = []; const params = [];
   if (name !== undefined) { updates.push('name = ?'); params.push(name); }
   if (template_text !== undefined) { updates.push('template_text = ?'); params.push(template_text); }
   if (template_photo !== undefined) { updates.push('template_photo = ?'); params.push(template_photo); }
@@ -550,18 +521,14 @@ app.post('/api/admin/sites/:id/delete-sent', requireAuth, requireAdmin, (req, re
 
 app.post('/api/admin/sites/:id/delete-bulk', requireAuth, requireAdmin, (req, res) => {
   const { status = 'all', limit = 1000, order = 'DESC' } = req.body || {};
-  const siteId = req.params.id;
   const safeLimit = Math.min(Math.max(parseInt(limit) || 1000, 1), 50000);
   const safeOrder = (String(order).toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
-
   let where = 'site_id = ?';
-  const params = [siteId];
+  const params = [req.params.id];
   if (status === 'sent') where += ' AND status = "sent"';
   else if (status === 'available') where += ' AND (status = "available" OR status IS NULL)';
   else if (status === 'processing') where += ' AND status = "processing"';
-
   const sql = 'DELETE FROM master_contacts WHERE id IN (SELECT id FROM master_contacts WHERE ' + where + ' ORDER BY id ' + safeOrder + ' LIMIT ?)';
-
   db.run(sql, [...params, safeLimit], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, deleted: this.changes });
@@ -570,28 +537,26 @@ app.post('/api/admin/sites/:id/delete-bulk', requireAuth, requireAdmin, (req, re
 
 app.post('/api/admin/sites/:id/delete-all', requireAuth, requireAdmin, (req, res) => {
   const { status = 'all' } = req.body || {};
-  const siteId = req.params.id;
-
   let where = 'site_id = ?';
-  const params = [siteId];
+  const params = [req.params.id];
   if (status === 'sent') where += ' AND status = "sent"';
   else if (status === 'available') where += ' AND (status = "available" OR status IS NULL)';
   else if (status === 'processing') where += ' AND status = "processing"';
-
   db.run('DELETE FROM master_contacts WHERE ' + where, params, function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, deleted: this.changes });
   });
 });
 
-// IMPORT
+// ============================================
+// IMPORT CONTACTS
+// ============================================
 app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { siteId, numbers } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Database wajib dipilih' });
     if (!numbers || !Array.isArray(numbers) || numbers.length === 0) return res.status(400).json({ error: 'Tidak ada nomor' });
     if (numbers.length > 10000) return res.status(400).json({ error: 'Maksimal 10.000 nomor' });
-
     const valid = numbers.map(n => String(n).trim().replace(/[^0-9]/g, '')).filter(n => n.length >= 5 && n.length <= 20);
     if (valid.length === 0) return res.status(400).json({ error: 'Tidak ada nomor valid' });
 
@@ -615,7 +580,9 @@ app.post('/api/admin/import-contacts', requireAuth, requireAdmin, async (req, re
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============================================
 // DEVICES
+// ============================================
 app.get('/api/devices/summary', requireAuth, (req, res) => {
   const userId = req.session.userId;
   db.all('SELECT id, status FROM devices WHERE user_id = ?', [userId], (err, devices) => {
@@ -624,33 +591,22 @@ app.get('/api/devices/summary', requireAuth, (req, res) => {
     const connectedDevices = (devices || []).filter(d => d.status === 'connected').length;
 
     db.get('SELECT COUNT(*) as total FROM master_contacts WHERE status = "available" OR status IS NULL', (err2, masterRow) => {
-      db.get(`
-        SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit
-        FROM transactions WHERE user_id = ? AND type = 'profit'
-      `, [userId], (err3, trx) => {
-        db.get(`
-          SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
-          FROM broadcasts b JOIN devices d ON b.device_id = d.id
-          WHERE d.user_id = ? AND b.status = 'completed'
-        `, [userId], (err4, bc) => {
-          db.get('SELECT COUNT(DISTINCT c.phone) as unique_total FROM contacts c JOIN devices d ON c.device_id = d.id WHERE d.user_id = ?',
-            [userId], (err5, contactRow) => {
-              const totalChat = trx ? trx.total_chat : 0;
-              const totalProfit = trx ? trx.total_profit : 0;
-              res.json({
-                master_total: masterRow ? masterRow.total : 0,
-                devices_total: totalDevices,
-                devices_connected: connectedDevices,
-                total_sent: totalChat,
-                total_chat: totalChat,
-                total_profit: totalProfit,
-                total_failed: bc ? bc.total_failed : 0,
-                total_campaigns: bc ? bc.total_campaigns : 0,
-                total_recipients: 0,
-                unique_contacts: contactRow ? contactRow.unique_total : 0,
-                avg_speed: 0
-              });
-            });
+      db.get(`SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit
+              FROM transactions WHERE user_id = ? AND type = 'profit'`, [userId], (err3, trx) => {
+        db.get(`SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
+                FROM broadcasts b JOIN devices d ON b.device_id = d.id
+                WHERE d.user_id = ? AND b.status = 'completed'`, [userId], (err4, bc) => {
+          const totalChat = trx ? trx.total_chat : 0;
+          res.json({
+            master_total: masterRow ? masterRow.total : 0,
+            devices_total: totalDevices,
+            devices_connected: connectedDevices,
+            total_sent: totalChat, total_chat: totalChat,
+            total_profit: trx ? trx.total_profit : 0,
+            total_failed: bc ? bc.total_failed : 0,
+            total_campaigns: bc ? bc.total_campaigns : 0,
+            total_recipients: 0, unique_contacts: 0, avg_speed: 0
+          });
         });
       });
     });
@@ -674,7 +630,6 @@ app.post('/api/devices', requireAuth, async (req, res) => {
       db.get('SELECT id FROM sites WHERE id = ? AND is_active = 1', [finalSiteId], (err, row) => resolve(row));
     });
     if (!site) return res.status(400).json({ error: 'Database tidak valid' });
-
     const id = uuidv4().substring(0, 10);
     const device = await wa.createDevice(id, req.session.userId, name, phone || '', finalSiteId);
     await wa.startDevice(id);
@@ -709,29 +664,6 @@ app.post('/api/devices/:id/pairing', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/devices/:id/mode', requireAuth, async (req, res) => {
-  try { await wa.updateDeviceMode(req.params.id, req.body.mode); res.json({ success: true }); } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/devices/:id/site', requireAuth, async (req, res) => {
-  try {
-    const { siteId } = req.body;
-    if (!siteId) return res.status(400).json({ error: 'Database wajib dipilih' });
-    const device = await wa.getDevice(req.params.id);
-    if (!device || device.user_id !== req.session.userId) return res.status(403).json({ error: 'Bukan milik Anda' });
-    const site = await new Promise((resolve) => {
-      db.get('SELECT id, name FROM sites WHERE id = ? AND is_active = 1', [siteId], (err, row) => resolve(row));
-    });
-    if (!site) return res.status(400).json({ error: 'Database tidak valid' });
-    db.run('UPDATE devices SET site_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [siteId, req.params.id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      db.run('DELETE FROM contacts WHERE device_id = ?', [req.params.id], () => {
-        res.json({ success: true, site_id: siteId, site_name: site.name });
-      });
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   try {
     const device = await wa.getDevice(req.params.id);
@@ -740,42 +672,33 @@ app.get('/api/devices/:id/contacts', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ============================================
 // BROADCAST
+// ============================================
 app.post('/api/broadcast', requireAuth, async (req, res) => {
   try {
     const { deviceId, speed } = req.body;
     if (!deviceId) return res.status(400).json({ error: 'Device ID wajib' });
-
     const device = await wa.getDevice(deviceId);
     if (!device || device.user_id !== req.session.userId) return res.status(403).json({ error: 'Bukan milik Anda' });
-
     const status = wa.getStatus(deviceId);
     if (status !== 'connected') return res.status(400).json({ error: 'Device tidak terhubung' });
 
     const existing = wa.getProgress(deviceId);
-    if (existing && existing.running) {
-      return res.status(400).json({ error: 'Blast sedang berjalan untuk device ini' });
-    }
+    if (existing && existing.running) return res.status(400).json({ error: 'Blast sedang berjalan untuk device ini' });
 
     const dbWithNumbers = await new Promise((resolve) => {
       db.get('SELECT site_id, COUNT(*) as total FROM master_contacts WHERE status = "available" OR status IS NULL GROUP BY site_id ORDER BY total DESC LIMIT 1',
         (err, row) => resolve(row));
     });
-
     console.log('🔍 DB available:', dbWithNumbers);
-
-    if (!dbWithNumbers || dbWithNumbers.total === 0) {
-      return res.status(400).json({ error: 'Belum ada nomor tersedia.', available_count: 0 });
-    }
+    if (!dbWithNumbers || dbWithNumbers.total === 0) return res.status(400).json({ error: 'Belum ada nomor tersedia.', available_count: 0 });
 
     const siteId = dbWithNumbers.site_id;
     if (device.site_id !== siteId) {
-      await new Promise((resolve) => {
-        db.run('UPDATE devices SET site_id = ? WHERE id = ?', [siteId, deviceId], () => resolve());
-      });
+      await new Promise((resolve) => { db.run('UPDATE devices SET site_id = ? WHERE id = ?', [siteId, deviceId], () => resolve()); });
       console.log('🔄 Auto-switch device ke DB' + siteId);
     }
-
     const site = await new Promise((resolve) => {
       db.get('SELECT id, name, template_text, template_photo, button_text, button_url FROM sites WHERE id = ?', [siteId], (err, row) => resolve(row));
     });
@@ -786,7 +709,6 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
         [siteId], (err, rows) => resolve(rows || []));
     });
     const recipients = availablePhones.map(r => r.phone).filter(p => p);
-
     const userInfo = await new Promise((resolve) => {
       db.get('SELECT id, name, email, telegram_username FROM users WHERE id = ?', [req.session.userId], (err, row) => resolve(row));
     });
@@ -796,42 +718,31 @@ app.post('/api/broadcast', requireAuth, async (req, res) => {
     const estimation = estSec > 60 ? Math.ceil(estSec / 60) + ' menit' : estSec + ' detik';
 
     telegram.notifyAdminBlastStart({
-      user_id: req.session.userId,
-      user_name: userInfo ? userInfo.name : 'Unknown',
-      user_email: userInfo ? userInfo.email : '',
-      telegram_username: userInfo ? userInfo.telegram_username : '',
-      device_id: deviceId, device_name: device.name,
-      site_name: site.name, total_contacts: recipients.length,
-      speed_ms: speedMs, estimation: estimation
+      user_id: req.session.userId, user_name: userInfo ? userInfo.name : 'Unknown',
+      user_email: userInfo ? userInfo.email : '', telegram_username: userInfo ? userInfo.telegram_username : '',
+      device_id: deviceId, device_name: device.name, site_name: site.name,
+      total_contacts: recipients.length, speed_ms: speedMs, estimation: estimation
     }).catch(() => {});
 
     console.log('📤 Blast DB' + siteId + ' (' + site.name + '): ' + recipients.length + ' nomor');
-
     res.json({ status: 'started', total: recipients.length, site_id: siteId, site_name: site.name });
 
     const startTime = Date.now();
-    wa.sendBroadcast(
-      deviceId, site.template_text, recipients, req.session.userId,
-      speedMs, siteId, site.template_photo || null,
-      site.button_text || '', site.button_url || ''
+    wa.sendBroadcast(deviceId, site.template_text, recipients, req.session.userId, speedMs, siteId,
+      site.template_photo || null, site.button_text || '', site.button_url || ''
     ).then(async (result) => {
       const duration = (Date.now() - startTime) / 1000;
       const durationStr = duration > 60 ? Math.ceil(duration / 60) + ' menit' : Math.ceil(duration) + ' detik';
       const pricePerChat = await wa.getPricePerChat();
-
       telegram.notifyAdminBlastFinish({
-        user_id: req.session.userId,
-        user_name: userInfo ? userInfo.name : 'Unknown',
+        user_id: req.session.userId, user_name: userInfo ? userInfo.name : 'Unknown',
         telegram_username: userInfo ? userInfo.telegram_username : '',
-        device_id: deviceId, device_name: device.name,
-        site_name: site.name, speed_ms: speedMs, duration: durationStr,
-        sent: result.sent || 0, failed: result.failed || 0, purged: result.purged || 0,
-        price_per_chat: pricePerChat
+        device_id: deviceId, device_name: device.name, site_name: site.name,
+        speed_ms: speedMs, duration: durationStr, sent: result.sent || 0, failed: result.failed || 0,
+        purged: result.purged || 0, price_per_chat: pricePerChat
       }).catch(() => {});
       console.log('📊 Background blast selesai:', result);
-    }).catch((err) => {
-      console.error('❌ Background blast error:', err.message);
-    });
+    }).catch((err) => { console.error('❌ Background blast error:', err.message); });
   } catch (error) { console.error('❌ Broadcast:', error); res.status(500).json({ error: error.message }); }
 });
 
@@ -847,47 +758,41 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ============================================
 // STATS
+// ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const stats = await new Promise((resolve) => {
-      db.get(`
-        SELECT
-          (SELECT COUNT(*) FROM devices WHERE user_id = ?) as total_devices,
-          (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'connected') as online,
-          (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'disconnected') as offline,
-          (SELECT COALESCE(balance, 0) FROM users WHERE id = ?) as balance,
-          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'profit') as revenue,
-          (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = 'profit') as total_chat
+      db.get(`SELECT
+        (SELECT COUNT(*) FROM devices WHERE user_id = ?) as total_devices,
+        (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'connected') as online,
+        (SELECT COUNT(*) FROM devices WHERE user_id = ? AND status = 'disconnected') as offline,
+        (SELECT COALESCE(balance, 0) FROM users WHERE id = ?) as balance,
+        (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'profit') as revenue,
+        (SELECT COUNT(*) FROM transactions WHERE user_id = ? AND type = 'profit') as total_chat
       `, [userId, userId, userId, userId, userId, userId], (err, row) => resolve(row || {}));
     });
-
     const bcast = await new Promise((resolve) => {
-      db.get(`
-        SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
-        FROM broadcasts b JOIN devices d ON b.device_id = d.id
-        WHERE d.user_id = ? AND b.status = 'completed'
-      `, [userId], (err, row) => resolve(row || {}));
+      db.get(`SELECT COUNT(*) as total_campaigns, COALESCE(SUM(b.failed), 0) as total_failed
+              FROM broadcasts b JOIN devices d ON b.device_id = d.id
+              WHERE d.user_id = ? AND b.status = 'completed'`, [userId], (err, row) => resolve(row || {}));
     });
-
     res.json({
-      total_devices: stats.total_devices || 0,
-      online: stats.online || 0,
-      offline: stats.offline || 0,
-      balance: stats.balance || 0,
-      revenue: stats.revenue || 0,
-      total_sent: stats.total_chat || 0,
-      total_chat: stats.total_chat || 0,
-      total_failed: bcast.total_failed || 0,
-      total_campaigns: bcast.total_campaigns || 0
+      total_devices: stats.total_devices || 0, online: stats.online || 0, offline: stats.offline || 0,
+      balance: stats.balance || 0, revenue: stats.revenue || 0,
+      total_sent: stats.total_chat || 0, total_chat: stats.total_chat || 0,
+      total_failed: bcast.total_failed || 0, total_campaigns: bcast.total_campaigns || 0
     });
   } catch (e) {
     res.status(500).json({ error: e.message, total_devices: 0, online: 0, offline: 0, balance: 0, revenue: 0, total_sent: 0, total_chat: 0 });
   }
 });
 
+// ============================================
 // SETTINGS
+// ============================================
 app.get('/api/settings', requireAuth, (req, res) => {
   db.all('SELECT * FROM settings', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -921,10 +826,16 @@ app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
-  const { price_per_chat, min_withdraw } = req.body || {};
+  const { price_per_chat, min_withdraw, wd_24h_mode, wd_schedule, default_ref_bonus } = req.body || {};
   const updates = [];
   if (price_per_chat !== undefined) updates.push(['price_per_chat', String(price_per_chat)]);
   if (min_withdraw !== undefined) updates.push(['min_withdraw', String(min_withdraw)]);
+  if (wd_24h_mode !== undefined) updates.push(['wd_24h_mode', String(wd_24h_mode)]);
+  if (default_ref_bonus !== undefined) updates.push(['default_ref_bonus', String(default_ref_bonus)]);
+  if (wd_schedule !== undefined) {
+    const jsonStr = typeof wd_schedule === 'string' ? wd_schedule : JSON.stringify(wd_schedule);
+    updates.push(['wd_schedule', jsonStr]);
+  }
   if (updates.length === 0) return res.status(400).json({ error: 'Tidak ada data' });
 
   let done = 0;
@@ -941,7 +852,9 @@ app.post('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
   }
 });
 
+// ============================================
 // WALLET & PAYMENT
+// ============================================
 app.get('/api/wallet', requireAuth, (req, res) => {
   const userId = req.session.userId;
   db.get('SELECT * FROM user_wallets WHERE user_id = ?', [userId], (err, wallet) => {
@@ -961,10 +874,8 @@ app.get('/api/wallet/payment', requireAuth, (req, res) => {
     db.get('SELECT telegram_username FROM users WHERE id = ?', [userId], (err2, user) => {
       res.json({
         telegram_username: user ? user.telegram_username : '',
-        telegram_id: wallet.telegram_id || '',
-        method: wallet.method || '',
-        bank_name: wallet.bank_name || '',
-        account_number: wallet.bank_account || '',
+        telegram_id: wallet.telegram_id || '', method: wallet.method || '',
+        bank_name: wallet.bank_name || '', account_number: wallet.bank_account || '',
         account_name: wallet.bank_holder || ''
       });
     });
@@ -974,7 +885,6 @@ app.get('/api/wallet/payment', requireAuth, (req, res) => {
 app.post('/api/wallet/payment', requireAuth, (req, res) => {
   const userId = req.session.userId;
   const { telegram_username, telegram_id, method, bank_name, account_number, account_name } = req.body;
-
   if (!telegram_username) return res.status(400).json({ error: 'Username Telegram wajib' });
   if (!telegram_id) return res.status(400).json({ error: 'Telegram ID wajib' });
   if (!method) return res.status(400).json({ error: 'Metode wajib' });
@@ -982,54 +892,48 @@ app.post('/api/wallet/payment', requireAuth, (req, res) => {
   if (!account_name) return res.status(400).json({ error: 'Nama pemilik wajib' });
 
   db.run('UPDATE users SET telegram_username = ? WHERE id = ?', [String(telegram_username).replace('@', '').trim(), userId]);
-
-  db.run(
-    'INSERT OR REPLACE INTO user_wallets (user_id, telegram_id, method, bank_name, bank_account, bank_holder, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+  db.run('INSERT OR REPLACE INTO user_wallets (user_id, telegram_id, method, bank_name, bank_account, bank_holder, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
     [userId, telegram_id, method, bank_name || null, account_number, account_name],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
       console.log('✅ Payment saved user ' + userId);
       res.json({ success: true });
-    }
-  );
+    });
 });
 
+// ============================================
 // WITHDRAW
-app.get('/api/withdraw/schedule', requireAuth, (req, res) => {
-  const open = isWithdrawOpen();
-  const next = getNextWithdrawWindow();
-  const wib = getWIBMinutes();
-  const wibH = String(Math.floor(wib / 60)).padStart(2, '0');
-  const wibM = String(wib % 60).padStart(2, '0');
-  res.json({
-    open,
-    serverTimeWIB: wibH + ':' + wibM,
-    windows: WITHDRAW_WINDOWS,
-    next,
-    canSubmit: true,
-    feeTiers: FEE_TIERS.map(t => ({ min: t.min, max: t.max === Infinity ? null : t.max, fee: t.fee, label: t.label })),
-    note: open
-      ? 'Jam proses WD sedang buka. WD akan langsung diproses admin.'
-      : 'WD bisa diajukan kapan aja, tapi DIPROSES admin ' + next.when + ' jam ' + next.start + ' WIB.'
-  });
+// ============================================
+app.get('/api/withdraw/schedule', requireAuth, async (req, res) => {
+  try {
+    const open = await isWithdrawOpen();
+    const next = await getNextWithdrawWindow();
+    const windows = await getWithdrawWindows();
+    const is24h = await isWithdraw24h();
+    const wib = getWIBMinutes();
+    const wibH = String(Math.floor(wib / 60)).padStart(2, '0');
+    const wibM = String(wib % 60).padStart(2, '0');
+    res.json({
+      open, is24h, serverTimeWIB: wibH + ':' + wibM,
+      windows, next, canSubmit: true,
+      feeTiers: FEE_TIERS.map(t => ({ min: t.min, max: t.max === Infinity ? null : t.max, fee: t.fee, label: t.label })),
+      note: is24h
+        ? 'WD bisa diajukan & di-ACC 24 JAM.'
+        : (open ? 'Jam proses WD sedang buka.' : 'WD bisa diajukan kapan aja, DIPROSES jam ' + next.start + ' WIB.')
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/withdraw/check-fee', requireAuth, (req, res) => {
   const amount = parseInt(req.body.amount) || 0;
   const fee = calculateFee(amount);
-  res.json({
-    amount,
-    fee,
-    net: amount - fee,
-    percent: amount > 0 ? ((fee / amount) * 100).toFixed(2) : '0'
-  });
+  res.json({ amount, fee, net: amount - fee, percent: amount > 0 ? ((fee / amount) * 100).toFixed(2) : '0' });
 });
 
 app.post('/api/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId;
     const { amount } = req.body;
-
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Jumlah tidak valid' });
 
     const wallet = await dbGetAsync('SELECT * FROM user_wallets WHERE user_id = ?', [userId]);
@@ -1043,22 +947,15 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
 
     const fee = calculateFee(amount);
     const amountReceived = amount - fee;
-
-    if (amountReceived <= 0) {
-      return res.status(400).json({ error: 'Nominal terlalu kecil setelah fee' });
-    }
+    if (amountReceived <= 0) return res.status(400).json({ error: 'Nominal terlalu kecil setelah fee' });
 
     const user = await dbGetAsync('SELECT id, balance FROM users WHERE id = ?', [userId]);
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
     if (user.balance < amount) return res.status(400).json({ error: 'Saldo tidak mencukupi (butuh Rp ' + amount.toLocaleString('id-ID') + ')' });
 
     await dbRunAsync('BEGIN IMMEDIATE TRANSACTION');
-
     try {
-      const updateRes = await dbRunAsync(
-        'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?',
-        [amount, userId, amount]
-      );
+      const updateRes = await dbRunAsync('UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?', [amount, userId, amount]);
       if (updateRes.changes === 0) throw new Error('Saldo tidak cukup (race condition)');
 
       const wdRes = await dbRunAsync(
@@ -1067,45 +964,27 @@ app.post('/api/withdraw', requireAuth, async (req, res) => {
       );
       const wdId = wdRes.lastID;
 
-      await dbRunAsync(
-        'INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
-        [userId, -amount, 'withdraw', 'WD#' + wdId + ' (bruto Rp' + amount.toLocaleString('id-ID') + ', fee Rp' + fee.toLocaleString('id-ID') + ', net Rp' + amountReceived.toLocaleString('id-ID') + ')']
-      );
+      await dbRunAsync('INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
+        [userId, -amount, 'withdraw', 'WD#' + wdId + ' (bruto Rp' + amount.toLocaleString('id-ID') + ', fee Rp' + fee.toLocaleString('id-ID') + ', net Rp' + amountReceived.toLocaleString('id-ID') + ')']);
 
       await dbRunAsync('COMMIT');
-
       console.log('💰 WD #' + wdId + ' - User ' + userId + ' - Rp' + amount + ' (fee Rp' + fee + ', net Rp' + amountReceived + ')');
 
       const userFull = await dbGetAsync('SELECT name, email, telegram_username FROM users WHERE id = ?', [userId]);
-      const open = isWithdrawOpen();
-      const next = getNextWithdrawWindow();
+      const open = await isWithdrawOpen();
+      const next = await getNextWithdrawWindow();
 
       telegram.notifyAdminWithdraw({
-        id: wdId,
-        user_name: userFull.name,
-        user_email: userFull.email,
-        telegram_username: userFull.telegram_username,
-        telegram_id: wallet.telegram_id,
-        amount,
-        fee,
-        amount_received: amountReceived,
-        method: wallet.method,
-        account_number: wallet.bank_account,
-        account_name: wallet.bank_holder,
-        outsideHours: !open,
-        nextWindow: open ? null : (next.when + ' jam ' + next.start + ' WIB')
+        id: wdId, user_name: userFull.name, user_email: userFull.email,
+        telegram_username: userFull.telegram_username, telegram_id: wallet.telegram_id,
+        amount, fee, amount_received: amountReceived,
+        method: wallet.method, account_number: wallet.bank_account, account_name: wallet.bank_holder,
+        outsideHours: !open, nextWindow: open ? null : ('jam ' + next.start + ' WIB')
       }).catch(() => {});
 
       res.json({
-        success: true,
-        id: wdId,
-        status: 'pending',
-        amount,
-        fee,
-        net: amountReceived,
-        processingNote: open
-          ? 'WD akan segera diproses admin.'
-          : 'WD masuk antrian & akan DIPROSES ' + next.when + ' jam ' + next.start + ' WIB.'
+        success: true, id: wdId, status: 'pending', amount, fee, net: amountReceived,
+        processingNote: open ? 'WD akan segera diproses admin.' : 'WD masuk antrian, diproses jam ' + next.start + ' WIB.'
       });
     } catch (txErr) {
       await dbRunAsync('ROLLBACK');
@@ -1122,92 +1001,61 @@ app.get('/api/withdraw/history', requireAuth, async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ============================================
 // ADMIN DEVICES
+// ============================================
 app.get('/api/admin/devices', requireAuth, requireAdmin, (req, res) => {
-  db.all(
-    'SELECT d.*, u.name as user_name, u.email as user_email, s.name as site_name ' +
+  db.all('SELECT d.*, u.name as user_name, u.email as user_email, s.name as site_name ' +
     'FROM devices d LEFT JOIN users u ON d.user_id = u.id LEFT JOIN sites s ON d.site_id = s.id ' +
     'ORDER BY d.created_at DESC',
-    (err, rows) => { if (err) return res.status(500).json({ error: err.message }); res.json(rows || []); }
-  );
+    (err, rows) => { if (err) return res.status(500).json({ error: err.message }); res.json(rows || []); });
 });
 
-app.put('/api/admin/devices/:id/site', requireAuth, requireAdmin, (req, res) => {
-  const { siteId } = req.body;
-  if (!siteId) return res.status(400).json({ error: 'Database wajib dipilih' });
-  db.run('UPDATE devices SET site_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [siteId, req.params.id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true });
-    });
-});
-
+// ============================================
 // ADMIN WITHDRAW
+// ============================================
 app.get('/api/admin/withdraw/pending', requireAuth, requireAdmin, async (req, res) => {
   try {
     const pending = await new Promise((resolve) => {
-      db.all(`
-        SELECT w.*, u.email, u.name, u.telegram_username
-        FROM withdrawals w JOIN users u ON w.user_id = u.id
-        WHERE w.status = 'pending'
-        ORDER BY w.created_at ASC
-      `, (err, rows) => resolve(rows || []));
+      db.all('SELECT w.*, u.email, u.name, u.telegram_username FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = "pending" ORDER BY w.created_at ASC',
+        (err, rows) => resolve(rows || []));
     });
-
     const approved = await new Promise((resolve) => {
-      db.all(`
-        SELECT w.*, u.email, u.name, u.telegram_username
-        FROM withdrawals w JOIN users u ON w.user_id = u.id
-        WHERE w.status = 'approved'
-        ORDER BY w.processed_at DESC
-      `, (err, rows) => resolve(rows || []));
+      db.all('SELECT w.*, u.email, u.name, u.telegram_username FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = "approved" ORDER BY w.processed_at DESC',
+        (err, rows) => resolve(rows || []));
     });
-
     const history = await new Promise((resolve) => {
-      db.all(`
-        SELECT w.*, u.email, u.name, u.telegram_username
-        FROM withdrawals w JOIN users u ON w.user_id = u.id
-        WHERE w.status IN ('completed', 'rejected', 'refunded')
-          AND COALESCE(w.processed_at, w.created_at) > datetime('now', '-7 days')
-        ORDER BY COALESCE(w.processed_at, w.created_at) DESC
-        LIMIT 100
-      `, (err, rows) => resolve(rows || []));
+      db.all(`SELECT w.*, u.email, u.name, u.telegram_username FROM withdrawals w JOIN users u ON w.user_id = u.id
+              WHERE w.status IN ('completed', 'rejected', 'refunded')
+              AND COALESCE(w.processed_at, w.created_at) > datetime('now', '-7 days')
+              ORDER BY COALESCE(w.processed_at, w.created_at) DESC LIMIT 100`, (err, rows) => resolve(rows || []));
     });
-
     const feeStats = await new Promise((resolve) => {
-      db.get(`
-        SELECT
-          COALESCE(SUM(CASE WHEN status IN ('approved','completed') THEN fee ELSE 0 END), 0) as total_fee_collected,
-          COALESCE(SUM(CASE WHEN status = 'completed' THEN fee ELSE 0 END), 0) as total_fee_completed,
-          COALESCE(SUM(CASE WHEN status = 'approved' THEN fee ELSE 0 END), 0) as total_fee_pending_tf
-        FROM withdrawals
-      `, (err, row) => resolve(row || {}));
+      db.get(`SELECT
+        COALESCE(SUM(CASE WHEN status IN ('approved','completed') THEN fee ELSE 0 END), 0) as total_fee_collected,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN fee ELSE 0 END), 0) as total_fee_completed,
+        COALESCE(SUM(CASE WHEN status = 'approved' THEN fee ELSE 0 END), 0) as total_fee_pending_tf
+        FROM withdrawals`, (err, row) => resolve(row || {}));
     });
-
+    const canApprove = await isWithdrawOpen();
+    const next = await getNextWithdrawWindow();
+    const windows = await getWithdrawWindows();
+    const is24h = await isWithdraw24h();
     const wib = getWIBMinutes();
     const wibTime = String(Math.floor(wib / 60)).padStart(2, '0') + ':' + String(wib % 60).padStart(2, '0');
 
-    res.json({
-      pending,
-      approved,
-      history,
-      feeStats,
-      canApprove: isWithdrawOpen(),
-      serverTimeWIB: wibTime,
-      next: getNextWithdrawWindow(),
-      windows: WITHDRAW_WINDOWS
-    });
+    res.json({ pending, approved, history, feeStats, canApprove, is24h, serverTimeWIB: wibTime, next, windows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/withdraw/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
-    if (!isWithdrawOpen()) {
-      const next = getNextWithdrawWindow();
+    const open = await isWithdrawOpen();
+    if (!open) {
+      const next = await getNextWithdrawWindow();
       return res.status(400).json({
-        error: 'ACC WD hanya bisa di jam operasional. Buka lagi ' + next.when + ' jam ' + next.start + ' WIB.',
-        outsideHours: true,
-        next
+        error: 'ACC WD hanya bisa di jam operasional. Buka jam ' + next.start + ' WIB.',
+        outsideHours: true, next
       });
     }
     const { note } = req.body || {};
@@ -1232,31 +1080,17 @@ app.put('/api/admin/withdraw/:id/mark-done', requireAuth, requireAdmin, async (r
     const wd = await dbGetAsync('SELECT * FROM withdrawals WHERE id = ?', [wdId]);
     if (!wd) return res.status(404).json({ error: 'WD tidak ditemukan' });
     if (wd.status === 'completed') return res.status(400).json({ error: 'WD sudah ditandai selesai' });
-    if (wd.status !== 'approved') return res.status(400).json({ error: 'WD belum di-ACC. ACC dulu sebelum tandai selesai.' });
+    if (wd.status !== 'approved') return res.status(400).json({ error: 'WD belum di-ACC.' });
 
-    await dbRunAsync(
-      "UPDATE withdrawals SET status = 'completed', processed_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [wdId]
-    );
-
-    console.log('✅ WD #' + wdId + ' ditandai COMPLETED (sudah TF)');
+    await dbRunAsync("UPDATE withdrawals SET status = 'completed', processed_at = CURRENT_TIMESTAMP WHERE id = ?", [wdId]);
+    console.log('✅ WD #' + wdId + ' COMPLETED');
 
     try {
-      const userInfo = await dbGetAsync(
-        'SELECT u.name, u.email, ' +
-        '(SELECT telegram_id FROM user_wallets WHERE user_id = u.id) as telegram_id ' +
-        'FROM users u WHERE u.id = ?',
-        [wd.user_id]
-      );
+      const userInfo = await dbGetAsync('SELECT u.name, (SELECT telegram_id FROM user_wallets WHERE user_id = u.id) as telegram_id FROM users u WHERE u.id = ?', [wd.user_id]);
       if (userInfo && userInfo.telegram_id && telegram.sendMessage) {
         const net = (wd.amount || 0) - (wd.fee || 0);
         await telegram.sendMessage(userInfo.telegram_id,
-          '✅ <b>WITHDRAW SELESAI</b>\n\n' +
-          'ID: #' + wdId + '\n' +
-          'Bruto: Rp' + (wd.amount || 0).toLocaleString('id-ID') + '\n' +
-          'Fee: Rp' + (wd.fee || 0).toLocaleString('id-ID') + '\n' +
-          'Diterima: <b>Rp' + net.toLocaleString('id-ID') + '</b>\n\n' +
-          'Dana sudah ditransfer. Cek rekening/e-wallet Anda.'
+          '✅ <b>WITHDRAW SELESAI</b>\n\nID: #' + wdId + '\nBruto: Rp' + (wd.amount || 0).toLocaleString('id-ID') + '\nFee: Rp' + (wd.fee || 0).toLocaleString('id-ID') + '\nDiterima: <b>Rp' + net.toLocaleString('id-ID') + '</b>'
         ).catch(() => {});
       }
     } catch (e) {}
@@ -1272,85 +1106,57 @@ app.put('/api/admin/withdraw/:id/refund', requireAuth, requireAdmin, async (req,
     const wd = await dbGetAsync('SELECT * FROM withdrawals WHERE id = ?', [wdId]);
     if (!wd) return res.status(404).json({ error: 'WD tidak ditemukan' });
     if (wd.status === 'refunded') return res.status(400).json({ error: 'WD sudah pernah di-refund' });
-    if (wd.status === 'pending') return res.status(400).json({ error: 'WD masih pending. Tolak aja kalau mau batal.' });
+    if (wd.status === 'pending') return res.status(400).json({ error: 'WD masih pending.' });
 
     await dbRunAsync('BEGIN IMMEDIATE TRANSACTION');
     try {
       await dbRunAsync('UPDATE users SET balance = balance + ? WHERE id = ?', [wd.amount, wd.user_id]);
-
-      await dbRunAsync(
-        "UPDATE withdrawals SET status = 'refunded', note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [reason || 'Refund oleh admin', wdId]
-      );
-
-      await dbRunAsync(
-        'INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
-        [wd.user_id, wd.amount, 'refund', 'Refund WD#' + wdId + ' - ' + (reason || 'Transfer gagal')]
-      );
-
+      await dbRunAsync("UPDATE withdrawals SET status = 'refunded', note = ?, processed_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [reason || 'Refund oleh admin', wdId]);
+      await dbRunAsync('INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
+        [wd.user_id, wd.amount, 'refund', 'Refund WD#' + wdId + ' - ' + (reason || 'Transfer gagal')]);
       await dbRunAsync('COMMIT');
-      console.log('💰 Refund WD #' + wdId + ' — Rp' + wd.amount + ' ke user ' + wd.user_id);
-    } catch (txErr) {
-      await dbRunAsync('ROLLBACK');
-      throw txErr;
-    }
-
-    try {
-      const userInfo = await dbGetAsync(
-        'SELECT u.name, u.email, ' +
-        '(SELECT telegram_id FROM user_wallets WHERE user_id = u.id) as telegram_id ' +
-        'FROM users u WHERE u.id = ?',
-        [wd.user_id]
-      );
-      if (userInfo && userInfo.telegram_id && telegram.sendMessage) {
-        await telegram.sendMessage(userInfo.telegram_id,
-          '💰 <b>WD DI-REFUND</b>\n\n' +
-          'ID: #' + wdId + '\n' +
-          'Jumlah: Rp' + wd.amount.toLocaleString('id-ID') + '\n' +
-          'Alasan: ' + (reason || 'Transfer gagal') + '\n\n' +
-          'Saldo sudah dibalikin ke akun Anda.'
-        ).catch(() => {});
-      }
-    } catch (e) {}
+      console.log('💰 Refund WD #' + wdId);
+    } catch (txErr) { await dbRunAsync('ROLLBACK'); throw txErr; }
 
     res.json({ success: true, refunded: wd.amount, user_id: wd.user_id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ADMIN USERS — CHAT OUTSTANDING
+// ============================================
+// ADMIN USERS (dengan VIP + chat outstanding)
+// ============================================
 app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
   try {
     const rateRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'price_per_chat'");
     const rate = parseInt(rateRow?.value) || 700;
+    const defBonusRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'default_ref_bonus'");
+    const defaultRefBonus = parseInt(defBonusRow?.value) || 50;
 
     db.all(`
-      SELECT
-        u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
-        u.total_referral, u.created_at,
+      SELECT u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
+        u.total_referral, u.created_at, u.is_vip, u.custom_ref_bonus,
         w.bank_name, w.bank_account, w.bank_holder, w.telegram_id,
         COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_profit,
         COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_chat_all,
         COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done,
         (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as total_devices
-      FROM users u
-      LEFT JOIN user_wallets w ON w.user_id = u.id
-      WHERE u.role != 'admin'
-      ORDER BY u.created_at DESC
+      FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id
+      WHERE u.role != 'admin' ORDER BY u.created_at DESC
     `, (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
-
       const users = (rows || []).map(u => {
-        const income = u.total_profit || 0;
-        const wdDone = u.total_wd_done || 0;
-        const outstandingRp = Math.max(0, income - wdDone);
-        const chatOutstanding = Math.floor(outstandingRp / rate);
-
+        const outstandingRp = Math.max(0, (u.total_profit || 0) - (u.total_wd_done || 0));
         return {
           ...u,
-          total_chat: chatOutstanding,
+          total_chat: Math.floor(outstandingRp / rate),
           total_chat_all: u.total_chat_all || 0,
           outstanding_rp: outstandingRp,
-          paid_rp: wdDone
+          paid_rp: u.total_wd_done || 0,
+          is_vip: u.is_vip || 0,
+          custom_ref_bonus: u.custom_ref_bonus || null,
+          effective_ref_bonus: (u.is_vip && u.custom_ref_bonus) ? u.custom_ref_bonus : defaultRefBonus,
+          default_ref_bonus: defaultRefBonus
         };
       });
       res.json(users);
@@ -1358,29 +1164,39 @@ app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Set / unset VIP
+app.put('/api/admin/users/:id/vip', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { is_vip, custom_ref_bonus } = req.body || {};
+    const updates = [];
+    const params = [];
+
+    if (is_vip !== undefined) {
+      updates.push('is_vip = ?');
+      params.push(is_vip ? 1 : 0);
+    }
+    if (custom_ref_bonus !== undefined) {
+      updates.push('custom_ref_bonus = ?');
+      params.push(custom_ref_bonus === null || custom_ref_bonus === '' ? null : parseInt(custom_ref_bonus));
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'Tidak ada data' });
+    params.push(userId);
+
+    await dbRunAsync('UPDATE users SET ' + updates.join(', ') + ' WHERE id = ?', params);
+    console.log('✅ VIP update user ' + userId + ':', req.body);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/users/:id/chat-stats', requireAuth, requireAdmin, (req, res) => {
   const userId = req.params.id;
   db.get('SELECT id, name, email, balance FROM users WHERE id = ?', [userId], (err, user) => {
     if (err || !user) return res.status(404).json({ error: 'User tidak ditemukan' });
-
-    db.get(`
-      SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit
-      FROM transactions WHERE user_id = ? AND type = 'profit'
-    `, [userId], (err2, trx) => {
-      db.get(`
-        SELECT COUNT(*) as total_campaign, COALESCE(SUM(b.failed), 0) as total_failed
-        FROM broadcasts b JOIN devices d ON b.device_id = d.id
-        WHERE d.user_id = ? AND b.status = 'completed'
-      `, [userId], (err3, bc) => {
-        res.json({
-          user,
-          total_chat: trx ? trx.total_chat : 0,
-          total_profit: trx ? trx.total_profit : 0,
-          total_campaign: bc ? bc.total_campaign : 0,
-          total_failed: bc ? bc.total_failed : 0
-        });
+    db.get(`SELECT COUNT(*) as total_chat, COALESCE(SUM(amount), 0) as total_profit FROM transactions WHERE user_id = ? AND type = 'profit'`,
+      [userId], (err2, trx) => {
+        res.json({ user, total_chat: trx ? trx.total_chat : 0, total_profit: trx ? trx.total_profit : 0 });
       });
-    });
   });
 });
 
@@ -1394,22 +1210,14 @@ app.post('/api/admin/users/:id/recalc-balance', requireAuth, requireAdmin, async
         COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = ? AND status IN ('approved','completed')), 0) as total_wd_approved,
         COALESCE((SELECT balance FROM users WHERE id = ?), 0) as current_balance
     `, [userId, userId, userId, userId]);
-
     const totalIncome = Math.abs(row.total_income || 0);
     const totalWdApproved = row.total_wd_approved || 0;
     const correctBalance = totalIncome - totalWdApproved;
     const currentBalance = row.current_balance || 0;
-
     res.json({
-      user_id: userId,
-      current_balance: currentBalance,
-      correct_balance: correctBalance,
+      user_id: userId, current_balance: currentBalance, correct_balance: correctBalance,
       difference: correctBalance - currentBalance,
-      breakdown: {
-        total_income: totalIncome,
-        total_wd_approved: totalWdApproved,
-        total_withdraw_log: Math.abs(row.total_withdraw_log || 0)
-      }
+      breakdown: { total_income: totalIncome, total_wd_approved: totalWdApproved, total_withdraw_log: Math.abs(row.total_withdraw_log || 0) }
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1420,65 +1228,113 @@ app.post('/api/admin/users/:id/apply-balance', requireAuth, requireAdmin, async 
     const { new_balance } = req.body;
     if (new_balance === undefined || new_balance < 0) return res.status(400).json({ error: 'Saldo tidak valid' });
     await dbRunAsync('UPDATE users SET balance = ? WHERE id = ?', [parseInt(new_balance), userId]);
-    console.log('✅ Recalc balance user ' + userId + ' → Rp' + new_balance);
     res.json({ success: true, new_balance: parseInt(new_balance) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/admin/reset-profit/:deviceId', requireAuth, requireAdmin, (req, res) => {
-  db.run('UPDATE devices SET profit = 0 WHERE id = ?', [req.params.deviceId], function (err) {
+// ============================================
+// REFERRAL (user)
+// ============================================
+app.get('/api/referral', requireAuth, (req, res) => {
+  db.get('SELECT referral_code, total_referral, is_vip, custom_ref_bonus FROM users WHERE id = ?', [req.session.userId], async (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: 'Profit reset' });
+    if (!row) return res.status(404).json({ error: 'User tidak ditemukan' });
+    const baseUrl = req.protocol + '://' + req.get('host');
+    const defBonusRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'default_ref_bonus'");
+    const defBonus = parseInt(defBonusRow?.value) || 50;
+    const bonus = (row.is_vip && row.custom_ref_bonus) ? row.custom_ref_bonus : defBonus;
+    res.json({
+      code: row.referral_code,
+      link: baseUrl + '/register?ref=' + row.referral_code,
+      total: row.total_referral || 0,
+      is_vip: row.is_vip || 0,
+      bonus_per_ref: bonus
+    });
   });
 });
 
-app.post('/api/admin/reset-all-profit', requireAuth, requireAdmin, (req, res) => {
-  db.run('UPDATE devices SET profit = 0', function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, message: 'Semua profit reset' });
-  });
+app.get('/api/referral/history', requireAuth, (req, res) => {
+  db.all('SELECT r.*, u.name as referred_name, u.email as referred_email, u.created_at ' +
+    'FROM referrals r JOIN users u ON r.referred_id = u.id WHERE r.referrer_id = ? ORDER BY r.created_at DESC',
+    [req.session.userId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows || []);
+    });
 });
 
+// ============================================
+// FORGOT / RESET PASSWORD
+// ============================================
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email wajib' });
+    db.get('SELECT id FROM users WHERE email = ?', [email], (err, user) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!user) return res.json({ success: true, message: 'Jika email terdaftar, link reset dikirim.' });
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+
+      db.run('INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)', [email, token, expiresAt], async (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const baseUrl = req.protocol + '://' + req.get('host');
+        const resetLink = baseUrl + '/reset-password?token=' + token;
+        try {
+          await transporter.sendMail({
+            from: '"SewaWA" <' + (process.env.SMTP_USER || 'noreply@sewawa.cloud') + '>',
+            to: email, subject: 'Reset Password SewaWA',
+            html: '<div style="font-family:Arial;max-width:600px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px;">' +
+              '<h2 style="color:#3B82F6;">Reset Password</h2><p>Klik link di bawah:</p>' +
+              '<div style="text-align:center;margin:30px 0;">' +
+              '<a href="' + resetLink + '" style="background:#3B82F6;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:600;">Reset Password</a>' +
+              '</div><p>' + resetLink + '</p><p style="font-size:12px;color:#888;">Berlaku 1 jam.</p></div>'
+          });
+        } catch (e) { console.error('Email:', e.message); }
+        res.json({ success: true, message: 'Link reset telah dikirim.' });
+      });
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Token dan password wajib' });
+    if (newPassword.length < 8) return res.status(400).json({ error: 'Password minimal 8 karakter' });
+    db.get('SELECT email FROM password_resets WHERE token = ? AND expires_at > CURRENT_TIMESTAMP AND used = 0', [token], (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row) return res.status(400).json({ error: 'Token tidak valid' });
+      const hash = bcrypt.hashSync(newPassword, 10);
+      db.run('UPDATE users SET password = ? WHERE email = ?', [hash, row.email], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        db.run('UPDATE password_resets SET used = 1 WHERE token = ?', [token], () => {
+          res.json({ success: true, message: 'Password berhasil direset.' });
+        });
+      });
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============================================
 // TELEGRAM
+// ============================================
 app.get('/api/telegram/test', requireAuth, requireAdmin, async (req, res) => {
   res.json(await telegram.testBot());
 });
 
-app.get('/api/telegram/webhook-info', requireAuth, requireAdmin, async (req, res) => {
-  try { res.json(await telegram.getWebhookInfo()); } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
+// ============================================
 // PAGES
+// ============================================
 app.get('/', (req, res) => {
   if (req.session.userId) res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
   else res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-app.get('/register', (req, res) => {
-  if (req.session.userId) res.redirect('/dashboard');
-  else res.sendFile(path.join(__dirname, 'public', 'register.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-  if (!req.session.userId) return res.redirect('/');
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-app.get('/devices', (req, res) => {
-  if (!req.session.userId) return res.redirect('/');
-  res.sendFile(path.join(__dirname, 'public', 'devices.html'));
-});
-
-app.get('/wallet', (req, res) => {
-  if (!req.session.userId) return res.redirect('/');
-  res.sendFile(path.join(__dirname, 'public', 'wallet.html'));
-});
-
-app.get('/referral', (req, res) => {
-  if (!req.session.userId) return res.redirect('/');
-  res.sendFile(path.join(__dirname, 'public', 'referral.html'));
-});
-
+app.get('/register', (req, res) => { if (req.session.userId) res.redirect('/dashboard'); else res.sendFile(path.join(__dirname, 'public', 'register.html')); });
+app.get('/dashboard', (req, res) => { if (!req.session.userId) return res.redirect('/'); res.sendFile(path.join(__dirname, 'public', 'dashboard.html')); });
+app.get('/devices', (req, res) => { if (!req.session.userId) return res.redirect('/'); res.sendFile(path.join(__dirname, 'public', 'devices.html')); });
+app.get('/wallet', (req, res) => { if (!req.session.userId) return res.redirect('/'); res.sendFile(path.join(__dirname, 'public', 'wallet.html')); });
+app.get('/referral', (req, res) => { if (!req.session.userId) return res.redirect('/'); res.sendFile(path.join(__dirname, 'public', 'referral.html')); });
 app.get('/admin', (req, res) => {
   if (!req.session.userId) return res.redirect('/');
   db.get('SELECT role FROM users WHERE id = ?', [req.session.userId], (err, row) => {
@@ -1486,43 +1342,27 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
   });
 });
-
-app.get('/forgot-password', (req, res) => {
-  if (req.session.userId) return res.redirect('/dashboard');
-  res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
-});
-
-app.get('/reset-password', (req, res) => {
-  if (req.session.userId) return res.redirect('/dashboard');
-  res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
-});
-
+app.get('/forgot-password', (req, res) => { if (req.session.userId) return res.redirect('/dashboard'); res.sendFile(path.join(__dirname, 'public', 'forgot-password.html')); });
+app.get('/reset-password', (req, res) => { if (req.session.userId) return res.redirect('/dashboard'); res.sendFile(path.join(__dirname, 'public', 'reset-password.html')); });
 app.use((req, res) => res.redirect('/'));
 
-// AUTO-RELEASE
+// ============================================
+// AUTO-RELEASE nomor nyangkut
+// ============================================
 setInterval(() => {
-  db.run(
-    "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
-    function(err) {
-      if (!err && this.changes > 0) console.log('🧹 Auto-release ' + this.changes + ' nomor nyangkut');
-    }
-  );
+  db.run("UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
+    function(err) { if (!err && this.changes > 0) console.log('🧹 Auto-release ' + this.changes + ' nomor nyangkut'); });
 }, 2 * 60 * 1000);
 
-db.run(
-  "UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
-  function(err) {
-    if (!err && this.changes > 0) console.log('🧹 Startup: release ' + this.changes + ' nomor nyangkut');
-  }
-);
+db.run("UPDATE master_contacts SET status = 'available', sent_at = NULL WHERE status = 'processing' AND (sent_at IS NULL OR sent_at < datetime('now', '-10 minutes'))",
+  function(err) { if (!err && this.changes > 0) console.log('🧹 Startup: release ' + this.changes + ' nomor nyangkut'); });
 
 module.exports = app;
 
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', async () => {
     console.log('🚀 SewaWA running on port ' + PORT);
-    const PUBLIC_URL = process.env.PUBLIC_URL ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
+    const PUBLIC_URL = process.env.PUBLIC_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
     if (PUBLIC_URL && process.env.TELEGRAM_BOT_TOKEN) {
       try { await telegram.setWebhook(PUBLIC_URL); } catch (e) { console.error('⚠️ Webhook:', e.message); }
     }
