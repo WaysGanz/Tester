@@ -110,6 +110,14 @@ function dbGetAsync(sql, params = []) {
   });
 }
 
+function dbAllAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err); else resolve(rows || []);
+    });
+  });
+}
+
 function getSetting(key) {
   return new Promise((resolve) => {
     db.get('SELECT value FROM settings WHERE key = ?', [key], (err, row) => resolve(row?.value));
@@ -121,6 +129,12 @@ function setSetting(key, value) {
     db.run('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)', [key, value],
       (err) => err ? reject(err) : resolve());
   });
+}
+
+// ✅ CUTOFF DATE untuk outstanding (chat yang belum dibayar)
+async function getOutstandingSince() {
+  const val = await getSetting('outstanding_since');
+  return val || '1970-01-01 00:00:00';
 }
 
 // ============================================
@@ -178,18 +192,13 @@ function timeToMin(timeStr) {
 }
 
 async function isWithdrawOpen() {
-  // 24h mode → selalu buka
   if (await isWithdraw24h()) return true;
-
   const windows = await getWithdrawWindows();
-  if (!windows || windows.length === 0) return true; // kalau gak ada jadwal, anggap buka
-
+  if (!windows || windows.length === 0) return true;
   const now = getWIBMinutes();
-
   for (const w of windows) {
     const s = timeToMin(w.start);
     const e = timeToMin(w.end);
-    // Handle lintas tengah malam (contoh 22:00 - 01:00)
     if (s <= e) {
       if (now >= s && now < e) return true;
     } else {
@@ -201,13 +210,10 @@ async function isWithdrawOpen() {
 
 async function getNextWithdrawWindow() {
   if (await isWithdraw24h()) return { start: '24 Jam', when: 'sekarang' };
-
   const windows = await getWithdrawWindows();
   if (!windows || windows.length === 0) return { start: '24 Jam', when: 'sekarang' };
-
   const now = getWIBMinutes();
   let nearest = null;
-
   for (const w of windows) {
     const s = timeToMin(w.start);
     let diff;
@@ -345,7 +351,6 @@ app.post('/api/register', async (req, res) => {
           console.log('✅ User baru:', email, 'ID:', newUserId);
 
           if (referrerId) {
-            // Cek bonus referral — VIP pakai custom, else pakai default
             const refUser = await dbGetAsync('SELECT is_vip, custom_ref_bonus FROM users WHERE id = ?', [referrerId]);
             let bonus = 50;
             if (refUser && refUser.is_vip && refUser.custom_ref_bonus) {
@@ -388,6 +393,7 @@ app.get('/api/sites', requireAuth, (req, res) => {
   });
 });
 
+// Card database di admin — tampil TOTAL HISTORIS (biar keliatan history per DB)
 app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   db.all(
     'SELECT s.*, ' +
@@ -403,34 +409,36 @@ app.get('/api/admin/sites', requireAuth, requireAdmin, (req, res) => {
   );
 });
 
+// ✅ USER CHAT PER DB — pakai CUTOFF untuk outstanding
 app.get('/api/admin/sites/:id/users-chat', requireAuth, requireAdmin, async (req, res) => {
   try {
     const siteId = req.params.id;
     const rateRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'price_per_chat'");
     const rate = parseInt(rateRow?.value) || 700;
+    const outstandingSince = await getOutstandingSince();
 
-    db.all(`
+    const rows = await dbAllAsync(`
       SELECT
         u.id, u.name, u.email,
         COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_chat_all,
-        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ?), 0) as total_income,
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit' AND site_id = ? AND created_at >= ?), 0) as total_income,
         COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done
       FROM users u WHERE u.role != 'admin'
-    `, [siteId, siteId], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      const result = (rows || []).map(u => {
-        const outstandingRp = Math.max(0, (u.total_income || 0) - (u.total_wd_done || 0));
-        return {
-          id: u.id, name: u.name, email: u.email,
-          total_chat: Math.floor(outstandingRp / rate),
-          total_chat_all: u.total_chat_all || 0,
-          total_profit: u.total_income || 0,
-          outstanding_rp: outstandingRp,
-          paid_rp: u.total_wd_done || 0
-        };
-      }).filter(u => u.total_chat_all > 0 || u.paid_rp > 0).sort((a, b) => b.total_chat - a.total_chat);
-      res.json(result);
-    });
+    `, [siteId, siteId, outstandingSince]);
+
+    const result = rows.map(u => {
+      const outstandingRp = Math.max(0, (u.total_income || 0) - (u.total_wd_done || 0));
+      return {
+        id: u.id, name: u.name, email: u.email,
+        total_chat: Math.floor(outstandingRp / rate),
+        total_chat_all: u.total_chat_all || 0,
+        total_profit: u.total_income || 0,
+        outstanding_rp: outstandingRp,
+        paid_rp: u.total_wd_done || 0
+      };
+    }).filter(u => u.total_chat_all > 0 || u.paid_rp > 0).sort((a, b) => b.total_chat - a.total_chat);
+
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -759,7 +767,7 @@ app.get('/api/broadcast/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// STATS
+// STATS (user-facing — total historis)
 // ============================================
 app.get('/api/stats', requireAuth, async (req, res) => {
   try {
@@ -826,12 +834,13 @@ app.get('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/settings', requireAuth, requireAdmin, (req, res) => {
-  const { price_per_chat, min_withdraw, wd_24h_mode, wd_schedule, default_ref_bonus } = req.body || {};
+  const { price_per_chat, min_withdraw, wd_24h_mode, wd_schedule, default_ref_bonus, outstanding_since } = req.body || {};
   const updates = [];
   if (price_per_chat !== undefined) updates.push(['price_per_chat', String(price_per_chat)]);
   if (min_withdraw !== undefined) updates.push(['min_withdraw', String(min_withdraw)]);
   if (wd_24h_mode !== undefined) updates.push(['wd_24h_mode', String(wd_24h_mode)]);
   if (default_ref_bonus !== undefined) updates.push(['default_ref_bonus', String(default_ref_bonus)]);
+  if (outstanding_since !== undefined) updates.push(['outstanding_since', String(outstanding_since)]);
   if (wd_schedule !== undefined) {
     const jsonStr = typeof wd_schedule === 'string' ? wd_schedule : JSON.stringify(wd_schedule);
     updates.push(['wd_schedule', jsonStr]);
@@ -1124,7 +1133,7 @@ app.put('/api/admin/withdraw/:id/refund', requireAuth, requireAdmin, async (req,
 });
 
 // ============================================
-// ADMIN USERS (dengan VIP + chat outstanding)
+// ✅ ADMIN USERS — pakai CUTOFF untuk outstanding
 // ============================================
 app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -1132,39 +1141,38 @@ app.get('/api/admin/users', requireAuth, requireAdmin, async (req, res) => {
     const rate = parseInt(rateRow?.value) || 700;
     const defBonusRow = await dbGetAsync("SELECT value FROM settings WHERE key = 'default_ref_bonus'");
     const defaultRefBonus = parseInt(defBonusRow?.value) || 50;
+    const outstandingSince = await getOutstandingSince();
 
-    db.all(`
+    const rows = await dbAllAsync(`
       SELECT u.id, u.email, u.name, u.phone, u.telegram_username, u.balance, u.role,
         u.total_referral, u.created_at, u.is_vip, u.custom_ref_bonus,
         w.bank_name, w.bank_account, w.bank_holder, w.telegram_id,
-        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_profit,
+        COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = u.id AND type = 'profit' AND created_at >= ?), 0) as total_profit,
         COALESCE((SELECT COUNT(*) FROM transactions WHERE user_id = u.id AND type = 'profit'), 0) as total_chat_all,
         COALESCE((SELECT SUM(amount) FROM withdrawals WHERE user_id = u.id AND status IN ('approved','completed')), 0) as total_wd_done,
         (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as total_devices
       FROM users u LEFT JOIN user_wallets w ON w.user_id = u.id
       WHERE u.role != 'admin' ORDER BY u.created_at DESC
-    `, (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
-      const users = (rows || []).map(u => {
-        const outstandingRp = Math.max(0, (u.total_profit || 0) - (u.total_wd_done || 0));
-        return {
-          ...u,
-          total_chat: Math.floor(outstandingRp / rate),
-          total_chat_all: u.total_chat_all || 0,
-          outstanding_rp: outstandingRp,
-          paid_rp: u.total_wd_done || 0,
-          is_vip: u.is_vip || 0,
-          custom_ref_bonus: u.custom_ref_bonus || null,
-          effective_ref_bonus: (u.is_vip && u.custom_ref_bonus) ? u.custom_ref_bonus : defaultRefBonus,
-          default_ref_bonus: defaultRefBonus
-        };
-      });
-      res.json(users);
+    `, [outstandingSince]);
+
+    const users = rows.map(u => {
+      const outstandingRp = Math.max(0, (u.total_profit || 0) - (u.total_wd_done || 0));
+      return {
+        ...u,
+        total_chat: Math.floor(outstandingRp / rate),
+        total_chat_all: u.total_chat_all || 0,
+        outstanding_rp: outstandingRp,
+        paid_rp: u.total_wd_done || 0,
+        is_vip: u.is_vip || 0,
+        custom_ref_bonus: u.custom_ref_bonus || null,
+        effective_ref_bonus: (u.is_vip && u.custom_ref_bonus) ? u.custom_ref_bonus : defaultRefBonus,
+        default_ref_bonus: defaultRefBonus
+      };
     });
+    res.json(users);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Set / unset VIP
 app.put('/api/admin/users/:id/vip', requireAuth, requireAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
