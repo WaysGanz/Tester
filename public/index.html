@@ -2,79 +2,191 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BastardBlast Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050810">
+  <title>SewaWA — Platform Broadcast WhatsApp #1</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
-<body>
+<body class="login-page">
 
-<div class="app-shell">
-  <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-icon">B</div>
-      <div>
-        <div class="brand-text">BastardBlast</div>
-        <div class="brand-sub">Admin Panel</div>
-      </div>
-    </div>
-    <nav class="sidebar-nav" id="sidebarNav"></nav>
-    <div class="sidebar-foot">
-      <div class="sidebar-user" onclick="logout()">
-        <div class="avatar" id="sbAvatar">A</div>
-        <div class="sidebar-user-info">
-          <div class="sidebar-user-name" id="sbName">Admin</div>
-          <div class="sidebar-user-role" id="sbRole">owner</div>
-        </div>
-        <i class="fas fa-arrow-right-from-bracket" style="color:#9ca3af;font-size:13px;"></i>
-      </div>
-    </div>
-  </aside>
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+  <div class="bg-particles">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
 
-  <!-- MAIN -->
-  <div class="main">
-    <header class="topbar">
-      <button class="topbar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-      <div class="global-search">
-        <div class="global-search-input">
-          <i class="fas fa-magnifying-glass"></i>
-          <input type="text" id="globalSearch" placeholder="Cari user, nomor, campaign, device, tiket..." autocomplete="off">
-          <span class="global-search-kbd">/</span>
+  <!-- Full Screen Login -->
+  <div class="login-fullscreen">
+    <div class="login-content">
+
+      <!-- Logo & Brand -->
+      <div class="login-header">
+        <div class="logo-container">
+          <div class="logo-ring"></div>
+          <div class="logo-ring logo-ring-2"></div>
+          <div class="logo-core">
+            <i class="fab fa-whatsapp"></i>
+          </div>
         </div>
+        <h1 class="login-title">Sewa<span>WA</span></h1>
+        <p class="login-tagline">Platform Broadcast WhatsApp #1</p>
       </div>
-      <div class="topbar-actions">
-        <button class="icon-btn" onclick="showNotifications()" title="Notifikasi">
-          <i class="fas fa-bell"></i>
-          <span class="dot" id="notifDot" style="display:none;"></span>
+
+      <!-- Form -->
+      <form id="loginForm" class="login-form-full">
+
+        <div class="form-field">
+          <label>Email</label>
+          <div class="field-input">
+            <i class="fas fa-envelope"></i>
+            <input 
+              type="email" 
+              id="loginEmail" 
+              placeholder="nama@domain.com" 
+              autocomplete="email"
+              required
+            >
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Password</label>
+          <div class="field-input">
+            <i class="fas fa-lock"></i>
+            <input 
+              type="password" 
+              id="loginPassword" 
+              placeholder="Masukkan password" 
+              autocomplete="current-password"
+              required
+            >
+            <button type="button" class="toggle-pwd" onclick="togglePassword()">
+              <i class="fas fa-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-row-options">
+          <label class="human-check">
+            <input type="checkbox" id="humanCheck">
+            <span class="checkmark"></span>
+            <span>Aku manusia</span>
+          </label>
+          <a href="/forgot-password" class="link-forgot">Lupa password?</a>
+        </div>
+
+        <button type="submit" class="btn-main" id="loginBtn">
+          <span>Masuk</span>
+          <i class="fas fa-arrow-right"></i>
         </button>
-        <button class="icon-btn" onclick="refreshPage()" title="Refresh"><i class="fas fa-rotate"></i></button>
-        <button class="icon-btn" onclick="toggleThemeInfo()" title="Info"><i class="fas fa-circle-info"></i></button>
-      </div>
-    </header>
 
-    <main class="content" id="pageContent"></main>
-  </div>
-</div>
+      </form>
 
-<!-- MODAL -->
-<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modalBox">
-    <div class="modal-head">
-      <div>
-        <div class="modal-title" id="modalTitle">Modal</div>
-        <div class="modal-sub" id="modalSub"></div>
+      <!-- Divider -->
+      <div class="divider">
+        <span></span>
+        <small>atau</small>
+        <span></span>
       </div>
-      <button class="modal-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+
+      <!-- Register -->
+      <a href="/register" class="btn-secondary-full">
+        <i class="fas fa-user-plus"></i>
+        <span>Daftar Akun Baru</span>
+      </a>
+
+      <!-- Terms -->
+      <p class="terms-text">
+        Dengan masuk, Anda menyetujui 
+        <a href="#">Ketentuan</a> & 
+        <a href="#">Kebijakan Privasi</a>
+      </p>
+
     </div>
-    <div class="modal-body" id="modalBody"></div>
-    <div class="modal-foot" id="modalFoot"></div>
+
+    <!-- Copyright -->
+    <p class="copyright-full">© 2026 SewaWA. All rights reserved.</p>
   </div>
-</div>
 
-<!-- TOAST -->
-<div class="toast-wrap" id="toastWrap"></div>
+  <div id="toastContainer" class="toast-container"></div>
 
-<script src="app.js"></script>
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+
+    function togglePassword() {
+      const input = document.getElementById('loginPassword');
+      const icon = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!document.getElementById('humanCheck').checked) {
+        return showToast('Centang "Aku manusia" dulu', 'error');
+      }
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+
+      if (!email || !password) return showToast('Email & password wajib diisi', 'error');
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Memproses...</span>';
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login gagal');
+
+        showToast('✅ Login berhasil!', 'success');
+        setTimeout(() => window.location.replace('/dashboard'), 400);
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          showToast('⏱️ Server timeout. Coba lagi.', 'error');
+        } else {
+          showToast(err.message, 'error');
+        }
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<span>Masuk</span><i class="fas fa-arrow-right"></i>';
+      }
+    });
+
+    function showToast(msg, type = 'info') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+      }, 3500);
+    }
+  </script>
 </body>
 </html>
